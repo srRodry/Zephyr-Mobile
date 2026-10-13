@@ -207,8 +207,13 @@ private fun LibraryCard(
     val c = Xd.colors
     var focused by remember { mutableStateOf(false) }
     val radius = RoundedCornerShape(c.coverRadius)
+    val cardShape = RoundedCornerShape(12.dp)
     Column(
         Modifier
+            .clip(cardShape)
+            .background(if (picked) c.s2 else c.s1)
+            .border(1.dp, if (picked) c.acc.copy(alpha = 0.55f) else c.line2, cardShape)
+            .padding(8.dp)
             .onFocusChanged { focused = it.isFocused; if (it.isFocused) onFocused() }
             .onPreviewKeyEvent { e -> padButtonOf(e)?.let(onPad) ?: false }
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
