@@ -214,6 +214,27 @@ jobs:
         "$bt/zipalign" -f -p 4 "$unsigned" "$RUNNER_TEMP/aligned.apk"
         keystore="$RUNNER_TEMP/signing.keystore"
         trap 'rm -f "$keystore"' EXIT
+        # A partially configured signing key must fail visibly. Otherwise CI
+        # silently falls back to a new key and installed updates stop working.
+        if [ "$VARIANT" = test ] && {
+          [ -n "$TEST_KEYSTORE_BASE64" ] ||
+          [ -n "$TEST_KEY_ALIAS" ] ||
+          [ -n "$TEST_KEYSTORE_PASSWORD" ]
+        }; then
+          if [ -z "$TEST_KEYSTORE_BASE64" ] || [ -z "$TEST_KEY_ALIAS" ] ||
+             [ -z "$TEST_KEYSTORE_PASSWORD" ]; then
+            echo "::error::Incomplete test signing secrets: set TEST_KEYSTORE_BASE64, TEST_KEY_ALIAS and TEST_KEYSTORE_PASSWORD together."
+            exit 1
+          fi
+        fi
+        if [ -n "$KEYSTORE_BASE64" ] || [ -n "$KEY_ALIAS" ] ||
+           [ -n "$KEYSTORE_PASSWORD" ]; then
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEY_ALIAS" ] ||
+             [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "::error::Incomplete release signing secrets: set ANDROID_KEYSTORE_BASE64, KEY_ALIAS and KEYSTORE_PASSWORD together."
+            exit 1
+          fi
+        fi
         if [ "$VARIANT" = test ] && [ -n "$TEST_KEYSTORE_BASE64" ] &&
            [ -n "$TEST_KEY_ALIAS" ] && [ -n "$TEST_KEYSTORE_PASSWORD" ]; then
           printf '%s' "$TEST_KEYSTORE_BASE64" | base64 --decode > "$keystore"
