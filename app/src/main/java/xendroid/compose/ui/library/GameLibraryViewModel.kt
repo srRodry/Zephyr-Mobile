@@ -1,6 +1,6 @@
 package xendroid.compose.ui.library
 
-import xendroid.compose.core.R
+import xendroid.compose.R
 import android.content.Context
 import android.content.Intent
 import android.content.pm.ShortcutInfo
