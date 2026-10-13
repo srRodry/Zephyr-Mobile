@@ -152,13 +152,19 @@ jobs:
         key: sdk-ndk${{ env.ANDROID_NDK_VERSION }}-cmake${{ env.CMAKE_VERSION }}
 
     - name: Install Android SDK packages
+      shell: bash
       run: |
-        # GitHub's bash shell uses pipefail. sdkmanager exits after accepting
-        # licenses, causing yes to receive SIGPIPE (141) even on success.
-        # Preserve sdkmanager's actual exit status, not yes's SIGPIPE.
+        # Use bash explicitly inside the Android SDK container.
+        # sdkmanager may close stdin before yes exits; ignore yes's SIGPIPE
+        # while still failing if sdkmanager itself returns a nonzero status.
         set +o pipefail
         yes | sdkmanager --licenses > /dev/null
+        sdk_status=${PIPESTATUS[1]}
         set -o pipefail
+        if [ "$sdk_status" -ne 0 ]; then
+          echo "::error::Android SDK license acceptance failed (exit $sdk_status)"
+          exit "$sdk_status"
+        fi
         for package in "ndk;$ANDROID_NDK_VERSION" "cmake;$CMAKE_VERSION" \
                        "build-tools;$BUILD_TOOLS_VERSION" "platforms;android-35"; do
           dir="$ANDROID_SDK_ROOT/$(echo "$package" | tr ';' '/')"
