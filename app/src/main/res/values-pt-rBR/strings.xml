@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Xendroid+</string>
+    <string name="app_name">Zephyr-Mobile</string>
 
     <!-- U02: menu em jogo. Mesmos nomes e marcadores (%1$s, %1$d…) do values/strings.xml. -->
     <string name="menu_open">Abrir menu</string>
