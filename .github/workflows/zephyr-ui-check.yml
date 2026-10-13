@@ -102,6 +102,16 @@ jobs:
           PY
       - name: Compile Compose UI without packaging native libraries
         run: bash ./gradlew :app:compileDebugKotlin --no-daemon --stacktrace
+      # These cases deliberately replace config files and the native singleton.
+      # Run them in their own test JVM, apart from navigation/idling assertions.
+      - name: Test settings transfers and native failure recovery
+        run: |
+          bash ./gradlew :app:testUitestUnitTest --no-daemon --stacktrace \
+            --tests 'xendroid.compose.screens.DataBundleExportTest' \
+            --tests 'xendroid.compose.screens.ProfileLoadFailureTest'
+          mkdir -p app/build/reports/tests/zephyr-transfer-tests app/build/test-results/zephyr-transfer-tests
+          cp -a app/build/reports/tests/testUitestUnitTest/. app/build/reports/tests/zephyr-transfer-tests/
+          cp -a app/build/test-results/testUitestUnitTest/. app/build/test-results/zephyr-transfer-tests/
       - name: Test library navigation and data persistence
         run: |
           bash ./gradlew :app:testUitestUnitTest --no-daemon --stacktrace \
@@ -109,8 +119,6 @@ jobs:
             --tests 'xendroid.compose.gamepad.MenuButtonsTest' \
             --tests 'xendroid.compose.screens.BaseShots.library*' \
             --tests 'xendroid.compose.screens.FirstRunReturnTest' \
-            --tests 'xendroid.compose.screens.DataBundleExportTest' \
-            --tests 'xendroid.compose.screens.ProfileLoadFailureTest' \
             --tests 'xendroid.compose.bundle.*' \
             --tests 'xendroid.compose.saves.*' \
             --tests 'xendroid.compose.data.Profile*' \
@@ -124,5 +132,7 @@ jobs:
           path: |
             app/build/reports/tests/testUitestUnitTest/
             app/build/test-results/testUitestUnitTest/
+            app/build/reports/tests/zephyr-transfer-tests/
+            app/build/test-results/zephyr-transfer-tests/
           if-no-files-found: ignore
           retention-days: 14

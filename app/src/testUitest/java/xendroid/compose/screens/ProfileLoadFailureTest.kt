@@ -9,6 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Test
 import org.junit.runner.RunWith
 import org.robolectric.annotation.Config
+import org.robolectric.annotation.GraphicsMode
 import xendroid.compose.Emulator
 import xendroid.compose.settings.ConfigStore
 import xendroid.compose.shots.FakeCore
@@ -19,6 +20,7 @@ import xendroid.compose.ui.profile.ProfileManagerViewModel.ListState
 
 /** Loading the profile list must report native-load errors and allow a retry. */
 @RunWith(AndroidJUnit4::class)
+@GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], application = ShotApp::class)
 class ProfileLoadFailureTest {
     @After fun resetFailure() {
