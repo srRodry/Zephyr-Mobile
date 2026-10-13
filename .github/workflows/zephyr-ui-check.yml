@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   kotlin-ui:
-    name: Kotlin / Compose compilation
+    name: Kotlin / Compose and library regression tests
     runs-on: ubuntu-latest
     timeout-minutes: 45
     env:
@@ -53,3 +53,20 @@ jobs:
       - uses: gradle/actions/setup-gradle@v4
       - name: Compile Compose UI without packaging native libraries
         run: bash ./gradlew :app:compileDebugKotlin --no-daemon --stacktrace
+      - name: Test library behavior and controller navigation
+        run: |
+          bash ./gradlew :app:testUitestUnitTest --no-daemon --stacktrace \
+            --tests 'xendroid.compose.ui.library.*' \
+            --tests 'xendroid.compose.gamepad.MenuButtonsTest' \
+            --tests 'xendroid.compose.screens.BaseShots.library*' \
+            --tests 'xendroid.compose.screens.FirstRunReturnTest'
+      - name: Upload library test reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: zephyr-library-test-reports
+          path: |
+            app/build/reports/tests/testUitestUnitTest/
+            app/build/test-results/testUitestUnitTest/
+          if-no-files-found: ignore
+          retention-days: 14
