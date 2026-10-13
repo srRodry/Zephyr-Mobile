@@ -1,4 +1,6 @@
-<h1 align="center">ZEPHYR MOBILE</h1>
+<p align="center">
+  <img src="docs/assets/zephyr-mobile-banner.svg" alt="Zephyr-Mobile — Xbox 360 emulation for Android" width="100%">
+</p>
 
 <p align="center"><strong>Emulação de Xbox 360 no Android, com uma interface pensada para toque e controles.</strong></p>
 
