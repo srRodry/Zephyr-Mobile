@@ -1,13 +1,28 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" role="img" aria-labelledby="title desc">
 <title id="title">Zephyr-Mobile</title>
-<desc id="desc">Zephyr-Mobile brand banner: blue geometric mark and white wordmark on dark graphite, Xbox 360 emulation for Android.</desc>
-<rect width="1200" height="300" rx="20" fill="#15191F"/>
-<path d="M0 278H1200" stroke="#304155" stroke-width="2"/>
-<path d="M68 111L114 66H183L137 111Z" fill="#237BFF"/>
-<path d="M68 166L114 121H183L137 166Z" fill="#237BFF"/>
-<path d="M146 166L192 121H227L181 166Z" fill="#5A9CFF"/>
-<text x="269" y="151" fill="#F5F7FA" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="78" letter-spacing="7">ZEPHYR</text>
-<text x="275" y="196" fill="#C5CFDC" font-family="Arial, Helvetica, sans-serif" font-weight="600" font-size="26" letter-spacing="18">MOBILE</text>
-<path d="M274 219H924" stroke="#304155" stroke-width="2"/>
-<text x="275" y="248" fill="#A8B5C6" font-family="Arial, Helvetica, sans-serif" font-size="19" letter-spacing="1">XBOX 360 EMULATION  /  ANDROID  /  IN DEVELOPMENT</text>
+<desc id="desc">Silver and electric blue Zephyr Z symbol, Zephyr Mobile wordmark, dark graphite background.</desc>
+<defs>
+  <linearGradient id="silver" x1="0" y1="0" x2="0.65" y2="1">
+    <stop offset="0" stop-color="#FFFFFF"/><stop offset=".5" stop-color="#D9E2EC"/><stop offset="1" stop-color="#8595A8"/>
+  </linearGradient>
+  <linearGradient id="blue" x1="0" y1="0" x2="1" y2="1">
+    <stop offset="0" stop-color="#16C6F8"/><stop offset=".6" stop-color="#237BFF"/><stop offset="1" stop-color="#0756B7"/>
+  </linearGradient>
+</defs>
+<rect width="1200" height="300" rx="18" fill="#10151C"/>
+<path d="M0 270H1200" stroke="#304155"/>
+<g transform="translate(55 15) scale(2.65)">
+  <path fill="url(#silver)" d="M31 34L43 26H78L66 34Z"/>
+  <path fill="#11B9F4" d="M29 39H35L31 43H25ZM37 39H43L39 43H33ZM45 39H51L47 43H41Z"/>
+  <path fill="url(#silver)" d="M61 36H73L44 67L31 75L42 59Z"/>
+  <path fill="url(#silver)" d="M42 68H72L64 76H30Z"/>
+  <path fill="url(#blue)" d="M73 34L81 28L53 61L43 65Z"/>
+  <path fill="url(#blue)" d="M53 62H78L69 69H46Z"/>
+  <path fill="#0867D4" d="M46 70H70L64 75H37Z"/>
+  <path fill="#11B9F4" d="M73 58H78L75 61H70ZM80 58H85L82 61H77Z"/>
+</g>
+<text x="342" y="143" fill="url(#silver)" font-family="Arial, Helvetica, sans-serif" font-size="85" font-weight="800" letter-spacing="7">ZEPHYR</text>
+<path d="M350 178H432M824 178H905" stroke="#16C6F8" stroke-width="3"/>
+<text x="467" y="190" fill="#F5F7FA" font-family="Arial, Helvetica, sans-serif" font-size="33" letter-spacing="20">MOBILE</text>
+<text x="350" y="240" fill="#A8B5C6" font-family="Arial, Helvetica, sans-serif" font-size="19" letter-spacing="3">XBOX 360 EMULATION · ANDROID</text>
 </svg>
