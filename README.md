@@ -1,145 +1,142 @@
-<p align="center">
-  <picture>
-    <source media="(prefers-color-scheme: dark)" srcset="docs/assets/xendroid-plus-logo-dark.png">
-    <img src="docs/assets/xendroid-plus-logo.png" alt="Xendroid+" width="300">
-  </picture>
-</p>
+<h1 align="center">ZEPHYR MOBILE</h1>
 
-<p align="center"><strong>Xbox 360 emulation on Android, tuned for Snapdragon and Adreno.</strong></p>
+<p align="center"><strong>Xbox 360 emulation on Android, with an interface designed for touch and controllers.</strong></p>
 
 <p align="center">
-  <img alt="Android 10+" src="https://img.shields.io/badge/Android-10%2B-3DBB2E?logo=android&logoColor=white">
-  <img alt="arm64-v8a" src="https://img.shields.io/badge/ABI-arm64--v8a-2B2D31">
-  <img alt="Vulkan" src="https://img.shields.io/badge/Vulkan-Adreno%20%7C%20Turnip-AC162C?logo=vulkan&logoColor=white">
-  <a href="https://discord.gg/AT8Bswv62"><img alt="Discord" src="https://img.shields.io/badge/Discord-community-5865F2?logo=discord&logoColor=white"></a>
+  <img alt="Project status: in development" src="https://img.shields.io/badge/status-in%20development-237BFF">
+  <img alt="Android 10+" src="https://img.shields.io/badge/Android-10%2B-263241?logo=android&logoColor=white">
+  <img alt="64-bit ARM" src="https://img.shields.io/badge/ABI-arm64--v8a-263241">
+  <img alt="Graphics API: Vulkan" src="https://img.shields.io/badge/API-Vulkan-263241">
 </p>
 
-<p align="center"><b>English</b> · <a href="README.pt-BR.md">Português (Brasil)</a></p>
+<p align="center">
+  <b>English</b> · <a href="README.pt-BR.md">Português (Brasil)</a>
+</p>
+
+<p align="center">
+  <a href="https://github.com/srRodry/Zephyr-Mobile/actions/workflows/zephyr-ui-check.yml">UI checks</a> ·
+  <a href="https://github.com/srRodry/Zephyr-Mobile/actions/workflows/XenDroid.yml">Android APK builds</a> ·
+  <a href="https://github.com/srRodry/Zephyr-Mobile/issues">Issues and feedback</a>
+</p>
 
 ---
 
-**Xendroid+** is an Xbox 360 emulator for Android, created and maintained by
-**[phforner0](https://github.com/phforner0)**. It continues the XenDroid project and
-builds on [Xenia](https://github.com/xenia-project/xenia), with an interface
-redesigned for phones, tablets and controllers, per-game tuning applied automatically,
-and performance and accuracy work measured frame by frame on real hardware.
+## About the project
 
-> [!NOTE]
-> Xendroid+ is experimental. How a game runs depends on the game, the device and the
-> GPU driver: some titles run well, others still show glitches or do not boot.
+**Zephyr-Mobile** is an experimental Xbox 360 emulator project for Android, developed in the `srRodry/Zephyr-Mobile` repository. The goal is to make the mobile experience easier to use, with clearer navigation, a consistent interface, controller support and accessible game-library interactions.
 
-## Highlights
+The project **builds on existing open-source work**: [Xendroid+](https://github.com/phforner0), the earlier [XenDroid](https://github.com/rfandango) Android port, and the [Xenia](https://github.com/xenia-project/xenia) / Xenia Canary emulation core. Zephyr-Mobile is **not** a new emulator core written from scratch. Upstream technical contributions and licenses remain credited below.
 
-### A new interface
-- **Library** with search by name or Title ID, favorites, sorting, play time and
-  *Recently played*, fully usable with a controller.
-- **In-game menu** with graphics, HUD, controls and session pages, opened from the
-  touch handle, Back/Guide or the shoulder buttons.
-- **First-run assistant**, gamer profiles, save backup and restore (with a recovery
-  journal and a trash), title update and DLC installation.
-- **Touch controls** with a layout editor and optional adaptive sticks.
+> [!IMPORTANT]
+> **Development build — not a stable release.** Interface changes and automation do not guarantee that a game will boot or run correctly. Compatibility depends on the game, device, Vulkan driver and emulator-core behavior. A successful UI check is not proof of a usable APK or in-game compatibility.
 
-### Performance, measured on device
-- **Per-game settings** applied when a title starts, for the games that need them:
-  Forza Horizon, Forza Horizon 2, Gears of War 3, Need for Speed: Most Wanted and more.
-- **Fewer EDRAM transfers** on the host GPU: transfers a draw overwrites are skipped,
-  and in the games that allow it, depth drawn at 4× MSAA lands straight in its 1×
-  surface and predicated tiling bands are drawn once.
-- **Exact shader fast paths** (texture sign decoding, 21-bit rounding), texture loads
-  straight into images, direct host resolves, and Turnip's shader compiler set up for
-  many small draws.
-- **ARM64 JIT work**: cheap exact NaN handling, ABA-safe guest reservations and
-  VMX denormal flushing.
-- **Asynchronous shader compilation** with a persistent pipeline cache.
+## What's being developed
 
-### Tools
-- **Performance HUD** (FPS, frame time, CPU, GPU, RAM, temperatures) and per-game
-  frame-rate limits (unlimited, or 30 to 120 FPS).
-- **Output scaling and sharpening**, including Snapdragon Game Super Resolution.
-- **Driver manager** for Adreno/Turnip drivers, global or per game, with SHA-256
-  checks.
-- **Play history** with frame-time percentiles, a diagnostics bundle to share,
-  local compatibility notes and community settings profiles.
-- **Frame generation** (experimental, off by default): Win-FG 2× and LSFG with your
-  own `Lossless.dll`.
+| Area | Current work |
+| --- | --- |
+| **Visual identity** | Dark graphite surfaces (`#15191F`), restrained blue accent (`#237BFF`), readable typography and consistent Compose design tokens. |
+| **Game library** | Search, filters, favorites, collections, cover cards and selection feedback, building on the inherited application features. |
+| **Touch experience** | Layout adapted to portrait and landscape, touch-friendly interactions and game details. |
+| **Controller experience** | Focus indications, selection semantics and navigation in the game library. |
+| **Accessibility** | More descriptive game cards, visible focus and clearer selected states. |
+| **Quality checks** | Automated Kotlin/Compose compilation and library/controller regression tests. |
+| **Android packaging** | Separate ARM64 experimental APK workflow with signing and package-content verification. |
 
-## Performance snapshot
+These items describe code or workflows currently under development; **they are not a claim of complete hardware validation**. Existing features inherited from upstream are documented in the source tree and linked documentation.
 
-Measured on a **POCO F7** (Snapdragon 8s Gen 4, Adreno 825) with Turnip, in
-development builds (October 2026). Your device, driver and game version will change
-these numbers.
+## Project status
 
-| Game | Tested in | Frame rate | Notes |
-|---|---|---|---|
-| Forza Horizon | Racing | 30 fps (game cap) | ~18 ms of GPU time per frame |
-| Forza Horizon 2 | Racing | 27–30 fps | Forza Horizon's settings applied |
-| Gears of War 3 | Campaign, Versus | 30 fps (game cap) | GPU 40 → 28 ms per frame in its heaviest scene |
-| Halo 4 | Campaign | ~26–30 fps | Video cutscenes fixed; a small shadow flicker remains |
-| Need for Speed: Most Wanted | Racing | ~19 fps | Boot and gameplay crashes fixed |
-| Sonic Unleashed | Gameplay | 50–52 fps | |
-| Halo: Reach | Menus, intro | 30 fps | Dips to 19 fps |
-| Crysis 3 | Menus, intro | 32–46 fps | JIT crash fixed |
-| Grand Theft Auto IV | Menus, intro | ~22 fps | Limited by the GPU command thread |
-| Red Dead Redemption | Menus, intro | ~25 fps | Limited by the GPU command thread |
+| Milestone | Status |
+| --- | --- |
+| Zephyr-Mobile app name and basic visual identity | Implemented in the development branch |
+| Touch and controller library refinements | Implemented; further real-device testing needed |
+| Automated UI compilation and regression checks | Configured in GitHub Actions |
+| Standalone experimental APK (`xendroid.compose.zephyr.test`) | Workflow configured; successful build and installation must be verified |
+| Native Xbox 360 game compatibility on Android | Experimental; verify per title and device |
+| Public stable release | **Not announced** |
 
-The measurements, methods and optimization plans are in
-[`performance-tests/`](performance-tests); per-game settings are explained in
-[GAME_COMPAT.md](GAME_COMPAT.md).
+The active integration branch is [`feature/zephyr-mobile-branding`](https://github.com/srRodry/Zephyr-Mobile/tree/feature/zephyr-mobile-branding). The `main` branch is kept separate while changes are validated.
+
+### Development roadmap
+
+1. Confirm green Android APK builds, verify the signed artifact and test installation on a real ARM64 phone.
+2. Validate touch layouts, controller focus, accessibility and game-library navigation on real devices.
+3. Test game startup and stability without mixing UI regressions with emulator-core issues.
+4. Document verified compatibility results and prepare a reproducible experimental release process.
 
 ## Requirements
 
-- Android 10 or newer on 64-bit ARM (arm64-v8a).
-- A Vulkan GPU. Adreno 7xx and 8xx with the Turnip driver are the main target; a
-  Snapdragon 8 Gen 2 or newer is recommended.
-- Your own Xbox 360 games, dumped from discs or consoles you own: disc images (ISO),
-  ZAR archives or Games on Demand (GOD) packages.
+- **Android 10 or later**, running on **ARM64 (`arm64-v8a`)**.
+- A **Vulkan-capable GPU** and an appropriate driver; Snapdragon/Adreno with compatible Turnip drivers is a primary target of the underlying project.
+- Games from your own legally obtained Xbox 360 copies, in formats supported by the underlying emulator.
 
-## Getting started
+Higher-end hardware can help, but **no device or title is guaranteed to work**. Measurements published in upstream documentation are not Zephyr-Mobile performance benchmarks.
 
-1. Install the Xendroid+ APK.
-2. Open it and follow the first-run assistant: pick your games folder, or let it
-   create one along with folders for title updates and DLC.
-3. Choose a game in the library. While playing, open the in-game menu from the touch
-   handle, or with Back/Guide on a controller.
+## Testing an experimental APK
+
+1. Open [Zephyr Android APK](https://github.com/srRodry/Zephyr-Mobile/actions/workflows/XenDroid.yml).
+2. Find a **successful run on `feature/zephyr-mobile-branding`**.
+3. If the run produced an artifact, download the `Zephyr-Mobile_test_<commit>` APK artifact from its run page.
+4. Install the signed APK on a compatible Android device and verify launch, library navigation and controller behavior before testing games.
+
+> [!CAUTION]
+> An APK may **not yet be available**. Artifacts expire, and a run without a successful build does not supply a tested installation package. Experimental builds use the Android package ID `xendroid.compose.zephyr.test`; builds signed with different temporary keys may require uninstalling the previous test build. Back up application data first.
 
 ## Building from source
 
-Xendroid+ builds with JDK 21, the Android SDK and NDK, and the SPIR-V shader
-toolchain. The full setup for Linux and Windows hosts is in [BUILD.md](BUILD.md):
+The inherited native build uses **JDK 21**, Android **SDK 35**, **NDK 29.0.14206865**, **CMake 3.30.3**, Gradle **8.11.1**, Python and SPIR-V shader tools. Follow [BUILD.md](BUILD.md) for complete environment setup, native toolchain requirements and signing instructions.
 
-```sh
-./gradlew :app:assembleRelease
+For an experimental release-variant build with Zephyr's test application ID:
+
+```bash
+./gradlew -PxendroidReleaseIdSuffix=.zephyr.test -PxendroidReleaseDebuggable :app:assembleRelease
 ```
+
+The Gradle task builds the application; **building alone does not mean the resulting APK is signed and installable**. The GitHub Actions APK workflow handles signing and packaging verification separately.
+
+For the interface checks configured in CI:
+
+```bash
+./gradlew :app:compileDebugKotlin
+./gradlew :app:testUitestUnitTest
+```
+
+### Source layout
+
+| Path | Purpose |
+| --- | --- |
+| `app/` | Kotlin/Jetpack Compose Android app, library, navigation and user interface. |
+| `emulator-core/` | Inherited native Xbox 360 emulator core and Android integration. |
+| `.github/workflows/zephyr-ui-check.yml` | UI compilation and regression checks. |
+| `.github/workflows/XenDroid.yml` | Experimental ARM64 APK build, signing and packaging verification. |
+| `docs/ui-redesign/` | Background design explorations and interface documentation (some pre-Zephyr material). |
+| `performance-tests/` | Inherited performance investigations; not Zephyr-specific validation. |
 
 ## Documentation
 
-- [BUILD.md](BUILD.md): building, testing and installing.
-- [GAME_COMPAT.md](GAME_COMPAT.md): per-game settings and how they are loaded.
-- [`performance-tests/`](performance-tests): device measurements and the optimization
-  plans behind each change.
-- [docs/ui-redesign](docs/ui-redesign): the interface redesign;
-  [docs/experiencia-em-jogo-status.md](docs/experiencia-em-jogo-status.md): feature
-  status and pending validation.
+- [Build and installation guide](BUILD.md)
+- [Game-specific configuration](GAME_COMPAT.md)
+- [Interface redesign notes](docs/ui-redesign/README.md)
+- [Development and feature-validation notes](docs/experiencia-em-jogo-status.md)
+- [Third-party notices](THIRD-PARTY-NOTICES.md)
 
-## Credits
+## Credits and licenses
 
-- **Xendroid+**: created and maintained by **[phforner0](https://github.com/phforner0)**.
-- **XenDroid**, the original Android port, by **[rfandango](https://github.com/rfandango)**.
-- **[Xenia](https://github.com/xenia-project/xenia)** and Xenia Canary, the Xbox 360
-  emulator research project the emulation core comes from.
-- Frame generation, fonts, upscaling and the other third-party components keep their
-  own licenses, listed in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+Zephyr-Mobile is maintained in this repository by **[srRodry](https://github.com/srRodry)**, with substantial inherited work from:
 
-## Legal
+- **Xendroid+**, created and maintained by **[phforner0](https://github.com/phforner0)**.
+- **XenDroid**, the earlier Android port by **[rfandango](https://github.com/rfandango)**.
+- **[Xenia](https://github.com/xenia-project/xenia)** and Xenia Canary, which provide the underlying emulator technology.
+- The other open-source projects, fonts, drivers and rendering components acknowledged in [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
 
-Xendroid+ is a non-commercial, open-source project for research, software development
-and performance testing. It is not affiliated with or endorsed by Microsoft; Xbox and
-Xbox 360 are trademarks of Microsoft Corporation.
+Existing upstream licenses and notices continue to apply. In particular, the third-party notices describe licensing obligations related to the combined binary and its components. **Renaming or redesigning the application does not transfer authorship of those components.**
 
-The project does not condone piracy. No games, disc images, firmware, system files or
-keys are included or distributed. Use only backups of games you own, dumped from
-hardware you own.
+## Legal notice
 
-## Community
+Zephyr-Mobile is an independent, experimental software project and is **not affiliated with or endorsed by Microsoft**. Xbox and Xbox 360 are trademarks of Microsoft Corporation.
 
-Join the discussion on [Discord](https://discord.gg/AT8Bswv62).
+**No commercial games, game images, firmware, console keys or other copyrighted game data are distributed with this repository.** Use your own lawful backups and follow applicable law.
+
+---
+
+<p align="center"><sub>Zephyr-Mobile · Development branch · Interface, usability and validation first.</sub></p>
