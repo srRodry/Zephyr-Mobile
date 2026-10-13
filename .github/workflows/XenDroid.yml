@@ -58,9 +58,9 @@ permissions:
 
 concurrency:
   group: xendroid-${{ github.event.pull_request.number || github.ref }}
-  # A new push to a pull request replaces its running build; main builds
-  # (releases) always finish.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # Superseded PR and experimental development builds may be cancelled.
+  # Main builds (releases) always finish.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' || github.ref == 'refs/heads/feature/zephyr-mobile-branding' }}
 
 jobs:
   apk:
