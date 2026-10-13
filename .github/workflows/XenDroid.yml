@@ -153,7 +153,12 @@ jobs:
 
     - name: Install Android SDK packages
       run: |
+        # GitHub's bash shell uses pipefail. sdkmanager exits after accepting
+        # licenses, causing yes to receive SIGPIPE (141) even on success.
+        # Preserve sdkmanager's actual exit status, not yes's SIGPIPE.
+        set +o pipefail
         yes | sdkmanager --licenses > /dev/null
+        set -o pipefail
         for package in "ndk;$ANDROID_NDK_VERSION" "cmake;$CMAKE_VERSION" \
                        "build-tools;$BUILD_TOOLS_VERSION" "platforms;android-35"; do
           dir="$ANDROID_SDK_ROOT/$(echo "$package" | tr ';' '/')"
