@@ -125,6 +125,16 @@ fun LibraryTouch(
                     XdIconButton(XdIcons.more, stringResource(R.string.lib_more), onMenu)
                 }
                 notices()
+                // Keep sorting visible on phones without placing it inside the
+                // horizontally scrolling filter chips (where it is easily missed).
+                if (portrait) {
+                    Row(
+                        Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, bottom = 6.dp),
+                        horizontalArrangement = Arrangement.End,
+                    ) {
+                        XdSelect(LibrarySort.entries.map { it to sortText(it) }, data.sort, onSort)
+                    }
+                }
                 XdChipRow(contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 2.dp, bottom = 10.dp)) {
                     XdChip(stringResource(R.string.xd_lib_all), filter == LibraryFilter.All, { onFilter(LibraryFilter.All) }, count = data.games.size)
                     XdChip(stringResource(R.string.lib_favorites), filter == LibraryFilter.Favorites, { onFilter(LibraryFilter.Favorites) },
@@ -139,10 +149,6 @@ fun LibraryTouch(
                             val f = LibraryFilter.Format(fmt)
                             XdChip(formatLabel(fmt), filter == f, { onFilter(f) }, count = data.count(f))
                         }
-                    }
-                    if (portrait) {
-                        XdChipSeparator()
-                        XdSelect(LibrarySort.entries.map { it to sortText(it) }, data.sort, onSort)
                     }
                 }
                 if (shown.isEmpty()) {
@@ -236,7 +242,7 @@ private fun LibraryCard(
             val status = data.status(game)
             XdDot(status.tone())
             Text(listOfNotNull(compatShortText(status), playedAgo(data.played(game)) ?: stringResource(R.string.xd_lib_never)).joinToString(" · "),
-                style = XdText.tiny.copy(fontSize = 11.sp), color = c.fg3, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                style = XdText.small, color = c.fg2, maxLines = 1, overflow = TextOverflow.Ellipsis)
         }
     }
 }
