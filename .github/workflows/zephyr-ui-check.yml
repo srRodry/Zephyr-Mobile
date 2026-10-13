@@ -34,11 +34,17 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      - uses: android-actions/setup-android@v3
+      # GitHub's Ubuntu runner already includes the Android command-line tools.
+      # Accept licenses before installing SDK packages; setup-android@v3 failed
+      # while processing preinstalled licenses before our install step could run.
+      - name: Accept Android SDK licenses
+        shell: bash
+        run: |
+          set -o pipefail
+          yes | sdkmanager --licenses || test "${PIPESTATUS[1]}" -eq 0
       - name: Install Android SDK dependencies
         run: |
           sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;29.0.14206865" "cmake;3.30.3"
-          yes | sdkmanager --licenses > /dev/null || true
       - uses: gradle/actions/setup-gradle@v4
       - name: Compile Compose UI without packaging native libraries
         run: ./gradlew :app:compileDebugKotlin --no-daemon --stacktrace
