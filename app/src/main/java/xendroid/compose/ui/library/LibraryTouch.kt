@@ -207,7 +207,6 @@ private fun LibraryCard(
 ) {
     val c = Xd.colors
     var focused by remember { mutableStateOf(false) }
-    val radius = RoundedCornerShape(c.coverRadius)
     val cardShape = RoundedCornerShape(12.dp)
     Column(
         Modifier
@@ -229,17 +228,8 @@ private fun LibraryCard(
             .padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        Box(
-            Modifier.then(
-                when {
-                    focused -> Modifier.border(2.5.dp, c.fg, radius)
-                    picked -> Modifier.border(2.5.dp, c.acc, radius)
-                    else -> Modifier
-                }
-            ).padding(if (focused || picked) 2.dp else 0.dp)
-        ) {
-            GameCover(art.model, game.name, art.smart, favorite = data.favorite(game), discLabel = discBadge(game))
-        }
+        // The card outline already indicates focus/selection; avoid a second border around the art.
+        GameCover(art.model, game.name, art.smart, favorite = data.favorite(game), discLabel = discBadge(game))
         Text(game.name, style = XdText.labelSm.copy(fontSize = if (small) 11.5.sp else 12.5.sp, lineHeight = 15.sp), color = c.fg,
             maxLines = 2, overflow = TextOverflow.Ellipsis)
         if (!small) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
