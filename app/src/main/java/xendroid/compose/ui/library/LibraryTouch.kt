@@ -212,8 +212,16 @@ private fun LibraryCard(
     Column(
         Modifier
             .clip(cardShape)
-            .background(if (picked) c.s2 else c.s1)
-            .border(1.dp, if (picked) c.acc.copy(alpha = 0.55f) else c.line2, cardShape)
+            .background(if (picked || focused) c.s2 else c.s1)
+            .border(
+                width = if (focused) 2.dp else 1.dp,
+                color = when {
+                    focused -> c.fg
+                    picked -> c.acc.copy(alpha = 0.75f)
+                    else -> c.line2
+                },
+                shape = cardShape,
+            )
             .onFocusChanged { focused = it.isFocused; if (it.isFocused) onFocused() }
             .onPreviewKeyEvent { e -> padButtonOf(e)?.let(onPad) ?: false }
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
