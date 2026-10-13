@@ -43,6 +43,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -213,11 +214,11 @@ private fun LibraryCard(
             .clip(cardShape)
             .background(if (picked) c.s2 else c.s1)
             .border(1.dp, if (picked) c.acc.copy(alpha = 0.55f) else c.line2, cardShape)
-            .padding(8.dp)
             .onFocusChanged { focused = it.isFocused; if (it.isFocused) onFocused() }
             .onPreviewKeyEvent { e -> padButtonOf(e)?.let(onPad) ?: false }
             .combinedClickable(onClick = onClick, onLongClick = onLongClick)
-            .semantics { contentDescription = game.name },
+            .semantics { contentDescription = game.name; selected = picked }
+            .padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
         Box(
