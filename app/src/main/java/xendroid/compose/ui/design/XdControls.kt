@@ -129,7 +129,7 @@ fun XdButton(
     }
 }
 
-/** Round icon button (38 dp); [on] paints it the favourite yellow. */
+/** Round icon button (48 dp touch target); [on] paints it the favourite yellow. */
 @Composable
 fun XdIconButton(
     icon: ImageVector,
@@ -138,7 +138,7 @@ fun XdIconButton(
     modifier: Modifier = Modifier,
     on: Boolean = false,
     enabled: Boolean = true,
-    size: Dp = 38.dp,
+    size: Dp = 48.dp,
     tint: Color? = null,
 ) {
     val c = Xd.colors
