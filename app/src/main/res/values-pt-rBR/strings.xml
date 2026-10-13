@@ -287,7 +287,7 @@
     <string name="fr_use_locale">Usar nos jogos</string>
     <string name="fr_no_locale">O idioma deste telefone não existe no console; os jogos ficam em inglês, a menos que você mude em Configurações.</string>
     <string name="fr_profile">Perfil</string>
-    <string name="fr_profile_note">Os jogos salvam num perfil (gamertag). Um chamado “XenDroid” é criado quando não existe nenhum; crie ou renomeie o seu em Perfis.</string>
+    <string name="fr_profile_note">Os jogos salvam num perfil (gamertag). Um chamado “Zephyr” é criado quando não existe nenhum; crie ou renomeie o seu em Perfis.</string>
     <string name="fr_open_profiles">Abrir Perfis</string>
     <string name="fr_driver">Driver da GPU (opcional)</string>
     <string name="fr_driver_note">O driver Vulkan do próprio telefone basta para começar. Um pacote Turnip pode ser instalado depois em Configurações → Driver Vulkan personalizado, e trocado de volta quando quiser.</string>
