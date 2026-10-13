@@ -38,16 +38,16 @@ object EmulatorRuntime {
         applyCoreDefaultUpdatesOnce()
     }
 
-    @Volatile private var coreDefaultUpdatesApplied = false
+    private val coreDefaultUpdates = SuccessfulInitialization()
 
     /** Once per process, before the core boots or the settings read the live config: the core's
      *  own default changes written to it ([ConfigMigrations]). */
     private fun applyCoreDefaultUpdatesOnce() {
-        if (coreDefaultUpdatesApplied) return
-        coreDefaultUpdatesApplied = true
         runCatching {
-            ConfigStore(Application.ctx).applyCoreDefaultUpdates(
-                ConfigMigrations.parse(xendroid.emulator.Emulator.Config.native_config_updates()))
+            coreDefaultUpdates.run {
+                ConfigStore(Application.ctx).applyCoreDefaultUpdates(
+                    ConfigMigrations.parse(xendroid.emulator.Emulator.Config.native_config_updates()))
+            }
         }.onFailure { Log.w(TAG, "Applying the core's default updates to the config failed", it) }
     }
 

@@ -1,6 +1,7 @@
 package xendroid.compose;
 
 import android.content.Context;
+import android.util.Log;
 
 import java.io.File;
 import java.io.IOException;
@@ -62,9 +63,17 @@ public class Application extends android.app.Application{
 
     static boolean should_delay_load() {
         if(gpu_device_name_vk==null)
-            throw new RuntimeException("gpu_device_name_vk==null");
+            return true;
         return gpu_device_name_vk.contains("Adreno (TM) 5")
                 || gpu_device_name_vk.contains("Adreno (TM) 6");
+    }
+
+    protected String probeVulkanGpu() {
+        return ProcessorInfo.gpu_get_physical_device_name_vk();
+    }
+
+    protected void loadNativeCore() {
+        Emulator.load_library();
     }
 
     public  static Context ctx;
@@ -75,7 +84,12 @@ public class Application extends android.app.Application{
         super.onCreate();
 
         Application.ctx=this;
-        gpu_device_name_vk= ProcessorInfo.gpu_get_physical_device_name_vk();
+        try {
+            gpu_device_name_vk = probeVulkanGpu();
+        } catch (RuntimeException | LinkageError failure) {
+            gpu_device_name_vk = null;
+            Log.w("ZephyrStartup", "Vulkan device probe failed", failure);
+        }
 
         String[] entry={"cache","cache0","cache1",};
         for(String e:entry){
@@ -90,8 +104,14 @@ public class Application extends android.app.Application{
                 || !bundled_config.equals(Utils.load_string(default_config_file)))
             Utils.save_string(default_config_file,bundled_config);
 
-        if(!should_delay_load())
-            Emulator.load_library();
+        if(!should_delay_load()) {
+            try {
+                loadNativeCore();
+            } catch (RuntimeException | LinkageError failure) {
+                // Keep the UI available to report the error and offer a retry.
+                Log.w("ZephyrStartup", "Native core preloading failed", failure);
+            }
+        }
 
     }
 

@@ -11,10 +11,20 @@ import java.util.Base64;
 public class Emulator extends xendroid.emulator.Emulator{
     public static Emulator get=null;
     public static void load_library(){
+        load_library(() -> System.loadLibrary("e"));
+    }
+
+    static synchronized void load_library(Runnable nativeLoader){
         if(get!=null)
             throw new RuntimeException("Emulator already loaded");
+        // JNI_OnLoad may need the singleton; publish it before loading as before.
         get=new Emulator();
-        System.loadLibrary("e");
+        try {
+            nativeLoader.run();
+        } catch (RuntimeException | LinkageError failure) {
+            get=null;
+            throw failure;
+        }
     }
 
     /*public void key_event(int keycode,boolean pressed){

@@ -289,7 +289,7 @@ private fun Summary(
 
 @Composable
 private fun GameThumb(art: Any?, name: String) {
-    Box(Modifier.width(30.dp)) { GameCover(art ?: xendroid.compose.core.R.drawable.app_icon, name, smart = true, radius = 4.dp) }
+    Box(Modifier.width(30.dp)) { GameCover(art ?: R.drawable.zephyr_app_icon, name, smart = true, radius = 4.dp) }
 }
 
 /** The games with their own value of [s]: the global value does not hold for them. */

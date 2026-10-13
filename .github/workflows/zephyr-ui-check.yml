@@ -66,6 +66,7 @@ jobs:
               "zephyr_launcher_background",
               "zephyr_launcher_foreground",
               "zephyr_launcher_monochrome",
+              "zephyr_app_icon",
           }
           for name in required:
               path = root / "drawable" / f"{name}.xml"
@@ -108,7 +109,8 @@ jobs:
         run: |
           bash ./gradlew :app:testUitestUnitTest --no-daemon --stacktrace \
             --tests 'xendroid.compose.screens.DataBundleExportTest' \
-            --tests 'xendroid.compose.screens.ProfileLoadFailureTest'
+            --tests 'xendroid.compose.screens.ProfileLoadFailureTest' \
+            --tests 'xendroid.compose.StartupRecoveryTest'
           mkdir -p app/build/reports/tests/zephyr-transfer-tests app/build/test-results/zephyr-transfer-tests
           cp -a app/build/reports/tests/testUitestUnitTest/. app/build/reports/tests/zephyr-transfer-tests/
           cp -a app/build/test-results/testUitestUnitTest/. app/build/test-results/zephyr-transfer-tests/
@@ -123,6 +125,7 @@ jobs:
             --tests 'xendroid.compose.saves.*' \
             --tests 'xendroid.compose.data.Profile*' \
             --tests 'xendroid.compose.settings.ConfigFileTransactionTest' \
+            --tests 'xendroid.compose.core.SuccessfulInitializationTest' \
             --tests 'xendroid.compose.updater.*'
       - name: Upload library test reports
         if: ${{ always() }}

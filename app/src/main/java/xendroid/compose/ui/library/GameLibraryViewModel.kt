@@ -447,7 +447,7 @@ class GameLibraryViewModel(
     }
 
     /** The kept cover of a title that is not in the library (L05/L06). */
-    fun coverOfTitle(titleId: String): Any = covers.displayCover(titleId, null) ?: R.drawable.app_icon
+    fun coverOfTitle(titleId: String): Any = covers.displayCover(titleId, null) ?: R.drawable.zephyr_app_icon
 
     fun refresh() {
         if (!EmulatorRuntime.supportsVulkan) { _state.value = LibraryUiState.NoVulkan; return }
@@ -678,7 +678,7 @@ class GameLibraryViewModel(
     /** Coil model for a game's tile: the user's cover, else the icon extracted from this file,
      *  else the copy kept by Title ID (L05), else the app_icon drawable resource id. Kept here so
      *  the View carries no IconCache dep. */
-    fun iconFileOrFallback(game: Game): Any = coverFile(game) ?: R.drawable.app_icon
+    fun iconFileOrFallback(game: Game): Any = coverFile(game) ?: R.drawable.zephyr_app_icon
 
     private fun coverFile(game: Game): File? =
         covers.displayCover(game.titleId, game.iconCacheName?.let { iconCache.fileFor(it) })
@@ -763,7 +763,7 @@ class GameLibraryViewModel(
         val icon = coverFile(game)
             ?.let { BitmapFactory.decodeFile(it.absolutePath) }
             ?.let { Icon.createWithBitmap(it) }
-            ?: Icon.createWithResource(appContext, R.drawable.app_icon)
+            ?: Icon.createWithResource(appContext, R.drawable.zephyr_app_icon)
         sm.requestPinShortcut(
             ShortcutInfo.Builder(appContext, game.stableId)
                 .setShortLabel(game.name)

@@ -46,7 +46,7 @@ class DocumentsProvider : android.provider.DocumentsProvider() {
             add(Root.COLUMN_DOCUMENT_ID, files.docIdFor(root))
             add(Root.COLUMN_MIME_TYPES, "*/*")
             add(Root.COLUMN_AVAILABLE_BYTES, root.freeSpace)
-            add(Root.COLUMN_ICON, xendroid.compose.core.R.drawable.app_icon)
+            add(Root.COLUMN_ICON, R.drawable.zephyr_app_icon)
         }
         return result
     }
@@ -172,7 +172,7 @@ class DocumentsProvider : android.provider.DocumentsProvider() {
             add(Document.COLUMN_MIME_TYPE, type)
             add(Document.COLUMN_LAST_MODIFIED, file.lastModified())
             add(Document.COLUMN_FLAGS, flags)
-            add(Document.COLUMN_ICON, xendroid.compose.core.R.drawable.app_icon)
+            add(Document.COLUMN_ICON, R.drawable.zephyr_app_icon)
         }
     }
 
@@ -185,7 +185,7 @@ class DocumentsProvider : android.provider.DocumentsProvider() {
             add(Document.COLUMN_MIME_TYPE, Document.MIME_TYPE_DIR)
             add(Document.COLUMN_LAST_MODIFIED, null)
             add(Document.COLUMN_FLAGS, 0)
-            add(Document.COLUMN_ICON, xendroid.compose.core.R.drawable.app_icon)
+            add(Document.COLUMN_ICON, R.drawable.zephyr_app_icon)
         }
     }
 

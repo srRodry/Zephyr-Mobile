@@ -347,7 +347,7 @@ private fun NowBody(
             if (games.isEmpty()) Text(stringResource(R.string.xd_drv_games_none), style = XdText.note, color = c.fg3)
             games.entries.forEachIndexed { i, (title, own) ->
                 XdListRow(gameName(title) ?: title, divider = i < games.size - 1, subtitle = driverName(context, own.getValue(KEY)),
-                    lead = { Box(Modifier.width(30.dp)) { GameCover(gameArt(title) ?: xendroid.compose.core.R.drawable.app_icon, gameName(title) ?: title, true, radius = 4.dp) } }) {
+                    lead = { Box(Modifier.width(30.dp)) { GameCover(gameArt(title) ?: R.drawable.zephyr_app_icon, gameName(title) ?: title, true, radius = 4.dp) } }) {
                     if (onGameSettings != null && gameName(title) != null) XdButton(stringResource(R.string.xd_set_overriding_open), { onGameSettings(title) },
                         size = XdButtonSize.SM, kind = XdButtonKind.GHOST)
                 }

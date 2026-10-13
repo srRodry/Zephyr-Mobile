@@ -186,9 +186,13 @@ class MainActivity : ComponentActivity() {
                 }
 
                 // Pre-warm so settings doesn't pay the delay-load System.loadLibrary.
-                runCatching { EmulatorRuntime.ensureLoaded() }
-                // Needs the native config, so it follows ensureLoaded on this same thread.
-                runCatching { seedTouchOverlayDefault(appContext, ConfigStore(appContext)) }
+                if (EmulatorRuntime.supportsVulkan) {
+                    runCatching {
+                        EmulatorRuntime.ensureLoaded()
+                        // Only read native config after a successful load.
+                        seedTouchOverlayDefault(appContext, ConfigStore(appContext))
+                    }
+                }
             }
         }
 
