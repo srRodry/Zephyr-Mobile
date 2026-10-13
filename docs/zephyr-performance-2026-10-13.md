@@ -17,6 +17,39 @@ São reduções de consultas, alocações e I/O de diagnóstico. Não alteram sh
 
 ## Configuração atual merece cautela
 
+### Áudio: correções e próxima medição
+
+O relato do aparelho indica áudio entrecortado mesmo perto de 30 FPS, além de
+quedas ao colidir e em cenas com muitos NPCs. O vídeo e o HUD não distinguem
+atraso de produção dos blocos de falha na entrega à saída Android.
+
+A auditoria encontrou duas falhas no suporte ADPF do áudio: a sessão nativa e
+a referência de `dlopen` não eram liberadas ao encerrar o worker; a duração era
+informada antes do callback extra de recuperação da fila, omitindo esse trabalho.
+A correção fecha a sessão antes de liberar a biblioteca, exige o símbolo de
+fechamento antes de criar uma sessão e mede o ciclo até o fim da recuperação.
+Durações que arredondam para zero passam a informar 1 microsegundo, pois a API
+exige valor positivo. Nenhum parâmetro de emulação, decoder, buffer ou renderização
+foi alterado. Isso corrige recursos e contabilização; não comprova ganho de FPS
+nem resolução dos engasgos.
+
+`python3 tools/test-audio-performance-hint.py` compila a classe de produção com
+uma API NDK simulada e verifica encerramento, reabertura, duração positiva,
+opção desligada, símbolos ausentes, manager indisponível e criação recusada.
+Os testes de renderer e buffer também passam no host x86_64; isso não substitui
+teste ARM64 no aparelho.
+
+No celular, executar um trecho de 120 segundos sem gravação de tela, encerrar o
+jogo e usar **Compartilhar relatório da última execução** na biblioteca. Registrar
+APK, saída de áudio (alto-falante/fone/Bluetooth), driver e configuração efetiva.
+`audioConcealedBlocks` mede ausência de blocos do guest; `audioDeviceXruns` mede
+falhas na saída AAudio. Buffer adaptativo reage ao segundo contador e não resolve
+automaticamente o primeiro. Se houver faltas de produção transitórias e a fila
+efetiva estiver em 8, comparar 8 versus 16 somente no jogo, mantendo as outras
+opções: pode absorver picos ao custo de latência, sem corrigir déficit sustentado.
+
+Referência: [NDK Performance Hint](https://developer.android.com/ndk/reference/group/a-performance-hint).
+
 O template já contém `store_shaders=true`, escala 1×1, pipelines assíncronos com quatro threads, dynamic pipeline state, render target path performance, `readback_resolve=uma`, `occlusion_query=fast`, `vulkan_mid_frame_submission_draws=1300`, `vulkan_async_skip_draws=true` e `turnip_debug=sysmem`. A configuração efetiva de um jogo pode sobrepor esses valores.
 
 `vulkan_async_skip_draws=true` pode omitir draws durante compilação e causar pop-in. Não é uma otimização sem perda de fidelidade. `turnip_debug=sysmem` é uma proteção contra hangs para o Turnip; não se deve removê-la globalmente. Não desativar readback, sincronização de stack, precisão ou limites térmicos só para elevar um contador. Frame generation deve ser avaliada separadamente dos FPS do guest.

@@ -130,6 +130,19 @@ X_STATUS AudioSystem::Setup(kernel::KernelState* kernel_state) {
 // dlsym'd: ADPF is API 33+, minSdk is 29.
 class AudioPerformanceHint {
  public:
+  AudioPerformanceHint() = default;
+  AudioPerformanceHint(const AudioPerformanceHint&) = delete;
+  AudioPerformanceHint& operator=(const AudioPerformanceHint&) = delete;
+
+  ~AudioPerformanceHint() {
+    if (session_) {
+      close_(session_);
+    }
+    if (lib_) {
+      dlclose(lib_);
+    }
+  }
+
   void ReportPump(uint64_t actual_us) {
     if (state_ == State::kDisabled) {
       return;
@@ -140,7 +153,10 @@ class AudioPerformanceHint {
         return;
       }
     }
-    report_(session_, static_cast<int64_t>(actual_us) * 1000);
+    // The NDK rejects non-positive durations. A sub-microsecond callback
+    // rounds to zero when converted to microseconds.
+    report_(session_, static_cast<int64_t>(std::max<uint64_t>(actual_us, 1)) *
+                          1000);
   }
 
  private:
@@ -151,18 +167,20 @@ class AudioPerformanceHint {
     if (!cvars::apu_performance_hint) {
       return;
     }
-    void* lib = dlopen("libandroid.so", RTLD_NOW | RTLD_NOLOAD);
-    if (!lib) {
+    lib_ = dlopen("libandroid.so", RTLD_NOW | RTLD_NOLOAD);
+    if (!lib_) {
       return;
     }
     auto get_manager = reinterpret_cast<void* (*)()>(
-        dlsym(lib, "APerformanceHint_getManager"));
+        dlsym(lib_, "APerformanceHint_getManager"));
     auto create_session = reinterpret_cast<void* (*)(
         void*, const int32_t*, size_t, int64_t)>(
-        dlsym(lib, "APerformanceHint_createSession"));
+        dlsym(lib_, "APerformanceHint_createSession"));
     report_ = reinterpret_cast<int (*)(void*, int64_t)>(
-        dlsym(lib, "APerformanceHint_reportActualWorkDuration"));
-    if (!get_manager || !create_session || !report_) {
+        dlsym(lib_, "APerformanceHint_reportActualWorkDuration"));
+    close_ = reinterpret_cast<void (*)(void*)>(
+        dlsym(lib_, "APerformanceHint_closeSession"));
+    if (!get_manager || !create_session || !report_ || !close_) {
       return;
     }
     void* manager = get_manager();
@@ -232,8 +250,10 @@ class AudioPerformanceHint {
   }
 
   State state_ = State::kUninitialized;
+  void* lib_ = nullptr;
   void* session_ = nullptr;
   int (*report_)(void*, int64_t) = nullptr;
+  void (*close_)(void*) = nullptr;
 };
 
 // Reports the first failure rather than dropping it: an app that is not
@@ -393,12 +413,6 @@ void AudioSystem::WorkerThreadMain() {
 #endif
       processor_->Execute(worker_thread_->thread_state(), client_callback, args,
                           xe::countof(args));
-#if XE_PLATFORM_xendroid
-      audio_perf_hint.ReportPump(static_cast<uint64_t>(
-          std::chrono::duration_cast<std::chrono::microseconds>(
-              std::chrono::steady_clock::now() - exec_begin)
-              .count()));
-#endif
       bool submitted =
           clients_[client_index].frames_submitted.load() != submitted_before;
 
@@ -428,6 +442,15 @@ void AudioSystem::WorkerThreadMain() {
         processor_->Execute(worker_thread_->thread_state(), client_callback,
                             args, xe::countof(args));
       }
+#if XE_PLATFORM_xendroid
+      // Include recovery/top-up work in this cycle's duration. Reporting
+      // before the second callback understates demand precisely when the
+      // output queue is low. Deadline waits above remain outside the sample.
+      audio_perf_hint.ReportPump(static_cast<uint64_t>(
+          std::chrono::duration_cast<std::chrono::microseconds>(
+              std::chrono::steady_clock::now() - exec_begin)
+              .count()));
+#endif
     }
   }
   XELOGW("AudioWorker: loop EXITED (worker_running_={})",

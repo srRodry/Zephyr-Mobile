@@ -101,6 +101,8 @@ jobs:
               assert "R.drawable.xd_logo_mark" not in text, f"Legacy mark still displayed: {source}"
           print("Zephyr adaptive icons, shared UI marks and app labels verified.")
           PY
+      - name: Test native audio performance hint lifecycle
+        run: python3 tools/test-audio-performance-hint.py
       - name: Compile Compose UI without packaging native libraries
         run: bash ./gradlew :app:compileDebugKotlin --no-daemon --stacktrace
       # These cases deliberately replace config files and the native singleton.
