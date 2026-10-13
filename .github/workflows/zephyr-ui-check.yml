@@ -110,7 +110,8 @@ jobs:
           bash ./gradlew :app:testUitestUnitTest --no-daemon --stacktrace \
             --tests 'xendroid.compose.screens.DataBundleExportTest' \
             --tests 'xendroid.compose.screens.ProfileLoadFailureTest' \
-            --tests 'xendroid.compose.StartupRecoveryTest'
+            --tests 'xendroid.compose.StartupRecoveryTest' \
+            --tests 'xendroid.compose.core.PresenterPerformanceHintsTest'
           mkdir -p app/build/reports/tests/zephyr-transfer-tests app/build/test-results/zephyr-transfer-tests
           cp -a app/build/reports/tests/testUitestUnitTest/. app/build/reports/tests/zephyr-transfer-tests/
           cp -a app/build/test-results/testUitestUnitTest/. app/build/test-results/zephyr-transfer-tests/

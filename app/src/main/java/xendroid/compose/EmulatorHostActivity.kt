@@ -355,6 +355,9 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
     /** The Image options tried from the in-game menu (each -1: the game's Settings value). */
     private val imageTuning = mutableStateOf(xendroid.compose.core.ImageTuning())
     private val performanceHints by lazy { PresenterPerformanceHints(applicationContext) }
+    // Cache the lazy readers too: no per-tick callback allocations when hints are off.
+    private val presenterWorkReader = { session.presenterWork() }
+    private val presenterTargetReader = { 1_000_000_000L / session.fpsLimit().coerceAtLeast(30) }
     private val performanceHintsLabel = mutableStateOf("Presenter ADPF · Off")
     private var started = false
 
@@ -1586,8 +1589,7 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
                                     }
 
                                     val activeTitle = session.activeTitleId()
-                                    performanceHints.update(session.presenterWork(),
-                                        1_000_000_000L / session.fpsLimit().coerceAtLeast(30),
+                                    performanceHints.update(presenterWorkReader, presenterTargetReader,
                                         foregroundState.value && !menuState.value.open)
                                     performanceHintsLabel.value = performanceHints.status
                                     val activeRun = runId
@@ -1656,9 +1658,11 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
                                     val frameTimes = session.guestFrameTimeHistogram()
                                     val guestFrames = frameTimes?.sum()
                                     val runningNow = foregroundState.value && !session.isPaused()
+                                    // One native FPS read shared by this sampling tick's consumers.
+                                    val averageGuestFps = session.averageFps()
                                     runPerformance.sample(
                                         running = runningNow,
-                                        guestFps = session.averageFps(),
+                                        guestFps = averageGuestFps,
                                         presentCount = session.hostPresentSubmissionCount(),
                                         generatedCount = fgNow.generated,
                                         frameGenerationActive = fgNow.requested && fgNow.state == 2,
@@ -1673,13 +1677,13 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
                                     fgGovernor.sample(xendroid.compose.core.FrameGenerationGovernor.Second(
                                         active = fgNow.requested && fgNow.state == 2, displayHz = fgNow.hz,
                                         multiplier = if (fgNow.engine == 1) fgNow.multiplier else 2,
-                                        guestFps = session.averageFps(), gpuMs = fgNow.gpuMs,
+                                        guestFps = averageGuestFps, gpuMs = fgNow.gpuMs,
                                         slots = fgNow.syntheticSlots, lateSkips = fgNow.lateSkips,
                                         thermalStatus = lastThermalStatus,
                                     ))?.let { recordEvent("fg budget", it.text) }
                                     // What frame generation does, or would do, at this refresh rate.
                                     if (runningNow && !menuState.value.open) {
-                                        session.averageFps().takeIf { it > 0 }?.let { lastGuestFps = it }
+                                        averageGuestFps.takeIf { it > 0 }?.let { lastGuestFps = it }
                                         val generatedNs = android.os.SystemClock.elapsedRealtimeNanos()
                                         if (lastGenerated >= 0 && generatedNs > lastGeneratedNs) {
                                             generatedPerSecond = (fgNow.generated - lastGenerated).coerceAtLeast(0) *

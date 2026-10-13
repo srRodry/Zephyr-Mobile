@@ -341,6 +341,7 @@ fun FpsOverlay(
         var previousPresentNs = previousWallNs
         var previousGpu: GpuCounter? = null
         var gpuSource: GpuSource? = null
+        var gpuSourceSearched = false
         var tick = 0L
         var previousGenerated = -1L
         var previousGeneratedNs = 0L
@@ -381,8 +382,11 @@ fun FpsOverlay(
             var nextPower = power
             var nextGpuMemory = gpuMemory
             val stats = withContext(Dispatchers.IO) {
-                if (HudMetric.GPU in metrics && gpuSource == null) {
+                if (HudMetric.GPU in metrics && !gpuSourceSearched) {
                     gpuSource = findGpuSource()
+                    // An inaccessible GPU counter is common on stock Android. Do not
+                    // rescan sysfs every frame-rate sample; retry when this effect restarts.
+                    gpuSourceSearched = true
                 }
 
                 val newCpuMs = if (HudMetric.CPU in metrics) Process.getElapsedCpuTime() else previousCpuMs
@@ -420,9 +424,12 @@ fun FpsOverlay(
                     previousGpu = currentGpu
                 }
 
-                val bTemp = if (HudMetric.BATTERY_TEMPERATURE in metrics) readBatteryTemperature(context) else 0f
-                val sTemp = if (HudMetric.SOC_TEMPERATURE in metrics) readCpuSocTemperature() else null
-                val ram = if (HudMetric.RAM in metrics) readRamUsage(context) else (0L to 0L)
+                // FPS and CPU/GPU utilization retain the requested cadence. Slow
+                // sensors share the fuel gauge's 1 Hz cadence and keep the last sample.
+                val slowSample = tick % pollHz.coerceIn(1, 10) == 0L
+                val bTemp = if (HudMetric.BATTERY_TEMPERATURE in metrics && slowSample) readBatteryTemperature(context) else batTemp
+                val sTemp = if (HudMetric.SOC_TEMPERATURE in metrics && slowSample) readCpuSocTemperature() else socTemp
+                val ram = if (HudMetric.RAM in metrics && slowSample) readRamUsage(context) else (ramUsed to ramTotal)
                 // The fuel gauge once a second: four binder calls are not worth 4 Hz.
                 if (metrics.any { it in POWER_METRICS } && tick % pollHz.coerceIn(1, 10) == 0L) {
                     val battery = runCatching { readBatterySample(context) }.getOrNull()

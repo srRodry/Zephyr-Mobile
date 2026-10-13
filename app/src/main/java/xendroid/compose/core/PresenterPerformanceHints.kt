@@ -13,7 +13,7 @@ class PresenterPerformanceHints(context: Context) : AutoCloseable {
     var status = if (helper == null) "Presenter ADPF · Android 12+ required" else "Presenter ADPF · Off"
         private set
 
-    fun update(work: LongArray, targetNs: Long, foreground: Boolean) {
+    fun update(readWork: () -> LongArray, readTargetNs: () -> Long, foreground: Boolean) {
         if (Build.VERSION.SDK_INT < 31) { status = "Presenter ADPF · Android 12+ required"; return }
         val helper = helper
         if (!requested || !foreground) {
@@ -26,7 +26,7 @@ class PresenterPerformanceHints(context: Context) : AutoCloseable {
             return
         }
         if (helper == null) { status = "Presenter ADPF · unavailable"; return }
-        status = runCatching { helper.report(work, targetNs) }.getOrElse {
+        status = runCatching { helper.report(readWork(), readTargetNs()) }.getOrElse {
             helper.close(); "Presenter ADPF · unsupported by device"
         }
     }
