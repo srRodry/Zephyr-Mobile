@@ -56,6 +56,7 @@ import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.type
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -289,10 +290,11 @@ private fun Carousel(
                         alpha = 1f - 0.5f * distance
                     }
                     .clip(RoundedCornerShape(14.dp))
-                    .then(if (on) Modifier.border(if (focused) 3.dp else 3.dp, if (focused) c.fg else c.acc, RoundedCornerShape(14.dp)) else Modifier)
+                    .then(if (on) Modifier.border(3.dp, if (focused) c.fg else c.acc, RoundedCornerShape(14.dp)) else Modifier)
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {
                         if (on) onOpen(g) else onIndex(i)
-                    },
+                    }
+                    .semantics { contentDescription = g.name; selected = on },
             ) {
                 val art = artOf(g)
                 GameCover(art.model, g.name, art.smart, favorite = data.favorite(g), discLabel = discBadge(g), radius = 12.dp)
