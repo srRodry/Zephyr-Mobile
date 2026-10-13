@@ -1,10 +1,12 @@
-name: Xendroid+
+name: Zephyr Android APK
 
 # Android APK build (arm64-v8a).
 # - Pull requests into main (including the claude/* branches of cloud
 #   sessions) and manual runs build the test package xendroid.compose.fork.opt:
 #   debuggable and installed alongside the regular app, the package the A/B
 #   tools in tools/ drive.
+# - Pushes to feature/zephyr-mobile-branding build the isolated Zephyr test
+#   package xendroid.compose.zephyr.test, without publishing a release.
 # - Pushes to main build the regular package xendroid.compose.fork and, when
 #   the signing secrets are set, publish it as a GitHub release.
 # Signing (repository secrets, all optional):
@@ -18,7 +20,7 @@ name: Xendroid+
 # published.
 on:
   push:
-    branches: [main]
+    branches: [main, feature/zephyr-mobile-branding]
     paths-ignore:
       - '**.md'
       - 'docs/**'
@@ -80,6 +82,8 @@ jobs:
       # Native compile cache (emulator-core/build.gradle adds the launcher).
       USE_CCACHE: 'true'
       CCACHE_COMPILERCHECK: content
+      XENDROID_NINJA_JOBS: '2'
+      XENDROID_THINLTO_JOBS: '2'
 
     outputs:
       sha: ${{ steps.cfg.outputs.sha }}
@@ -101,7 +105,12 @@ jobs:
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
         sha=$(git rev-parse --short=8 HEAD)
-        if [ "$GITHUB_EVENT_NAME" = push ] || [ "$INPUT_PACKAGE" = regular ]; then
+        if [ "$GITHUB_REF" = refs/heads/feature/zephyr-mobile-branding ]; then
+          variant=test
+          name="Zephyr-Mobile_test_$sha"
+          package=xendroid.compose.zephyr.test
+          package_args="-PxendroidReleaseIdSuffix=.zephyr.test -PxendroidReleaseDebuggable -PxendroidUpdateRepo=srRodry/Zephyr-Mobile"
+        elif [ "$GITHUB_EVENT_NAME" = push ] || [ "$INPUT_PACKAGE" = regular ]; then
           variant=regular
           name="XenDroid_Release_$sha"
           package=xendroid.compose.fork
@@ -132,7 +141,7 @@ jobs:
     - name: Set up Gradle
       uses: gradle/actions/setup-gradle@v4
       with:
-        validate-wrappers: false
+        validate-wrappers: true
 
     - name: Cache NDK and CMake
       uses: actions/cache@v4
