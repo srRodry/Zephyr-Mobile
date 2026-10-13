@@ -51,6 +51,47 @@ jobs:
         run: |
           sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;29.0.14206865" "cmake;3.30.3"
       - uses: gradle/actions/setup-gradle@v4
+      - name: Verify Zephyr launcher and localized app names
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          import xml.etree.ElementTree as ET
+
+          root = Path("app/src/main/res")
+          android = "{http://schemas.android.com/apk/res/android}"
+          required = {
+              "zephyr_launcher_background",
+              "zephyr_launcher_foreground",
+              "zephyr_launcher_monochrome",
+          }
+          for name in required:
+              path = root / "drawable" / f"{name}.xml"
+              node = ET.parse(path).getroot()
+              assert node.tag == "vector", f"Expected vector drawable: {path}"
+              assert node.findall("path"), f"Empty launcher drawable: {path}"
+
+          for name in ("ic_launcher", "ic_launcher_round"):
+              path = root / "mipmap-anydpi-v26" / f"{name}.xml"
+              node = ET.parse(path).getroot()
+              assert node.tag == "adaptive-icon", f"Invalid adaptive icon: {path}"
+              for tag, expected in (
+                  ("background", "zephyr_launcher_background"),
+                  ("foreground", "zephyr_launcher_foreground"),
+                  ("monochrome", "zephyr_launcher_monochrome"),
+              ):
+                  item = node.find(tag)
+                  assert item is not None, f"{path}: missing {tag}"
+                  assert item.get(android + "drawable") == "@drawable/" + expected, (
+                      f"{path}: incorrect {tag} resource"
+                  )
+
+          for values in ("values", "values-pt-rBR"):
+              path = root / values / "strings.xml"
+              node = ET.parse(path).getroot()
+              names = [s.text for s in node.findall("string") if s.get("name") == "app_name"]
+              assert names == ["Zephyr-Mobile"], f"Unexpected app label: {path}: {names}"
+          print("Zephyr adaptive icons and app labels verified.")
+          PY
       - name: Compile Compose UI without packaging native libraries
         run: bash ./gradlew :app:compileDebugKotlin --no-daemon --stacktrace
       - name: Test library behavior and controller navigation
