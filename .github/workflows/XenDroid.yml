@@ -251,9 +251,18 @@ jobs:
     - name: Check APK packaging
       env:
         APK: ${{ steps.sign.outputs.apk }}
+        EXPECTED_PACKAGE: ${{ steps.cfg.outputs.package }}
       # arm64-only core with JNI_OnLoad, signed, license texts present, no DLL,
       # shader cache, game image or profile data inside.
-      run: python3 tools/check-apk.py "$APK" --aapt2 "$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS_VERSION/aapt2"
+      run: |
+        python3 tools/check-apk.py "$APK" --aapt2 "$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS_VERSION/aapt2"
+        # Never upload a test build that would overwrite the regular app.
+        actual_package=$("$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS_VERSION/aapt2" dump packagename "$APK" | tr -d '\\r\\n')
+        if [ "$actual_package" != "$EXPECTED_PACKAGE" ]; then
+          echo "::error::Unexpected APK package: $actual_package (expected $EXPECTED_PACKAGE)"
+          exit 1
+        fi
+        echo "Verified APK package: $actual_package" >> "$GITHUB_STEP_SUMMARY"
 
     - name: Upload APK
       uses: actions/upload-artifact@v4
