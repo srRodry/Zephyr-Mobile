@@ -33,6 +33,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
+import androidx.compose.foundation.Image
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
@@ -64,6 +65,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
@@ -138,9 +140,16 @@ fun BRail(current: XdArea?, modifier: Modifier = Modifier) {
             verticalArrangement = Arrangement.spacedBy(2.dp),
         ) {
             Box(
-                Modifier.padding(bottom = 6.dp).size(30.dp).clip(RoundedCornerShape(9.dp))
-                    .background(Brush.sweepGradient(listOf(Color(0xFF9BE37F), Color(0xFF107C10), Color(0xFF3DBB2E), Color(0xFF9BE37F))))
-            )
+                Modifier.padding(bottom = 6.dp).size(36.dp).clip(RoundedCornerShape(9.dp))
+                    .background(c.bg),
+                contentAlignment = Alignment.Center,
+            ) {
+                Image(
+                    painter = painterResource(R.drawable.zephyr_launcher_foreground),
+                    contentDescription = stringResource(R.string.app_name),
+                    modifier = Modifier.fillMaxSize(),
+                )
+            }
             for (a in XdArea.entries) if (a != XdArea.SETTINGS) RailItem(a, a == current) { nav.area(a) }
             Spacer(Modifier.weight(1f).heightIn(min = 8.dp))
             RailItem(XdArea.SETTINGS, current == XdArea.SETTINGS) { nav.area(XdArea.SETTINGS) }
