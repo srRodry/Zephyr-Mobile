@@ -1,0 +1,13 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="300" viewBox="0 0 1200 300" role="img" aria-labelledby="title desc">
+<title id="title">Zephyr-Mobile</title>
+<desc id="desc">Zephyr-Mobile brand banner: blue geometric mark and white wordmark on dark graphite, Xbox 360 emulation for Android.</desc>
+<rect width="1200" height="300" rx="20" fill="#15191F"/>
+<path d="M0 278H1200" stroke="#304155" stroke-width="2"/>
+<path d="M68 111L114 66H183L137 111Z" fill="#237BFF"/>
+<path d="M68 166L114 121H183L137 166Z" fill="#237BFF"/>
+<path d="M146 166L192 121H227L181 166Z" fill="#5A9CFF"/>
+<text x="269" y="151" fill="#F5F7FA" font-family="Arial, Helvetica, sans-serif" font-weight="700" font-size="78" letter-spacing="7">ZEPHYR</text>
+<text x="275" y="196" fill="#C5CFDC" font-family="Arial, Helvetica, sans-serif" font-weight="600" font-size="26" letter-spacing="18">MOBILE</text>
+<path d="M274 219H924" stroke="#304155" stroke-width="2"/>
+<text x="275" y="248" fill="#A8B5C6" font-family="Arial, Helvetica, sans-serif" font-size="19" letter-spacing="1">XBOX 360 EMULATION  /  ANDROID  /  IN DEVELOPMENT</text>
+</svg>
