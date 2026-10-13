@@ -188,7 +188,7 @@ private fun scheme(c: XdColors): ColorScheme {
     return darkColorScheme(
         primary = c.acc, onPrimary = c.onAcc,
         primaryContainer = c.acc.copy(alpha = 0.2f).compositeOver(s2), onPrimaryContainer = c.fg,
-        inversePrimary = Color(0xFF107C10),
+        inversePrimary = Color(0xFF237BFF),
         secondary = c.fg2, onSecondary = c.bg,
         secondaryContainer = s3, onSecondaryContainer = c.fg,
         tertiary = c.exposed, onTertiary = c.bg,
