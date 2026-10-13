@@ -1,0 +1,44 @@
+name: Zephyr UI checks
+
+on:
+  push:
+    branches:
+      - feature/zephyr-mobile-branding
+  pull_request:
+    paths:
+      - 'app/src/main/java/xendroid/compose/ui/**'
+      - 'app/src/main/res/**'
+      - 'app/build.gradle'
+      - '.github/workflows/zephyr-ui-check.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zephyr-ui-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  kotlin-ui:
+    name: Kotlin / Compose compilation
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    env:
+      GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx3g
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+      - name: Install Android SDK dependencies
+        run: |
+          sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;29.0.14206865" "cmake;3.30.3"
+          yes | sdkmanager --licenses > /dev/null || true
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Compile Compose UI without packaging native libraries
+        run: ./gradlew :app:compileDebugKotlin --no-daemon --stacktrace
