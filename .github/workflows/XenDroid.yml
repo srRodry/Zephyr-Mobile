@@ -132,6 +132,35 @@ jobs:
         echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
         echo "Building $package as $name.apk"
 
+    - name: Validate signing configuration early
+      env:
+        VARIANT: ${{ steps.cfg.outputs.variant }}
+        RELEASE_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        RELEASE_ALIAS: ${{ secrets.KEY_ALIAS }}
+        RELEASE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        TEST_KEYSTORE: ${{ secrets.TEST_KEYSTORE_BASE64 }}
+        TEST_ALIAS: ${{ secrets.TEST_KEY_ALIAS }}
+        TEST_PASSWORD: ${{ secrets.TEST_KEYSTORE_PASSWORD }}
+      run: |
+        set -eu
+        if [ -n "$RELEASE_KEYSTORE" ] || [ -n "$RELEASE_ALIAS" ] || [ -n "$RELEASE_PASSWORD" ]; then
+          if [ -z "$RELEASE_KEYSTORE" ] || [ -z "$RELEASE_ALIAS" ] || [ -z "$RELEASE_PASSWORD" ]; then
+            echo "::error::Incomplete release signing configuration. Set all three release signing secrets."
+            exit 1
+          fi
+        fi
+        if [ "$VARIANT" = test ]; then
+          if [ -n "$TEST_KEYSTORE" ] || [ -n "$TEST_ALIAS" ] || [ -n "$TEST_PASSWORD" ]; then
+            if [ -z "$TEST_KEYSTORE" ] || [ -z "$TEST_ALIAS" ] || [ -z "$TEST_PASSWORD" ]; then
+              echo "::error::Incomplete test signing configuration. Set all three test signing secrets."
+              exit 1
+            fi
+          fi
+          if [ -z "$TEST_KEYSTORE" ] && [ -z "$RELEASE_KEYSTORE" ]; then
+            echo "::warning::This test APK will use an ephemeral signing key and cannot reliably update previous installations."
+          fi
+        fi
+
     - name: Install system tools
       run: |
         apt-get update -qq
