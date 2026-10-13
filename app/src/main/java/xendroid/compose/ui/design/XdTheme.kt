@@ -72,17 +72,17 @@ data class XdColors(
         // Zephyr-Mobile: shared dark surfaces and restrained electric-blue accents.
         // Keep semantic compatibility colors independent of branding.
         val Touch = XdColors(
-            bg = Color(0xFF15191F), s1 = Color(0xFF1C232D), s2 = Color(0xFF202B39), s3 = Color(0xFF293748),
-            s4 = Color(0xFF344559), sheet = Color(0xFF1C232D),
-            line = Color(0x144F6B86), line2 = Color(0x334F6B86),
-            fg = Color(0xFFF4F7FB), fg2 = Color(0xFFB7C2D1), fg3 = Color(0xFF8797AB),
+            bg = Color(0xFF15191F), s1 = Color(0xFF1C232D), s2 = Color(0xFF263241), s3 = Color(0xFF304155),
+            s4 = Color(0xFF3A4D63), sheet = Color(0xFF1C232D),
+            line = Color(0x1F6486AC), line2 = Color(0x406486AC),
+            fg = Color(0xFFF5F7FA), fg2 = Color(0xFFB7C2D1), fg3 = Color(0xFF8797AB),
             acc = Color(0xFF237BFF), onAcc = Color.White, dyn = Color(0xFF263241), controller = false,
         )
         val Controller = XdColors(
             bg = Color(0xFF15191F), s1 = Color(0x18FFFFFF), s2 = Color(0x24FFFFFF), s3 = Color(0x30FFFFFF),
             s4 = Color(0x40FFFFFF), sheet = Color(0xFF1C232D),
             line = Color(0x1FFFFFFF), line2 = Color(0x38FFFFFF),
-            fg = Color(0xFFF4F7FB), fg2 = Color(0xC7F4F7FB), fg3 = Color(0x8FF4F7FB),
+            fg = Color(0xFFF5F7FA), fg2 = Color(0xC7F4F7FB), fg3 = Color(0x8FF4F7FB),
             acc = Color(0xFF237BFF), onAcc = Color.White, dyn = Color(0xFF263241), controller = true,
         )
 
