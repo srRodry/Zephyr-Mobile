@@ -141,25 +141,8 @@ jobs:
         TEST_KEYSTORE: ${{ secrets.TEST_KEYSTORE_BASE64 }}
         TEST_ALIAS: ${{ secrets.TEST_KEY_ALIAS }}
         TEST_PASSWORD: ${{ secrets.TEST_KEYSTORE_PASSWORD }}
-      run: |
-        set -eu
-        if [ -n "$RELEASE_KEYSTORE" ] || [ -n "$RELEASE_ALIAS" ] || [ -n "$RELEASE_PASSWORD" ]; then
-          if [ -z "$RELEASE_KEYSTORE" ] || [ -z "$RELEASE_ALIAS" ] || [ -z "$RELEASE_PASSWORD" ]; then
-            echo "::error::Incomplete release signing configuration. Set all three release signing secrets."
-            exit 1
-          fi
-        fi
-        if [ "$VARIANT" = test ]; then
-          if [ -n "$TEST_KEYSTORE" ] || [ -n "$TEST_ALIAS" ] || [ -n "$TEST_PASSWORD" ]; then
-            if [ -z "$TEST_KEYSTORE" ] || [ -z "$TEST_ALIAS" ] || [ -z "$TEST_PASSWORD" ]; then
-              echo "::error::Incomplete test signing configuration. Set all three test signing secrets."
-              exit 1
-            fi
-          fi
-          if [ -z "$TEST_KEYSTORE" ] && [ -z "$RELEASE_KEYSTORE" ]; then
-            echo "::warning::This test APK will use an ephemeral signing key and cannot reliably update previous installations."
-          fi
-        fi
+        RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      run: bash tools/validate-signing.sh
 
     - name: Install system tools
       run: |
@@ -294,11 +277,13 @@ jobs:
         "$bt/apksigner" sign --ks "$keystore" --ks-key-alias "$alias" \
           --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEY_PASSWORD \
           --out "$NAME.apk" "$RUNNER_TEMP/aligned.apk"
-        "$bt/apksigner" verify --print-certs "$NAME.apk" | grep -E 'Signer #1 certificate (DN|SHA-256)'
+        "$bt/apksigner" verify --verbose --print-certs "$NAME.apk" > "$NAME.signing.txt"
+        grep -E 'Signer #1 certificate (DN|SHA-256)' "$NAME.signing.txt"
         {
           echo "### $NAME.apk"
           echo "- Package: \`$PACKAGE\`"
           echo "- Signed with the $signed_with key"
+          echo "- $(grep 'Signer #1 certificate SHA-256 digest:' "$NAME.signing.txt")"
           echo "- Size: $(du -h "$NAME.apk" | cut -f1), SHA-256: \`$(sha256sum "$NAME.apk" | cut -d' ' -f1)\`"
         } >> "$GITHUB_STEP_SUMMARY"
         echo "apk=$NAME.apk" >> "$GITHUB_OUTPUT"
@@ -324,7 +309,9 @@ jobs:
       uses: actions/upload-artifact@v4
       with:
         name: ${{ steps.cfg.outputs.name }}
-        path: ${{ steps.sign.outputs.apk }}
+        path: |
+          ${{ steps.sign.outputs.apk }}
+          ${{ steps.cfg.outputs.name }}.signing.txt
         if-no-files-found: error
         retention-days: 14
         compression-level: 0

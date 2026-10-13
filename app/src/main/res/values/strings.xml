@@ -692,7 +692,7 @@
     <string name="dg_intro">Share a redacted copy of one session or the complete retained history. Original logs stay on the device.</string>
     <string name="dg_share_all">Share all sessions</string>
     <string name="dg_no_session">No session indexed for this game yet. Older unindexed logs remain available via Share all sessions.</string>
-    <string name="ab_credits_text">Xendroid+ — Xbox 360 emulation on Android.</string>
+    <string name="ab_credits_text">Zephyr-Mobile — Xbox 360 emulation on Android. Based on XenDroid+ and Xenia.</string>
     <string name="ab_creator">Created by phforner0</string>
     <string name="ab_no_device_info">Device info unavailable (emulator not loaded yet).</string>
     <string name="ab_version">Version %1$s</string>

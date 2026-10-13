@@ -16,6 +16,7 @@ on:
       - 'gradle/**'
       - 'gradlew'
       - '.github/workflows/zephyr-ui-check.yml'
+      - 'tools/*signing*'
   workflow_dispatch:
 
 permissions:
@@ -51,6 +52,8 @@ jobs:
         run: |
           sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;29.0.14206865" "cmake;3.30.3"
       - uses: gradle/actions/setup-gradle@v4
+      - name: Test signing preflight with real keystores
+        run: python3 tools/test-signing-preflight.py
       - name: Verify Zephyr launcher and localized app names
         run: |
           python3 - <<'PY'
