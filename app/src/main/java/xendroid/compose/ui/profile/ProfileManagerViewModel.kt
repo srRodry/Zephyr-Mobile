@@ -83,11 +83,13 @@ class ProfileManagerViewModel(
     fun refresh() = viewModelScope.launch {
         _listState.value = ListState.Loading
         _listState.value = withContext(Dispatchers.IO) {
-            EmulatorRuntime.ensureLoaded()
-            val emu = EmulatorRuntime.emulator
-                ?: return@withContext ListState.Error(appContext.getString(R.string.pf_no_emulator))
-            val root = ContentPaths.contentRoot().absolutePath
             try {
+                // Loading the core and resolving storage can fail before listing starts.
+                // Keep those failures in the screen's retryable error state as well.
+                EmulatorRuntime.ensureLoaded()
+                val emu = EmulatorRuntime.emulator
+                    ?: return@withContext ListState.Error(appContext.getString(R.string.pf_no_emulator))
+                val root = ContentPaths.contentRoot().absolutePath
                 val listed = emu.list_profiles(root)
                 // U11: a player slot naming a profile that is gone (or twice) signs in nobody.
                 val before = readSlots()
@@ -106,8 +108,13 @@ class ProfileManagerViewModel(
                 }?.sortedBy { it.gamertag.lowercase() }
                     ?: return@withContext ListState.Error(appContext.getString(R.string.pf_read_failed))
                 ListState.Loaded(profiles, slots)
-            } catch (t: RuntimeException) {
-                ListState.Error(t.message ?: appContext.getString(R.string.pf_read_failed))
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                ListState.Error(e.message ?: appContext.getString(R.string.pf_read_failed))
+            } catch (e: LinkageError) {
+                // A missing/incompatible JNI library should not crash the profile screen.
+                ListState.Error(e.message ?: appContext.getString(R.string.pf_no_emulator))
             }
         }
         _trash.value = withContext(Dispatchers.IO) { runCatching { profileTrash.list() }.getOrDefault(emptyList()) }

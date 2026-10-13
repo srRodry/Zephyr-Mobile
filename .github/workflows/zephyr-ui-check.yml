@@ -110,6 +110,7 @@ jobs:
             --tests 'xendroid.compose.screens.BaseShots.library*' \
             --tests 'xendroid.compose.screens.FirstRunReturnTest' \
             --tests 'xendroid.compose.screens.DataBundleExportTest' \
+            --tests 'xendroid.compose.screens.ProfileLoadFailureTest' \
             --tests 'xendroid.compose.bundle.*' \
             --tests 'xendroid.compose.saves.*' \
             --tests 'xendroid.compose.data.Profile*' \

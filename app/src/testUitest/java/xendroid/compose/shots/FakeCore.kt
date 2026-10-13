@@ -17,6 +17,8 @@ object FakeCore {
 
     /** What list_profiles returns: xuid, gamertag, language, country. */
     var profiles: List<Emulator.ProfileInfo> = emptyList()
+    /** Simulates recoverable native-load failures without loading a game. */
+    var loadFailure: Throwable? = null
 
     /** Installed content by "<TITLEID>:<type>". */
     val content = HashMap<String, List<Emulator.ContentItem>>()
@@ -37,7 +39,7 @@ object FakeCore {
     }
 
     fun reset() {
-        tables.clear(); nextHandle = 1L; profiles = emptyList(); content.clear(); headers.clear()
+        tables.clear(); nextHandle = 1L; profiles = emptyList(); loadFailure = null; content.clear(); headers.clear()
     }
 
     // ---- TOML (only what the config files use: tables, key = value, comments) ----
@@ -140,6 +142,7 @@ class ShadowCoreEmulator {
         @JvmStatic
         @Implementation
         fun load_library() {
+            FakeCore.loadFailure?.let { throw it }
             if (Emulator.get == null) Emulator.get = Emulator()
         }
     }

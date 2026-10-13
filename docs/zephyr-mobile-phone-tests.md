@@ -17,6 +17,10 @@ Four new screen regression cases exercise the actual settings repository and vie
 
 CI also selects the existing data-bundle, saves/backups, profile-slot, atomic-config-write and updater unit tests alongside library and controller tests. This validates serialization, integrity and persistence logic; it does not substitute for device storage permissions or real game saves.
 
+## Profile error recovery
+
+Profile list refresh now includes native initialization and storage resolution in its error handler. JNI linkage failures and ordinary read failures become retryable screen errors; coroutine cancellation is propagated. The emulator implementation is unchanged. Three fake-core regression tests cover runtime failure/retry, missing JNI library/retry and cancellation.
+
 ## Test on the phone
 
 1. Note the installed commit/build in About. Keep the current installation until you have backed up the data you need.
