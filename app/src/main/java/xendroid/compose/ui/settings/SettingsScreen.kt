@@ -182,7 +182,7 @@ fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit, links: SettingsLin
         })
         add(XdSection(Ids.DATA, stringResource(R.string.xd_set_data), XdIcons.save) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                XdDataBundleCard(beforeImport = vm::flush, afterImport = { vm.onResume() })
+                XdDataBundleCard(beforeImport = vm::flushForTransfer, afterImport = { vm.onResume() })
                 XdUserDataCard()
             }
         })

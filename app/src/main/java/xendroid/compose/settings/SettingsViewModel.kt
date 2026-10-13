@@ -108,6 +108,16 @@ class SettingsViewModel(
         runCatching { repo.flushAndClose() }.onFailure { fail(it) }
     }
 
+    /** Transfers must stop on a failed save; lifecycle flush still reports errors in place. */
+    fun flushForTransfer() {
+        try {
+            repo.flushAndClose()
+        } catch (e: Exception) {
+            fail(e)
+            throw e
+        }
+    }
+
     fun clearError() { _error.value = null }
 
     private fun fail(cause: Throwable) {

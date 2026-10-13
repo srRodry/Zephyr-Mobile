@@ -40,7 +40,7 @@ import xendroid.compose.bundle.ImportPlan
 /**
  * L08: export the settings, touch controls, favorites, collections and compatibility notes to a file
  * the user picks, or import one after seeing exactly what it would change. [beforeImport]
- * writes pending edits of the open settings screen; [afterImport] re-reads them.
+ * writes pending edits before export or import; [afterImport] re-reads them after import.
  */
 @Composable
 fun DataBundleSection(beforeImport: () -> Unit, afterImport: () -> Unit) {
@@ -68,6 +68,8 @@ fun DataBundleSection(beforeImport: () -> Unit, afterImport: () -> Unit) {
 
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
         if (uri != null) run {
+            // Include pending screen edits, and stop if they cannot be saved.
+            beforeImport()
             val parts = DataBundleIo.export(context, uri)
             Toast.makeText(context, context.resources.getQuantityString(R.plurals.bundle_exported, parts, parts), Toast.LENGTH_LONG).show()
         }

@@ -102,13 +102,19 @@ jobs:
           PY
       - name: Compile Compose UI without packaging native libraries
         run: bash ./gradlew :app:compileDebugKotlin --no-daemon --stacktrace
-      - name: Test library behavior and controller navigation
+      - name: Test library navigation and data persistence
         run: |
           bash ./gradlew :app:testUitestUnitTest --no-daemon --stacktrace \
             --tests 'xendroid.compose.ui.library.*' \
             --tests 'xendroid.compose.gamepad.MenuButtonsTest' \
             --tests 'xendroid.compose.screens.BaseShots.library*' \
-            --tests 'xendroid.compose.screens.FirstRunReturnTest'
+            --tests 'xendroid.compose.screens.FirstRunReturnTest' \
+            --tests 'xendroid.compose.screens.DataBundleExportTest' \
+            --tests 'xendroid.compose.bundle.*' \
+            --tests 'xendroid.compose.saves.*' \
+            --tests 'xendroid.compose.data.Profile*' \
+            --tests 'xendroid.compose.settings.ConfigFileTransactionTest' \
+            --tests 'xendroid.compose.updater.*'
       - name: Upload library test reports
         if: ${{ always() }}
         uses: actions/upload-artifact@v4

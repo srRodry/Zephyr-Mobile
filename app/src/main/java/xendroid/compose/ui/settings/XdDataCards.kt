@@ -47,6 +47,7 @@ import xendroid.compose.updater.updateRepository
 /**
  * L08 in the redesign: export the settings, touch controls, favourites, collections and ratings to
  * a file, or import one after seeing exactly what it changes (the same [DataBundleIo] as before).
+ * [beforeImport] saves pending settings for both transfers and must throw if saving fails.
  */
 @Composable
 fun XdDataBundleCard(beforeImport: () -> Unit, afterImport: () -> Unit) {
@@ -69,6 +70,8 @@ fun XdDataBundleCard(beforeImport: () -> Unit, afterImport: () -> Unit) {
     }
     val exportLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
         if (uri != null) run {
+            // Include pending screen edits, and stop if they cannot be saved.
+            beforeImport()
             val parts = DataBundleIo.export(context, uri)
             toast.show(context.resources.getQuantityString(R.plurals.bundle_exported, parts, parts))
         }
