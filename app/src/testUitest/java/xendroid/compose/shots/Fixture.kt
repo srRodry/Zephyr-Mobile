@@ -145,7 +145,16 @@ object Fixture {
         ratings()
         val pairs = games()
         val vm = container.libraryViewModelFactory().create(GameLibraryViewModel::class.java)
-        settle()
+        // This fixture injects a synthetic library below. Finish cancelling the
+        // constructor's real scan first, so it cannot overwrite that state later
+        // or leave an indeterminate progress indicator in Compose assertions.
+        val initialScan = vm.javaClass.getDeclaredField("refreshJob").apply { isAccessible = true }
+            .get(vm) as? kotlinx.coroutines.Job
+        vm.stopScan()
+        settleUntil { initialScan?.isCompleted != false }
+        check(initialScan?.isCompleted != false && !vm.isRefreshing.value && vm.scanProgress.value == null) {
+            "Initial library scan did not stop before fixture state was installed"
+        }
         val now = System.currentTimeMillis()
         flow<Map<String, TitleActivity>>(vm, "_activity").value = pairs.filter { it.first.lastRank > 0 }.associate { (s, _) ->
             s.titleId to TitleActivity(s.titleId, now - when (s.lastRank) { 1 -> 140L * 60_000; 2 -> 26L * 3_600_000; else -> s.lastRank * 36L * 3_600_000 },
