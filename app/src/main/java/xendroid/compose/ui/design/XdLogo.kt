@@ -10,9 +10,9 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import xendroid.compose.R
 
-/** The app's mark: the Xendroid+ chip with its green X+. */
+/** Shared Zephyr mark for onboarding, About and app updates. */
 @Composable
 fun XdLogo(size: Dp = 30.dp, modifier: Modifier = Modifier) {
-    Image(painterResource(R.drawable.xd_logo_mark), contentDescription = stringResource(R.string.app_name),
+    Image(painterResource(R.drawable.zephyr_launcher_foreground), contentDescription = stringResource(R.string.app_name),
         modifier = modifier.size(size))
 }

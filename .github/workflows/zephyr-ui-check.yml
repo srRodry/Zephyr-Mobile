@@ -93,7 +93,12 @@ jobs:
               node = ET.parse(path).getroot()
               names = [s.text for s in node.findall("string") if s.get("name") == "app_name"]
               assert names == ["Zephyr-Mobile"], f"Unexpected app label: {path}: {names}"
-          print("Zephyr adaptive icons and app labels verified.")
+          for filename in ("XdShell.kt", "XdLogo.kt"):
+              source = Path("app/src/main/java/xendroid/compose/ui/design") / filename
+              text = source.read_text()
+              assert "R.drawable.zephyr_launcher_foreground" in text, f"Missing Zephyr mark: {source}"
+              assert "R.drawable.xd_logo_mark" not in text, f"Legacy mark still displayed: {source}"
+          print("Zephyr adaptive icons, shared UI marks and app labels verified.")
           PY
       - name: Compile Compose UI without packaging native libraries
         run: bash ./gradlew :app:compileDebugKotlin --no-daemon --stacktrace

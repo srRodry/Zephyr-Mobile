@@ -50,6 +50,6 @@ The APK artifact includes a public `.signing.txt` report. Compare the certificat
 
 ## Branding audit and device checks
 
-The rail uses `zephyr_launcher_foreground` and the localized app name. The About description now names Zephyr-Mobile and explicitly credits XenDroid+/Xenia. Profile default `XenDroid`, existing standard folders and screenshot paths retain their current names because their UI descriptions reflect actual behavior. Technical package IDs, protocols, release parsing and original credits remain intact.
+The rail uses `zephyr_launcher_foreground` and the localized app name. A follow-up audit found the shared `XdLogo` still displaying the green legacy mark in onboarding, About and updates; it now uses the same Zephyr vector. The About description now names Zephyr-Mobile and explicitly credits XenDroid+/Xenia. Profile default `XenDroid`, existing standard folders and screenshot paths retain their current names because their UI descriptions reflect actual behavior. Technical package IDs, protocols, release parsing and original credits remain intact.
 
 Remaining device evidence: rail appearance, physical-controller navigation, game start/exit, permissions, profile persistence and failure recovery. No game compatibility was established by this audit.
