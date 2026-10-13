@@ -69,19 +69,21 @@ data class XdColors(
     val coverRadius: Dp get() = if (controller) 12.dp else 7.dp
 
     companion object {
+        // Zephyr-Mobile: shared dark surfaces and restrained electric-blue accents.
+        // Keep semantic compatibility colors independent of branding.
         val Touch = XdColors(
-            bg = Color(0xFF0F1214), s1 = Color(0xFF15191C), s2 = Color(0xFF1B2024), s3 = Color(0xFF252B30),
-            s4 = Color(0xFF30373D), sheet = Color(0xFF171C1F),
-            line = Color(0x14CDDCE8), line2 = Color(0x29CDDCE8),
-            fg = Color(0xFFEDF1F3), fg2 = Color(0xFFB2BDC4), fg3 = Color(0xFF7E8A92),
-            acc = Color(0xFF74D863), onAcc = Color(0xFF062A08), dyn = Color(0xFF1D4F3A), controller = false,
+            bg = Color(0xFF101319), s1 = Color(0xFF171D26), s2 = Color(0xFF202B39), s3 = Color(0xFF293748),
+            s4 = Color(0xFF344559), sheet = Color(0xFF171D26),
+            line = Color(0x144F6B86), line2 = Color(0x334F6B86),
+            fg = Color(0xFFF4F7FB), fg2 = Color(0xFFB7C2D1), fg3 = Color(0xFF8797AB),
+            acc = Color(0xFF57C8FF), onAcc = Color(0xFF081C29), dyn = Color(0xFF202B39), controller = false,
         )
         val Controller = XdColors(
-            bg = Color(0xFF050706), s1 = Color(0x11FFFFFF), s2 = Color(0x1AFFFFFF), s3 = Color(0x26FFFFFF),
-            s4 = Color(0x38FFFFFF), sheet = Color(0xFF121715),
-            line = Color(0x1AFFFFFF), line2 = Color(0x33FFFFFF),
-            fg = Color(0xFFF5F8F6), fg2 = Color(0xC7F5F8F6), fg3 = Color(0x8FF5F8F6),
-            acc = Color(0xFF9BE37F), onAcc = Color(0xFF0A1A08), dyn = Color(0xFF1D4F3A), controller = true,
+            bg = Color(0xFF101319), s1 = Color(0x18FFFFFF), s2 = Color(0x24FFFFFF), s3 = Color(0x30FFFFFF),
+            s4 = Color(0x40FFFFFF), sheet = Color(0xFF171D26),
+            line = Color(0x1FFFFFFF), line2 = Color(0x38FFFFFF),
+            fg = Color(0xFFF4F7FB), fg2 = Color(0xC7F4F7FB), fg3 = Color(0x8FF4F7FB),
+            acc = Color(0xFF57C8FF), onAcc = Color(0xFF081C29), dyn = Color(0xFF202B39), controller = true,
         )
 
         fun of(mode: InputMode) = if (mode == InputMode.CONTROLLER) Controller else Touch
