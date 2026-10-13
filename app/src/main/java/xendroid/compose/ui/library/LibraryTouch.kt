@@ -152,8 +152,12 @@ fun LibraryTouch(
                     }
                 }
                 if (shown.isEmpty()) {
-                    XdEmpty(stringResource(R.string.lib_no_match)) {
-                        XdLink(stringResource(R.string.lib_clear_search), { onQuery(""); onFilter(LibraryFilter.All) })
+                    // Keep the empty state inside the remaining viewport, not in
+                    // an unbounded column that can push bottom navigation away.
+                    Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.Center) {
+                        XdEmpty(stringResource(R.string.lib_no_match)) {
+                            XdLink(stringResource(R.string.lib_clear_search), { onQuery(""); onFilter(LibraryFilter.All) })
+                        }
                     }
                 } else {
                     LazyVerticalGrid(
