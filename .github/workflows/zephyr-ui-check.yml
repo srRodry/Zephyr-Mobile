@@ -6,9 +6,15 @@ on:
       - feature/zephyr-mobile-branding
   pull_request:
     paths:
-      - 'app/src/main/java/xendroid/compose/ui/**'
-      - 'app/src/main/res/**'
+      - 'app/src/**'
       - 'app/build.gradle'
+      - 'emulator-core/build.gradle'
+      - 'emulator-core/src/main/java/**'
+      - 'build.gradle'
+      - 'settings.gradle'
+      - 'gradle.properties'
+      - 'gradle/**'
+      - 'gradlew'
       - '.github/workflows/zephyr-ui-check.yml'
   workflow_dispatch:
 
@@ -34,17 +40,16 @@ jobs:
         with:
           distribution: temurin
           java-version: '17'
-      # GitHub's Ubuntu runner already includes the Android command-line tools.
-      # Accept licenses before installing SDK packages; setup-android@v3 failed
-      # while processing preinstalled licenses before our install step could run.
-      - name: Accept Android SDK licenses
-        shell: bash
-        run: |
-          set -o pipefail
-          yes | sdkmanager --licenses || test "${PIPESTATUS[1]}" -eq 0
+      # The default package list includes obsolete "tools", which sdkmanager
+      # can no longer resolve. This action installs the CLI and exports its PATH.
+      - name: Set up Android command-line tools
+        uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
+          log-accepted-android-sdk-licenses: false
       - name: Install Android SDK dependencies
         run: |
           sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;29.0.14206865" "cmake;3.30.3"
       - uses: gradle/actions/setup-gradle@v4
       - name: Compile Compose UI without packaging native libraries
-        run: ./gradlew :app:compileDebugKotlin --no-daemon --stacktrace
+        run: bash ./gradlew :app:compileDebugKotlin --no-daemon --stacktrace
