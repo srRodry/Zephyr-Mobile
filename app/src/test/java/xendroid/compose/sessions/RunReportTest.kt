@@ -10,6 +10,20 @@ import xendroid.compose.compatibility.CompatStatus
 import xendroid.compose.compatibility.CompatibilityReport
 
 class RunReportTest {
+    @Test fun hostThreadNamesAreRedactedAndEveryReportedThreadIsPreviewed() {
+        val threads = (1..12).map { tid ->
+            HostThreadCpuUsage(tid, 99, if (tid == 1) "me@example.com" else "Guest CPU $tid", 2, 50.0, 60.0)
+        }
+        val cpu = HostThreadCpuReport(attempts = 3, threads = threads)
+        val report = RunReports.build(run.copy(performance = RunPerformance(hostThreadCpu = cpu)), null, emptyList(), device, 0)
+        assertEquals("[email]", report.run.performance!!.hostThreadCpu!!.threads.first().name)
+        assertEquals("me@example.com", cpu.threads.first().name) // the private source is unchanged
+        val lines = RunReports.preview(report)
+        assertTrue(lines.any { it.contains("percentages relative to one core") })
+        assertTrue(lines.any { it.contains("Guest CPU 12 (TID 12)") })
+        assertTrue(lines.none { it.contains("me@example.com") })
+    }
+
     @get:Rule val folder = TemporaryFolder()
 
     private val device = ReportDevice("Xiaomi", "POCO F7", "QTI SM8735", "15", 35, "77011a0c+local.abc-debug")

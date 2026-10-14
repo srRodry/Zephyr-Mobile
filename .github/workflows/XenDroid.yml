@@ -65,6 +65,10 @@ concurrency:
 jobs:
   apk:
     name: APK (arm64-v8a)
+    # Development investigation: keep pushes on UI/regression checks only.
+    # A manual dispatch or an explicit [zephyr-apk] commit requests a test APK.
+    # Main/PR behavior is unaffected by this development-only gate.
+    if: ${{ github.event_name != 'push' || github.ref != 'refs/heads/feature/zephyr-mobile-branding' || contains(github.event.head_commit.message, '[zephyr-apk]') }}
     runs-on: ubuntu-24.04
     timeout-minutes: 300
 

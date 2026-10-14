@@ -131,6 +131,9 @@ jobs:
             --tests 'xendroid.compose.data.Profile*' \
             --tests 'xendroid.compose.settings.ConfigFileTransactionTest' \
             --tests 'xendroid.compose.compatibility.SettingsProfilesTest' \
+            --tests 'xendroid.compose.sessions.HostThreadCpuTest' \
+            --tests 'xendroid.compose.sessions.RunPerformanceTest' \
+            --tests 'xendroid.compose.sessions.RunReportTest' \
             --tests 'xendroid.compose.core.SuccessfulInitializationTest' \
             --tests 'xendroid.compose.updater.*'
       - name: Upload library test reports

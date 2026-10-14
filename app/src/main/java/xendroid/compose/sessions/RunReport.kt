@@ -58,6 +58,11 @@ object RunReports {
                 profileXuid = null,
                 endReason = run.endReason?.let(LogRedactor::redact),
                 changedSettings = run.changedSettings?.map(LogRedactor::redact),
+                performance = run.performance?.let { perf ->
+                    perf.copy(hostThreadCpu = perf.hostThreadCpu?.let { cpu ->
+                        cpu.copy(threads = cpu.threads.map { it.copy(name = LogRedactor.redact(it.name)) })
+                    })
+                },
                 nativeBacktrace = run.nativeBacktrace?.let { crash ->
                     crash.copy(thread = crash.thread?.let(LogRedactor::redact), cause = crash.cause?.let(LogRedactor::redact),
                         abortMessage = crash.abortMessage?.let(LogRedactor::redact))
@@ -88,6 +93,16 @@ object RunReports {
             describeFrameTimes(perf)?.let { add("Frame time: $it") }
             describeAudio(perf)?.let { add("Audio: $it") }
             describeFrameGeneration(perf)?.let { add("Frame generation: $it") }
+            perf.hostThreadCpu?.let { cpu ->
+                add("Host thread CPU: ${cpu.attempts} probes, ${cpu.unavailableReads} unavailable; percentages relative to one core")
+                cpu.threads.forEach { thread ->
+                    add("  ${thread.name} (TID ${thread.tid}): " +
+                        "%.1f%% mean, %.1f%% peak, %d windows".format(java.util.Locale.ROOT,
+                            thread.meanPercentOneCore, thread.peakPercentOneCore, thread.windows))
+                }
+                add("  Read cost: %.2f ms total, %.2f ms maximum; 5-second samples, not per-frame timings".format(
+                    java.util.Locale.ROOT, cpu.readTotalMs, cpu.readMaxMs))
+            }
         }
         run.changedSettings?.let { settings ->
             // The core's own "(more settings changed, not listed)" is not a setting.

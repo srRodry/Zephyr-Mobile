@@ -191,6 +191,13 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
     private var lastRunHeartbeatMs = 0L
     /** One-second samples of this run (main thread only), saved with the heartbeat and at the end. */
     private val runPerformance = xendroid.compose.sessions.RunPerformanceAccumulator()
+    private val hostThreadCpu = xendroid.compose.sessions.HostThreadCpuProfiler()
+    private var hostThreadCpuJob: kotlinx.coroutines.Job? = null
+    private var hostThreadCpuNextMs = 0L
+    private val hostThreadCpuReader by lazy {
+        xendroid.compose.sessions.HostThreadCpuReader(
+            android.system.Os.sysconf(android.system.OsConstants._SC_CLK_TCK))
+    }
     /** Flight recorder of this run (C01): rare host events, flushed beside the run record. */
     private val runEvents = xendroid.compose.sessions.RunEventRecorder(clock = android.os.SystemClock::elapsedRealtime)
     private var lastPresentationLabel: String? = null
@@ -1658,6 +1665,7 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
                                     val frameTimes = session.guestFrameTimeHistogram()
                                     val guestFrames = frameTimes?.sum()
                                     val runningNow = foregroundState.value && !session.isPaused()
+                                    sampleHostThreadCpu(runningNow && !menuState.value.open)
                                     // One native FPS read shared by this sampling tick's consumers.
                                     val averageGuestFps = session.averageFps()
                                     runPerformance.sample(
@@ -2285,6 +2293,7 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
     }
 
     override fun onDestroy() {
+        hostThreadCpuJob?.cancel()
         gameModeSignal.update(xendroid.compose.core.GamePhase.NONE)
         performanceHints.close()
         gyroCamera.stop()
@@ -2328,6 +2337,33 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
         Process.killProcess(
             Process.myPid()
         )
+    }
+
+    /** Bounded diagnostic IO in the experimental package; never in the render/JIT threads. */
+    private fun sampleHostThreadCpu(playing: Boolean) {
+        if (!BuildConfig.APPLICATION_ID.endsWith(".zephyr.test")) return
+        if (!playing) {
+            hostThreadCpuJob?.cancel()
+            hostThreadCpu.resetBaseline()
+            hostThreadCpuNextMs = 0L
+            return
+        }
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (hostThreadCpuJob?.isActive == true || now < hostThreadCpuNextMs) return
+        hostThreadCpuNextMs = now + 5_000
+        hostThreadCpuJob = lifecycleScope.launch(Dispatchers.IO) {
+            val sample = runCatching { hostThreadCpuReader.read() }.getOrElse {
+                xendroid.compose.sessions.HostThreadCpuSample(System.nanoTime(), 0, emptyList(), unavailable = true)
+            }
+            withContext(Dispatchers.Main) {
+                if (!foregroundState.value || menuState.value.open || session.isPaused()) {
+                    hostThreadCpu.resetBaseline()
+                } else {
+                    hostThreadCpu.sample(sample)
+                    runPerformance.hostThreads(hostThreadCpu.snapshot())
+                }
+            }
+        }
     }
 
     // Public platform input callback; only the inherited AndroidX implementation

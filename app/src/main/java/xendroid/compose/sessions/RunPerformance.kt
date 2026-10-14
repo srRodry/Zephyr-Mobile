@@ -68,6 +68,8 @@ data class RunPerformance(
     val fpsLimits: List<Int> = emptyList(),
     val displayHz: List<Int> = emptyList(),
     val guestRefreshCap: Boolean? = null,
+    /** Diagnostic test builds only; CPU time per host thread, not GPU execution time. */
+    val hostThreadCpu: HostThreadCpuReport? = null,
 ) {
     val sampledSeconds: Int get() = fpsHistogram.sum()
     val frames: Long get() = frameTimeHistogramMs.sum()
@@ -267,6 +269,9 @@ class RunPerformanceAccumulator(private val maxFps: Int = 240) {
     private val fpsLimits = LinkedHashSet<Int>()
     private val displayHz = LinkedHashSet<Int>()
     private var guestRefreshCap: Boolean? = null
+    private var hostThreadCpu: HostThreadCpuReport? = null
+
+    fun hostThreads(report: HostThreadCpuReport?) { hostThreadCpu = report }
 
     /** The guest vblank cap the run booted with (C07). */
     fun guestRefreshCap(capped: Boolean) { guestRefreshCap = capped }
@@ -413,6 +418,7 @@ class RunPerformanceAccumulator(private val maxFps: Int = 240) {
         fpsLimits = fpsLimits.toList(),
         displayHz = displayHz.toList(),
         guestRefreshCap = guestRefreshCap,
+        hostThreadCpu = hostThreadCpu,
     )
 
     private fun compileDelta(index: Int): Long? {
