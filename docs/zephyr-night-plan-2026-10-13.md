@@ -144,3 +144,16 @@ inventar uma. Consulta a fóruns/vídeos não requer login nem contato com autor
 - Mapa de símbolos já existe (`a64_perf_map=true`, fflush por função); não é fsync
   nem gargalo comprovado. Sem alteração. Promoção vetorial tem regressões conhecidas;
   não ligar globalmente. Confirmar CI desse próximo incremento após commit.
+
+### Continuação manual às 23:45 (UTC−4)
+
+- Reconfirmado remoto `b34cf39`, UI #54 aprovado e APK #39 ignorado.
+- Encontrada materialização redundante em AND/AND_NOT escalar ARM64. Novo caminho
+  usa máscaras imediatas codificáveis; fallback mantém bytes anteriores, sem
+  alterações em scheduler/precisão/driver/alocador. Ler
+  `zephyr-a64-logical-mask-review-2026-10-14.md`.
+- Validação local: 5.334 máscaras 64-bit, 1.302 máscaras 32-bit, 200.000 verificações
+  de predicado e 207.880 casos de código emitido. Conferir CI do novo HEAD antes
+  de avançar; não confundir redução de instruções com FPS ganho no telefone.
+- Primeiro ciclo agendado de 00h deve apenas ler/conferir CI para evitar corrida
+  com esta continuação manual. Ciclos posteriores mantêm a investigação autorizada.

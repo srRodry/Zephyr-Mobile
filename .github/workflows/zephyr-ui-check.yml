@@ -19,6 +19,8 @@ on:
       - 'tools/*signing*'
       - 'tools/test-a64-vector-select.py'
       - 'tools/test-jit-compile-stats.py'
+      - 'tools/test-a64-logical-immediate.py'
+      - 'emulator-core/src/test/cpp/a64_logical_immediate_test.cc'
       - 'emulator-core/src/test/cpp/jit_compile_stats_test.cc'
       - 'emulator-core/src/test/cpp/a64_vector_select_test.cc'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/cpu/**'
@@ -113,6 +115,8 @@ jobs:
         run: python3 tools/test-native-clock.py
       - name: Test ARM64 vector select semantics and instruction encoding
         run: python3 tools/test-a64-vector-select.py
+      - name: Test ARM64 logical masks and unchanged materialization fallbacks
+        run: python3 tools/test-a64-logical-immediate.py
       - name: Check Java and native JNI signatures
         run: python3 tools/check-jni.py
       - name: Test optional JIT compile timing lifecycle and concurrent snapshots
