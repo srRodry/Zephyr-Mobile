@@ -118,6 +118,7 @@ fun LibraryTouch(
     val shown = remember(data, filter, query) { data.shown(filter, query) }
     var searchExpanded by rememberSaveable { mutableStateOf(false) }
     val focus = LocalFocusManager.current
+    val openSelected: (Game) -> Unit = { game -> onSelect(game); onOpen(game) }
     BoxWithConstraints(Modifier.fillMaxSize().background(frameColors.bg)) {
         val portrait = maxHeight > maxWidth || maxWidth < 840.dp
         val listMode = portrait && density == CoverDensity.MEDIUM
@@ -189,7 +190,7 @@ fun LibraryTouch(
                         if (query.isBlank()) {
                             item(key = "library-showcase", span = { GridItemSpan(maxLineSpan) }) {
                                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    LibraryShowcase(shown, selected, data, artOf, onSelect, onOpen, onFavorite)
+                                    LibraryShowcase(shown, selected, data, artOf, onSelect, openSelected, onFavorite)
                                     if (portrait && selected != null) LibrarySelectedActions(selected, data, preparing,
                                         onPlay = { onPlay(selected) }, onOpen = { onOpen(selected) }, onFavorite = { onFavorite(selected) })
                                     HorizontalDivider(color = c.line)
@@ -203,11 +204,11 @@ fun LibraryTouch(
                         items(shown, key = { it.stableId }) { game ->
                             LibraryCard(game, data, artOf(game), picked = game.stableId == selected?.stableId,
                                 small = density == CoverDensity.SMALL, listMode = listMode,
-                                onClick = { if (portrait || game.stableId == selected?.stableId) onOpen(game) else onSelect(game) },
-                                onLongClick = { onOpen(game) }, onFocused = { if (!portrait) onSelect(game) },
+                                onClick = { if (portrait || game.stableId == selected?.stableId) openSelected(game) else onSelect(game) },
+                                onLongClick = { openSelected(game) }, onFocused = { if (!portrait) onSelect(game) },
                                 onPad = { b -> when (b) {
                                     PadButton.Y -> { onFavorite(game); true }
-                                    PadButton.X -> { onOpen(game); true }
+                                    PadButton.X -> { openSelected(game); true }
                                     else -> false
                                 } })
                         }

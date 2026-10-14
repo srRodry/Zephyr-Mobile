@@ -28,3 +28,6 @@ Pendentes no aparelho: 0/1/3/muitos jogos, busca/filtros, retorno da ficha, troc
 
 ## Continuidade
 Ficha, perfis, hubs e guia em jogo ainda devem receber a nova apresentação; esta etapa reconstrói somente biblioteca touch e seu painel lateral. Layout específico LibraryController, núcleo, áudio, assinatura e workflows não foram modificados. Nenhum APK disparado nesta etapa.
+
+## Seleção ao consultar ficha
+Correção de revisão: todas as aberturas pela prateleira/lista/toque longo/X passam por openSelected, que atualiza onSelect antes de onOpen. Evita retornar à biblioteca com destaque de outro jogo. Contratos de lançamento e estado selectedId do host são reutilizados; retorno visual ainda depende de teste no aparelho.
