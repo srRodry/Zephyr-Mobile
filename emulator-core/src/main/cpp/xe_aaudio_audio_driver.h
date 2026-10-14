@@ -135,6 +135,9 @@ class AAudioAudioDriver : public AudioDriver {
   // The callbacks' own time (rendering, the queue's lock), microseconds.
   std::atomic<uint64_t> stat_callback_us_sum_{0};
   std::atomic<uint32_t> stat_callback_us_max_{0};
+  // Diagnostic only: total and maximum time spent acquiring the audio queue mutex.
+  std::atomic<uint64_t> stat_queue_lock_wait_us_sum_{0};
+  std::atomic<uint32_t> stat_queue_lock_wait_us_max_{0};
   void LogAndResetStats();
   // Adds the stream's new xruns to ae::RunStats(); AAudio counts per stream, so
   // the count seen so far restarts with every rebuild. recovery_thread_ only.
