@@ -238,7 +238,7 @@ aaudio_data_callback_result_t AAudioAudioDriver::AudioCallback(
 
   driver->stat_callbacks_.fetch_add(1, std::memory_order_relaxed);
 
-  // Diagnostic-only: detect callbacks that exceed their audio deadline.
+  // Diagnostic-only: observe callback duration and queue-lock contention.
   // Avoid logging or allocating on the realtime callback thread.
   // Detailed callback timing is accumulated below and published by the
   // recovery worker when apu_aaudio_log_stats is enabled.
