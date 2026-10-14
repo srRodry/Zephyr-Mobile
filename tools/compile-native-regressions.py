@@ -9,6 +9,7 @@ import argparse
 import json
 from pathlib import Path
 import shlex
+import re
 import subprocess
 
 SOURCES = (
@@ -68,9 +69,9 @@ def main():
         directory, targets = plan(database)
         cache = (directory / 'CMakeCache.txt').read_text()
         programs = [line.split('=', 1)[1] for line in cache.splitlines()
-                    if line.startswith('CMAKE_MAKE_PROGRAM:FILEPATH=')]
+                    if re.match(r'^CMAKE_MAKE_PROGRAM:[A-Z_]+=', line)]
         if len(programs) != 1 or not Path(programs[0]).is_file():
-            raise ValueError('Configured Ninja executable is missing')
+            raise ValueError(f'Configured Ninja executable is missing: {programs!r}')
     except (ValueError, OSError, KeyError) as error:
         parser.error(str(error))
     print('Android ARM64 release objects: ' + ', '.join(targets), flush=True)

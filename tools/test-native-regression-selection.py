@@ -60,10 +60,12 @@ class SelectionTests(unittest.TestCase):
                          'pathlib.Path(' + repr(str(record)) + ').write_text(json.dumps(sys.argv[1:]))\n' +
                          'raise SystemExit(7)\n')
         ninja.chmod(0o700)
-        (self.directory / 'CMakeCache.txt').write_text('CMAKE_MAKE_PROGRAM:FILEPATH=' + str(ninja) + '\n')
-        result = subprocess.run([sys.executable, str(SCRIPT), '--database', str(self.db)], capture_output=True)
-        self.assertNotEqual(result.returncode, 0)
-        self.assertEqual(json.loads(record.read_text()), ['-C', str(self.directory), '-j', '2',
-                         *[f'CMakeFiles/native.dir/{i}.o' for i in range(3)]])
+        for cache_type in ('FILEPATH', 'STRING', 'UNINITIALIZED'):
+            with self.subTest(cache_type=cache_type):
+                (self.directory / 'CMakeCache.txt').write_text('CMAKE_MAKE_PROGRAM:' + cache_type + '=' + str(ninja) + '\n')
+                result = subprocess.run([sys.executable, str(SCRIPT), '--database', str(self.db)], capture_output=True)
+                self.assertNotEqual(result.returncode, 0)
+                self.assertEqual(json.loads(record.read_text()), ['-C', str(self.directory), '-j', '2',
+                                 *[f'CMakeFiles/native.dir/{i}.o' for i in range(3)]])
 
 if __name__ == '__main__': unittest.main()

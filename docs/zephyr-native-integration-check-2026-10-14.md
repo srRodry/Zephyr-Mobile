@@ -42,3 +42,7 @@ Não atribuir ganho de FPS a este incremento. Antes da próxima edição, confir
 ambos os jobs desse workflow. Se falharem, corrigir primeiro a configuração ou
 o erro concreto, sem fazer novas otimizações. Nenhum default de emulação,
 scheduler, precisão, áudio, interface ou produção foi alterado.
+
+## CI selector correction
+
+UI #59 configured the Android Release build successfully but stopped before object compilation because the selector required CMAKE_MAKE_PROGRAM:FILEPATH. CMake cache entries can carry another type when supplied by the Android configuration. Read the exact variable with its typed cache syntax instead; require one existing executable and keep object-only targets and failure propagation unchanged. The invocation regression now covers FILEPATH, STRING and UNINITIALIZED. This correction does not establish native compilation success until the next CI completes.
