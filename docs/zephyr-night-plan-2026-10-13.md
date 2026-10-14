@@ -216,3 +216,17 @@ inventar uma. Consulta a fóruns/vídeos não requer login nem contato com autor
   `zephyr-pipeline-wait-diagnostics-2026-10-14.md`.
 - Só ferramentas/testes/docs, sem mudança do emulador ou nova coleta. Não existe
   dado do aparelho nem evidência para promover otimização/default agressivo.
+
+### Continuação — regressão da timeline de fences
+
+- Base `19f0340`, UI #65 aprovado. Header de timeline e seletor Vulkan reais
+  testados com estados falsos do driver; hashes locais conferidos contra HEAD.
+- 200.000 pedidos zero/cached-complete não consultam driver. Sete grupos cobrem
+  pendência/conclusão/falha, atualização de progresso e limite/all.
+- No fixture com 1/2 sinalizadas e 3 pendente, pedir 2 produz polls [1,2] limitado
+  ou [1,2,3,3] sem limite. Isso prova consultas extras, NÃO bloqueio/FPS no driver.
+- NDK integra também vulkan_gpu_completion_timeline.cc (seis TUs); novo teste
+  no CI. Conferir novo HEAD antes de outro incremento. Ler
+  `zephyr-fence-timeline-review-2026-10-14.md` para escopos e validação no aparelho.
+- Política de coleta, readbacks, áudio e defaults intactos. Não ligar bounded
+  globalmente nem retirar waits por intuição; faltam dados reais do driver ativo.
