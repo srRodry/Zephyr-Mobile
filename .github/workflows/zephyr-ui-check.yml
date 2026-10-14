@@ -113,11 +113,14 @@ jobs:
               node = ET.parse(path).getroot()
               names = [s.text for s in node.findall("string") if s.get("name") == "app_name"]
               assert names == ["Zephyr-Mobile"], f"Unexpected app label: {path}: {names}"
-          for filename in ("XdShell.kt", "XdLogo.kt"):
+          for filename in ("XdBlades.kt", "XdLogo.kt"):
               source = Path("app/src/main/java/xendroid/compose/ui/design") / filename
               text = source.read_text()
               assert "R.drawable.zephyr_launcher_foreground" in text, f"Missing Zephyr mark: {source}"
               assert "R.drawable.xd_logo_mark" not in text, f"Legacy mark still displayed: {source}"
+          shell = (Path("app/src/main/java/xendroid/compose/ui/design") / "XdShell.kt").read_text()
+          assert "ZephyrBladeRail(current, modifier)" in shell, "Touch shell must use the branded blade rail"
+          assert "R.drawable.xd_logo_mark" not in shell, "Legacy mark still displayed by touch shell"
           print("Zephyr adaptive icons, shared UI marks and app labels verified.")
           PY
       - name: Test native audio performance hint lifecycle

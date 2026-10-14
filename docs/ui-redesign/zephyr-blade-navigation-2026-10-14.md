@@ -22,3 +22,6 @@ A busca GitHub de referências devolveu incomplete_results=true; não foi usada 
 ## Escopo ainda pendente
 Esta etapa não completa o redesign: ainda há biblioteca editorial/cartões antigos, corpo de configurações/perfis anterior e apresentação específica de controle anterior. Seguem pendentes prateleira de capas, plano de ficha, hubs, superfícies prata/escura coerentes e guia em jogo. Nenhum ganho de FPS ou alteração de áudio prometido.
 Não houve alteração no núcleo, áudio, assinatura, viewmodels ou workflows. Commit sem marcador APK; não solicitar APK antes de CI aprovado.
+
+## Integração da verificação de identidade
+UI #84 interrompeu antes da compilação: o checker procurava o drawable diretamente em XdShell.kt, mas o símbolo foi movido ao componente XdBlades.kt. Correção de CI mantém verificação do drawable atual e ausência do antigo em XdBlades.kt/XdLogo.kt, e verifica explicitamente delegação do shell ao rail e ausência do drawable antigo no shell. YAML e Python embutido analisados localmente; conferir execução seguinte antes de considerar compilação/regressões aprovadas.
