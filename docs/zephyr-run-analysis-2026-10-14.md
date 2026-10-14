@@ -109,3 +109,66 @@ app, investigar sua exposição antes de pedir comandos de shell.
 Nenhuma otimização de runtime, áudio, política de scheduling ou default aplicada
 nesta revisão. Base e760f0b com UI #69 aprovado; APK #50/CI #68 aprovados em 285eb7dc.
 Esta etapa registra dados reais e muda a prioridade, não demonstra ganho de FPS.
+
+## Correlação com logs complementares recebidos às 10h22
+
+ZIP xendroid-logs-20261014-102145.zip: 132.447 bytes, CRC válido,
+SHA256 32c942f6f939473e46b2e9a0e66d85070ff50bc9c565963134ea98934d718229.
+Contém somente current/xe.log (22.557 linhas) e current/logcat.txt (2.283).
+Não há contexto de build separado no ZIP. Correlação forte com o relatório:
+os seis identificadores dos dispatch workers guest correspondem às threads
+reportadas; PID aparece no logcat nos horários de início/fim; versão do driver
+coincide; 330 linhas de pipelines criados correspondem às 330 criações.
+Identificadores pessoais e logs integrais ficam fora do repositório.
+
+### Os avisos do watchdog não provam três deadlocks de gameplay
+
+Há três dumps de ausência de novos frames, nos frames 764, 813 e 9335.
+O texto do watchdog indica 2000 ticks, NÃO uma medida exata de 2000 ms:
+escalonamento e atraso do watchdog podem variar.
+
+- Frame 764: não precedido de marcador PAUSED; há pipelines sendo criados
+  antes e depois do dump. Últimos sinais registrados abrangem uptime guest
+  34496–34576 ms. Contexto compatível com o burst inicial de compilação e
+  início dos poucos underruns; não prova causa ou deadlock de scheduler.
+- Frame 813: existe marcador EMULATOR PAUSED antes do dump, e RESUMED depois.
+  Últimos sinais em 38493–38538 ms; relatório registra pausa/resume nesse trecho.
+- Frame 9335: dump segue imediatamente o marcador EMULATOR PAUSED; últimos
+  sinais 419099–419102 ms, próximos de menu opened, guest paused em 419148 ms.
+  Não classificar a pausa controlada do menu como travada causada por colisão.
+
+O jogo progride até mais de 9300 frames. Não há evidência aqui de deadlock
+persistente. Todos os last_safepoint apresentados são zero: esses dumps não
+fornecem amostragem confiável de hotspot PPC por endereço. LR não é PC atual.
+
+### Configuração efetiva e dados ainda ausentes
+
+guest_scheduler=true, quantum=1000 us, guest_scheduler_stats=false.
+AAudio: um log de inicialização (48000 Hz, 2 canais, callback 256 frames,
+buffer 1024/1024); apu_aaudio_log_stats=false. Nenhuma janela detalhada de
+ocupação/taxa/clipping/tempo de callback/locks. Sem GpuFrame, VkFrameSync,
+VkFences ou VkPipelineWait em xe.log/logcat. Ausência permanece desconhecido.
+
+Não foram vistos DEVICE_LOST/VK_ERROR literais; isso não prova ausência de
+falhas. Logcat também inclui sondagem inicial do driver system: não confundí-la
+com o loader custom realmente usado pela emulação (confirmado por xe/report).
+
+### Próximo teste possível no próprio app, sem novo APK
+
+Código do build 285eb7dc já declara Kernel|guest_scheduler_stats no SettingsSchema.
+SettingCatalog o inclui no grupo DEBUG, nível ALL; XdSettings pesquisa também
+chaves técnicas e traduz ALL como “Tudo”. Não há tradução específica do título
+no SettingTexts, então o título pode aparecer em inglês.
+
+Com jogo encerrado: Ajustes, nível Tudo, buscar guest_scheduler_stats e ativar
+somente essa opção no escopo correto. Confirmar no próximo config dump que
+o valor efetivo é true (overrides de jogo podem prevalecer).
+Captura curta com mesmo driver/patches/opções, trecho normal seguido de
+aceleração/colisão, depois exportar relatório e logs. Desligar após a captura;
+medir diferença de overhead antes de comparar FPS com execução sem coleta.
+A opção gera estatísticas e não altera quantum/afinidade/prioridade por si.
+Não pedir trace_function*, CPU debug ou logs de todas as chamadas de kernel.
+
+Este complemento não aplica otimização nem prova que a espera ativa é a causa.
+Permite direcionar coleta ao worker saturado usando funcionalidade existente.
+UI #70 aprovado na base 91db30e; conferir CI do commit documental complementar.
