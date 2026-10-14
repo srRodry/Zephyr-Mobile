@@ -117,6 +117,7 @@ fun LibraryTouch(
 ) {
     val frameColors = Xd.colors
     val shown = remember(data, filter, query) { data.shown(filter, query) }
+    val featured = shown.firstOrNull { it.stableId == selected?.stableId } ?: shown.firstOrNull()
     var searchExpanded by rememberSaveable { mutableStateOf(false) }
     val focus = LocalFocusManager.current
     val openSelected: (Game) -> Unit = { game -> onSelect(game); onOpen(game) }
@@ -160,6 +161,9 @@ fun LibraryTouch(
                             XdChipRow(contentPadding = PaddingValues(vertical = 2.dp)) {
                                 XdChip(stringResource(R.string.xd_lib_all), filter == LibraryFilter.All, { onFilter(LibraryFilter.All) },
                                     modifier = Modifier.heightIn(min = 48.dp), count = data.games.size)
+                                XdChip(stringResource(R.string.zephyr_library_recent), filter == LibraryFilter.Recent, { onFilter(LibraryFilter.Recent) },
+                                    modifier = Modifier.heightIn(min = 48.dp).testTag("library-filter-recent"),
+                                    count = data.count(LibraryFilter.Recent), icon = XdIcons.clock)
                                 XdChip(stringResource(R.string.lib_favorites), filter == LibraryFilter.Favorites, { onFilter(LibraryFilter.Favorites) },
                                     modifier = Modifier.heightIn(min = 48.dp), count = data.count(LibraryFilter.Favorites), icon = XdIcons.star)
                                 for (col in data.collections) {
@@ -191,9 +195,10 @@ fun LibraryTouch(
                         if (query.isBlank()) {
                             item(key = "library-showcase", span = { GridItemSpan(maxLineSpan) }) {
                                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                                    if (portrait && featured != null) LibraryFeaturedGame(featured, artOf(featured), data, preparing,
+                                        onPlay = { onSelect(featured); onPlay(featured) },
+                                        onOpen = { openSelected(featured) }, onFavorite = { onFavorite(featured) })
                                     LibraryShowcase(shown, selected, data, artOf, onSelect, openSelected, onFavorite)
-                                    if (portrait && selected != null) LibrarySelectedActions(selected, data, preparing,
-                                        onPlay = { onPlay(selected) }, onOpen = { onOpen(selected) }, onFavorite = { onFavorite(selected) })
                                     HorizontalDivider(color = c.line)
                                 }
                             }
@@ -320,8 +325,8 @@ fun LibraryDetailPanel(
     val c = Xd.colors
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            LibraryArtwork(game, art, Modifier.width(72.dp), data.favorite(game))
-            LibrarySelectedActions(game, data, preparing, onPlay, onOpen, onFavorite)
+            LibraryFeatureIdentity(game, art, data)
+            LibrarySelectedActions(game, data, preparing, onPlay, onOpen, onFavorite, showIdentity = false)
         }
         Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
             val played = data.played(game)

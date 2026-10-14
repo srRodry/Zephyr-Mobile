@@ -67,6 +67,56 @@ internal fun LibraryArtwork(game: Game, art: CoverArt, modifier: Modifier = Modi
     }
 }
 
+/** Real cover artwork can lead the page; embedded icons stay small and contained. */
+@Composable
+internal fun LibraryFeatureIdentity(
+    game: Game, art: CoverArt, data: LibraryData, prominent: Boolean = true,
+    modifier: Modifier = Modifier,
+) {
+    val c = Xd.colors
+    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        if (prominent && !art.smart) {
+            Box(Modifier.fillMaxWidth().aspectRatio(16f / 9f).testTag("game-feature-cover")
+                .clip(RoundedCornerShape(4.dp)).background(c.s2)) {
+                AsyncImage(art.model, null, Modifier.fillMaxSize(), contentScale = ContentScale.Fit)
+            }
+        }
+        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            if (!prominent || art.smart) LibraryArtwork(game, art, Modifier.width(64.dp), data.favorite(game))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                Text(game.name, style = XdText.h1.copy(fontSize = 26.sp, lineHeight = 30.sp), color = c.fg)
+                Text(formatLabel(game.format), style = XdText.small, color = c.fg2)
+                LibraryStatusLine(game, data)
+            }
+        }
+    }
+}
+
+/** A featured title has explicit actions; tapping a neighbouring cover still only selects. */
+@Composable
+internal fun LibraryFeaturedGame(
+    game: Game, art: CoverArt, data: LibraryData, preparing: Boolean,
+    onPlay: () -> Unit, onOpen: () -> Unit, onFavorite: () -> Unit,
+) {
+    val c = Xd.colors
+    val shape = RoundedCornerShape(6.dp)
+    Column(Modifier.fillMaxWidth().testTag("library-featured")
+        .clip(shape).background(c.s1).border(1.dp, c.line2, shape).padding(12.dp),
+        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+        LibraryFeatureIdentity(game, art, data, modifier = Modifier.testTag("library-featured-identity"))
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            XdButton(stringResource(R.string.lib_play), onPlay,
+                Modifier.weight(1f).heightIn(min = 48.dp).testTag("library-featured-play"),
+                kind = XdButtonKind.PRIMARY, icon = XdIcons.play, enabled = !preparing)
+            XdIconButton(if (data.favorite(game)) XdIcons.starFilled else XdIcons.star,
+                stringResource(R.string.lib_favorites), onFavorite, on = data.favorite(game))
+        }
+        XdButton(stringResource(R.string.xd_lib_sheet), onOpen,
+            Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("library-featured-open"),
+            kind = XdButtonKind.GHOST, icon = XdIcons.chevR)
+    }
+}
+
 /** Bounded, lazy presentation of the current filtered/sorted library; selecting never launches. */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -109,7 +159,7 @@ internal fun LibraryShowcase(
     }
 }
 
-/** Status remains the user's recorded result; foreground text stays readable on silver. */
+/** Status remains the user's recorded result; foreground text uses the shared readable palette. */
 @Composable
 internal fun LibraryStatusLine(game: Game, data: LibraryData) {
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
@@ -122,12 +172,14 @@ internal fun LibraryStatusLine(game: Game, data: LibraryData) {
 @Composable
 internal fun LibrarySelectedActions(
     game: Game, data: LibraryData, preparing: Boolean,
-    onPlay: () -> Unit, onOpen: () -> Unit, onFavorite: () -> Unit,
+    onPlay: () -> Unit, onOpen: () -> Unit, onFavorite: () -> Unit, showIdentity: Boolean = true,
 ) {
     Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text(game.name, style = XdText.h1.copy(fontSize = 24.sp, lineHeight = 28.sp), color = Xd.colors.fg)
-        Text(formatLabel(game.format), style = XdText.small, color = Xd.colors.fg2)
-        LibraryStatusLine(game, data)
+        if (showIdentity) {
+            Text(game.name, style = XdText.h1.copy(fontSize = 24.sp, lineHeight = 28.sp), color = Xd.colors.fg)
+            Text(formatLabel(game.format), style = XdText.small, color = Xd.colors.fg2)
+            LibraryStatusLine(game, data)
+        }
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             XdButton(stringResource(R.string.lib_play), onPlay, Modifier.widthIn(min = 140.dp).heightIn(min = 48.dp),
                 kind = XdButtonKind.PRIMARY, icon = XdIcons.play, enabled = !preparing)

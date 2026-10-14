@@ -20,5 +20,6 @@
     <string name="zephyr_game_identifiers">Game identification</string>
     <string name="zephyr_game_title_id">Title ID</string>
     <string name="zephyr_game_media_id">Media ID</string>
+    <string name="zephyr_library_recent">Recent</string>
 </resources>
 

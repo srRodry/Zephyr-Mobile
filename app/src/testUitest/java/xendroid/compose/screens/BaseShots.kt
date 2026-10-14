@@ -46,14 +46,15 @@ import xendroid.compose.ui.library.LibraryUiState
 class BaseShots {
     @get:Rule val compose = createComposeRule()
 
-    private fun library(mode: InputMode, pick: String? = null) {
+    private fun library(mode: InputMode, pick: String? = null, openFeatured: Boolean = false) {
         val container = AppContainer(Fixture.context)
         val vm = Fixture.library(container)
         val compress = container.gameCompressViewModelFactory().create(GameCompressViewModel::class.java)
         var sheetsOpened = 0
+        var openedTitle: String? = null
         compose.app(mode) {
             GameLibraryScreen(vm, {}, {}, {}, {}, {}, { _, _, _, _ -> }, { _, _ -> }, { _, _ -> }, { _, _ -> }, {}, {}, {}, compress,
-                onOpenGame = { _, _ -> sheetsOpened++ },
+                onOpenGame = { game, _ -> sheetsOpened++; openedTitle = game.name },
                 gameSettings = { id -> remember(id) { container.gameSettingsViewModelFactory(id).create(GameSettingsViewModel::class.java) } })
         }
         if (pick != null) {
@@ -75,6 +76,15 @@ class BaseShots {
         }
         Fixture.settle()
         compose.waitForIdle()
+        if (openFeatured) {
+            compose.onNodeWithTag("library-grid").performScrollToNode(hasTestTag("library-featured"))
+            compose.onNode(hasText(requireNotNull(pick)) and hasAnyAncestor(hasTestTag("library-featured-identity")),
+                useUnmergedTree = true).assertExists()
+            compose.onNodeWithTag("library-featured-open").performScrollTo().performClick()
+            compose.waitForIdle()
+            assertEquals(1, sheetsOpened)
+            assertEquals(pick, openedTitle)
+        }
     }
 
     private fun game(mode: InputMode, section: String? = null, titleId: String = "4D5307E6") {
@@ -157,6 +167,37 @@ class BaseShots {
         compose.onNodeWithTag("game-sheet-identifiers").performScrollTo().performClick()
         compose.waitForIdle()
         compose.onNodeWithTag("game-sheet-identifiers-values").assertDoesNotExist()
+    }
+
+    @Config(qualifiers = Phone.PORT) @Test fun libraryFeaturedOpensSelectedTitle() {
+        library(InputMode.TOUCH, pick = "Forza Horizon", openFeatured = true)
+    }
+
+    @Config(qualifiers = Phone.PORT) @Test fun sheetCoverOnlyLeadsOverview() {
+        game(InputMode.TOUCH)
+        compose.onNodeWithTag("game-feature-cover").assertExists()
+        compose.onNodeWithTag("game-sheet-tab:settings").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("game-feature-cover").assertDoesNotExist()
+        compose.onNodeWithTag("game-sheet-tab:ov").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("game-feature-cover").assertExists()
+    }
+
+    @Config(qualifiers = Phone.PORT) @Test fun libraryRecentFilterIsReachableByTouch() {
+        library(InputMode.TOUCH)
+        compose.onNodeWithTag("library-grid").performScrollToNode(hasTestTag("library-filter-recent"))
+        compose.onNodeWithTag("library-filter-recent").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("library-filter-recent").assertIsSelected()
+        compose.onNodeWithTag("library-grid").performScrollToNode(hasTestTag("library-featured"))
+        compose.onNodeWithTag("library-featured-identity").assertExists()
+    }
+
+    @Config(qualifiers = Phone.PORT) @Test fun sheetEmbeddedIconStaysCompact() {
+        game(InputMode.TOUCH, titleId = "4D530805")
+        compose.onNodeWithTag("game-sheet-identity").assertExists()
+        compose.onNodeWithTag("game-feature-cover").assertDoesNotExist()
     }
 
 }

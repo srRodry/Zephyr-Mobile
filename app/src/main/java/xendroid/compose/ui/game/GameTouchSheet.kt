@@ -63,7 +63,7 @@ internal fun GameTouchSheet(
                     val scroll = rememberSaveable(current?.id, saver = ScrollState.Saver) { ScrollState(0) }
                     Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(scroll).testTag("game-sheet-scroll")
                         .padding(horizontal = 14.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-                        SheetIdentity(game, art, data, preparing, onPlay, onLaunch)
+                        SheetIdentity(game, art, data, preparing, onPlay, onLaunch, prominent = mainSection(current?.id) == GameSections.OVERVIEW)
                         MainTabs(mainSection(current?.id), history::pick)
                         val active = mainSection(current?.id)
                         when (active) {
@@ -96,23 +96,15 @@ internal fun GameTouchSheet(
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun SheetIdentity(game: Game, art: CoverArt, data: LibraryData, preparing: Boolean, onPlay: () -> Unit, onLaunch: () -> Unit) {
-    val c = Xd.colors
+private fun SheetIdentity(game: Game, art: CoverArt, data: LibraryData, preparing: Boolean, onPlay: () -> Unit, onLaunch: () -> Unit, prominent: Boolean) {
     var identifiers by rememberSaveable(game.identityKey) { mutableStateOf(false) }
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            LibraryArtwork(game, art, Modifier.width(76.dp), data.favorite(game))
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(game.name, style = XdText.h1.copy(fontSize = 26.sp, lineHeight = 30.sp), color = c.fg)
-                Text(formatLabel(game.format), style = XdText.small, color = c.fg2)
-                LibraryStatusLine(game, data)
-            }
-        }
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            XdButton(stringResource(R.string.lib_play), onPlay, Modifier.heightIn(min = 48.dp),
+        LibraryFeatureIdentity(game, art, data, prominent, Modifier.testTag("game-sheet-identity"))
+        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            XdButton(stringResource(R.string.lib_play), onPlay, Modifier.fillMaxWidth().heightIn(min = 48.dp),
                 kind = XdButtonKind.PRIMARY, icon = XdIcons.play, enabled = !preparing)
             XdButton(stringResource(R.string.xd_game_sec_launch), onLaunch,
-                Modifier.heightIn(min = 48.dp).testTag("game-sheet-launch"), enabled = !preparing)
+                Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("game-sheet-launch"), enabled = !preparing)
         }
         XdButton(stringResource(R.string.zephyr_game_identifiers), { identifiers = !identifiers },
             Modifier.heightIn(min = 48.dp).testTag("game-sheet-identifiers"), kind = XdButtonKind.GHOST, icon = XdIcons.info)
