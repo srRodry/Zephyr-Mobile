@@ -86,3 +86,30 @@ de 5 s não explicam um choque individual. Não concluir ganho/compatibilidade
 sem comparação no aparelho. Ainda faltam tempos GPU/espera e perfil dinâmico JIT
 para atribuir o gargalo. Evitar identidade falsa de benchmark ou novas flags
 agressivas enquanto o caminho crítico não estiver demonstrado.
+
+## Cuidado adicional com o custo do diagnóstico GPU
+
+O próprio `vulkan_command_processor.cc` documenta que timestamps em cada passe
+forçam espera por idle no Turnip e distorcem o resultado. Sua medição histórica
+é de outro aparelho/jogo; não comprova que isso aconteceu nos testes do usuário.
+`GPU|log_gpu_frame_time_breakdown` é false por padrão, mas
+`GPU|log_gpu_frame_time_breakdown_passes` é true: ligar apenas o primeiro também
+liga a instrumentação detalhada. Para uma coleta inicial, conferir valores
+**efetivos**, desligar passes e usar somente dados por submission/CPU. Mesmo esse
+modo tem custo e deve ser comparado com execução sem diagnóstico. Os logs
+GpuFrame, VkFrameSync e VkFences distinguem CPU de preparação, GPU e waits; não
+estão no resumo RunPerformance atual. Os perfis locais rejeitam logging por
+projeto: não burlar sua allowlist nem empacotar isso como perfil recomendado.
+Não houve alteração desses defaults nesta sessão. As flags só são pistas de
+investigação, não uma conclusão sobre a queda observada.
+
+## Validação publicada
+
+Commit de código `ade50f603331b12be99878b5aa3c23a60a2380c9`.
+[UI #52](https://github.com/srRodry/Zephyr-Mobile/actions/runs/38502304489) aprovado:
+300.032 casos nativos, compilação Compose, 136 testes JVM sem falhas/erros/ignorados
+em 27 suites, nove casos de assinatura e regressões nativas de clock/APU.
+Artefato XML `11866775260`, CRC válido e SHA-256
+`f98422f07e2a4e4f36b081fe6b7b61d7eade85534cb6d8d43e909c259f8452aa`.
+[APK #38](https://github.com/srRodry/Zephyr-Mobile/actions/runs/38502304499):
+jobs APK e release ignorados. Não houve build Android nativo completo nesta noite.

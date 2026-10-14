@@ -119,3 +119,15 @@ inventar uma. Consulta a fóruns/vídeos não requer login nem contato com autor
   Experimento retirado antes de commit. Não ampliar registradores sem ABI/provas.
 - Resultado estático não é resultado de FPS. Compilação completa e comparação
   Android ficam para a manhã. Continuar com CPU/GPU/esperas; não criar APK à noite.
+
+- Otimização de SELECT publicada em `ade50f6`: 300.032 casos bit-exatos locais;
+  UI #52 aprovado: nativo, Compose, 136 testes JVM (zero falhas/erros/ignorados),
+  nove testes de assinatura e regressões de clock/APU. Relatório XML confirmado
+  após conferir hash/CRC do artefato. APK #38 e release ignorados.
+- Confirmada a origem da diferença SDL em `afec0241`, hash oficial Gradle 8.12.
+  Ver `zephyr-sdl-wrapper-audit-2026-10-14.md`. Não atribuir origem pela fronteira
+  rasa `abfe177` do clone; consulta completa do GitHub é necessária.
+- Próxima coleta GPU: verificar `log_gpu_frame_time_breakdown_passes=false` quando
+  ligar `log_gpu_frame_time_breakdown`. Default detalhado true pode distorcer
+  medidas; não ativar globalmente nem contornar allowlist de perfis. Essas métricas
+  existem em logs nativos, ainda não no resumo compartilhado RunPerformance.
