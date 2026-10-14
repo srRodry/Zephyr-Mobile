@@ -33,7 +33,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
-import androidx.compose.foundation.Image
 import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.Composable
@@ -65,7 +64,6 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.layout.ContentScale
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
@@ -126,68 +124,10 @@ val LocalSwapConfirm = staticCompositionLocalOf { false }
 
 // ---------------------------------------------------------------- B: rail, bottom bar, top bar
 
+/** Shared touch rail; controller navigation retains its existing contracts. */
 @Composable
 fun BRail(current: XdArea?, modifier: Modifier = Modifier) {
-    val c = Xd.colors
-    val nav = LocalXdNavigator.current
-    // Its colour runs under a cutout or a side navigation bar; the items stay clear of them.
-    Row(modifier.fillMaxHeight().background(c.s1).windowInsetsPadding(WindowInsets.safeDrawing.part(start = true))) {
-        Column(
-            Modifier.width(66.dp).fillMaxHeight().verticalScroll(rememberScrollState())
-                .windowInsetsPadding(WindowInsets.safeDrawing.part(top = true, bottom = true))
-                .padding(top = 10.dp, bottom = 8.dp),
-            horizontalAlignment = Alignment.CenterHorizontally,
-            verticalArrangement = Arrangement.spacedBy(2.dp),
-        ) {
-            Box(
-                Modifier.padding(bottom = 6.dp).size(36.dp).clip(RoundedCornerShape(9.dp))
-                    .background(c.bg),
-                contentAlignment = Alignment.Center,
-            ) {
-                Image(
-                    painter = painterResource(R.drawable.zephyr_launcher_foreground),
-                    contentDescription = stringResource(R.string.app_name),
-                    modifier = Modifier.fillMaxSize(),
-                )
-            }
-            for (a in XdArea.entries) if (a != XdArea.SETTINGS) RailItem(a, a == current) { nav.area(a) }
-            Spacer(Modifier.weight(1f).heightIn(min = 8.dp))
-            RailItem(XdArea.SETTINGS, current == XdArea.SETTINGS) { nav.area(XdArea.SETTINGS) }
-        }
-        VerticalDivider(thickness = 1.dp, color = c.line)
-    }
-}
-
-@Composable
-private fun RailItem(area: XdArea, selected: Boolean, onClick: () -> Unit) {
-    val c = Xd.colors
-    val shape = RoundedCornerShape(12.dp)
-    Column(
-        Modifier.width(56.dp).focusRing(shape).clip(shape)
-            .background(if (selected) c.acc.copy(alpha = 0.13f) else Color.Transparent)
-            .clickable(role = Role.Tab, onClick = onClick).semantics { this.selected = selected }
-            .padding(top = 5.dp, bottom = 4.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(2.dp),
-    ) {
-        Icon(area.icon, null, Modifier.size(21.dp), tint = if (selected) c.acc else c.fg3)
-        Text(stringResource(area.label), style = XdText.railLabel, color = if (selected) c.acc else c.fg3, maxLines = 1)
-    }
-}
-
-/** The rail laid along the bottom in portrait, without the optional areas. */
-@Composable
-fun BBottomBar(current: XdArea?, modifier: Modifier = Modifier) {
-    val c = Xd.colors
-    val nav = LocalXdNavigator.current
-    // Above the navigation bar (three buttons or the gesture handle), its colour running under it.
-    Column(modifier.fillMaxWidth().background(c.s1).windowInsetsPadding(WindowInsets.safeDrawing.part(bottom = true, start = true, end = true))) {
-        HorizontalDivider(thickness = 1.dp, color = c.line)
-        Row(Modifier.fillMaxWidth().height(62.dp).padding(horizontal = 6.dp), horizontalArrangement = Arrangement.SpaceAround,
-            verticalAlignment = Alignment.CenterVertically) {
-            for (a in XdArea.entries) if (!a.optional) RailItem(a, a == current) { nav.area(a) }
-        }
-    }
+    ZephyrBladeRail(current, modifier)
 }
 
 /** The bar on top of a screen: back, a small cover or icon, title and IDs, actions. */
@@ -345,7 +285,8 @@ fun XdSectionedScreen(
         val portrait = maxHeight > maxWidth
         if (portrait) {
             Column(Modifier.fillMaxSize()) {
-                Column(Modifier.weight(1f).windowInsetsPadding(WindowInsets.safeDrawing.part(top = true))) {
+                BTopAreaBar(area)
+                Column(Modifier.weight(1f).windowInsetsPadding(WindowInsets.safeDrawing.part(bottom = true, start = true, end = true))) {
                     BTopBar(title, subtitle = subtitle, subtitleMono = subtitleMono, onBack = onBack, lead = lead, art = art, portrait = true, actions = actions)
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 10.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -354,7 +295,6 @@ fun XdSectionedScreen(
                     HorizontalDivider(thickness = 1.dp, color = c.line)
                     SectionBody(current, Modifier.weight(1f)) { BackToLink(history, sections) }
                 }
-                BBottomBar(area)
             }
         } else {
             Row(Modifier.fillMaxSize()) {
@@ -449,7 +389,7 @@ fun XdSingleScreen(
     overlay: (@Composable BoxScope.() -> Unit)? = null,
     /** Controller mode: pad buttons the screen handles itself; true = handled. */
     onPad: ((PadButton) -> Boolean)? = null,
-    /** False for a modal flow (the folder browser): no rail or bottom bar to wander off mid-way. */
+    /** False for a modal flow (the folder browser): no area navigation to wander off mid-way. */
     showNav: Boolean = true,
     content: @Composable ColumnScope.() -> Unit,
 ) {
@@ -468,7 +408,7 @@ fun XdSingleScreen(
     BoxWithConstraints(modifier.fillMaxSize().background(c.bg)) {
         val portrait = maxHeight > maxWidth
         val body: @Composable (Modifier) -> Unit = { m ->
-            Column(m.windowInsetsPadding(WindowInsets.safeDrawing.part(top = true, end = !portrait))) {
+            Column(m.windowInsetsPadding(WindowInsets.safeDrawing.part(top = !portrait || !showNav, start = portrait, end = true, bottom = portrait && showNav))) {
                 BTopBar(title, subtitle = subtitle, onBack = onBack, portrait = portrait, actions = actions)
                 val inner = Modifier.weight(1f).fillMaxWidth()
                 if (scroll) Column(inner.verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 24.dp), content = content)
@@ -477,7 +417,7 @@ fun XdSingleScreen(
         }
         when {
             !showNav -> body(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.part(bottom = true, start = !portrait)))
-            portrait -> Column(Modifier.fillMaxSize()) { body(Modifier.weight(1f)); BBottomBar(area) }
+            portrait -> Column(Modifier.fillMaxSize()) { BTopAreaBar(area); body(Modifier.weight(1f)) }
             else -> Row(Modifier.fillMaxSize()) { BRail(area); body(Modifier.weight(1f)) }
         }
         overlay?.invoke(this)

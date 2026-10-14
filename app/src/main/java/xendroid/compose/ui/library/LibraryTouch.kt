@@ -54,7 +54,7 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import xendroid.compose.R
 import xendroid.compose.data.Game
-import xendroid.compose.ui.design.BBottomBar
+import xendroid.compose.ui.design.BTopAreaBar
 import xendroid.compose.ui.design.BRail
 import xendroid.compose.ui.design.GameCover
 import xendroid.compose.ui.design.PadButton
@@ -117,7 +117,7 @@ fun LibraryTouch(
         val listMode = portrait && density == CoverDensity.MEDIUM
         val featured = shown.firstOrNull { it.stableId == selected?.stableId } ?: shown.firstOrNull()
         val main: @Composable (Modifier) -> Unit = { m ->
-            Column(m.windowInsetsPadding(WindowInsets.safeDrawing.part(top = true)).fillMaxHeight()) {
+            Column(m.windowInsetsPadding(WindowInsets.safeDrawing.part(top = !portrait, bottom = portrait, start = portrait, end = portrait)).fillMaxHeight()) {
                 Row(
                     Modifier.fillMaxWidth().padding(start = 14.dp, end = 14.dp, top = 12.dp, bottom = 8.dp),
                     verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp),
@@ -221,7 +221,7 @@ fun LibraryTouch(
             }
         }
         if (portrait) {
-            Column(Modifier.fillMaxSize()) { main(Modifier.weight(1f)); BBottomBar(area) }
+            Column(Modifier.fillMaxSize()) { BTopAreaBar(area); main(Modifier.weight(1f)) }
         } else {
             Row(Modifier.fillMaxSize()) {
                 BRail(area)

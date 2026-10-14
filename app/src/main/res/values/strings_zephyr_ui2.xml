@@ -8,5 +8,6 @@
     <string name="zephyr_ui2_profile_id">Profile identifier (XUID)</string>
     <string name="zephyr_ui2_copy_profile_id">Copy identifier</string>
     <string name="zephyr_ui2_profiles_empty">No profiles yet.</string>
+    <string name="zephyr_ui2_system">System</string>
 </resources>
 
