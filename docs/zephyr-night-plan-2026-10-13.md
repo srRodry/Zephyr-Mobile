@@ -230,3 +230,19 @@ inventar uma. Consulta a fóruns/vídeos não requer login nem contato com autor
   `zephyr-fence-timeline-review-2026-10-14.md` para escopos e validação no aparelho.
 - Política de coleta, readbacks, áudio e defaults intactos. Não ligar bounded
   globalmente nem retirar waits por intuição; faltam dados reais do driver ativo.
+
+### Fechamento — evidência real do pacote de logs enviado
+
+- Base `7d58d83`, UI #66 aprovado. ZIP enviado inspecionado sem publicar logs
+  brutos/UUIDs/caminhos/pids. Ler `zephyr-capture-evidence-2026-10-14.md`.
+- Há duas execuções: driver system Qualcomm e custom Turnip, também com valores
+  turnip_debug distintos. Isso NÃO é A/B controlado. Contexto do arquivo
+  arquivado identifica appVersion=5fe5d475; current não tem contexto separado.
+- Nenhuma amostra GPU/fences/pipeline e nenhum run-report.json: ausência não é
+  tempo zero nem prova de coletores desligados. Não inferir CPU/JIT/FPS.
+- async_skip_draws=true nos dois dumps é também default herdado do core;
+  não culpar preset/usuário nem alterar default. Espera de submissão zero nessa
+  política não excluiria outros custos. Não mexer em áudio a partir disso.
+- 16 parser e sete grupos timeline aprovados localmente; conferir CI do novo
+  commit documental. Próximo passo exige relatório da execução + logs GPU,
+  build/driver/patches/trecho constantes e coleta conservadora quando acessível.
