@@ -72,6 +72,7 @@ import xendroid.compose.ui.design.CHints
 import xendroid.compose.ui.design.LocalSwapConfirm
 import xendroid.compose.ui.design.Xd
 import xendroid.compose.ui.design.XdButton
+import xendroid.compose.ui.design.XdSilverPanel
 import xendroid.compose.ui.design.XdButtonKind
 import xendroid.compose.ui.design.XdHint
 import xendroid.compose.ui.design.XdIconButton
@@ -170,7 +171,7 @@ data class HudPreview(
  * ↑↓, changes the row with ←→, acts with A, switches category with LB/RB and closes with B; the host
  * drives that selection ([InGameMenuState]), so the rows only draw it.
  */
-@OptIn(ExperimentalFoundationApi::class)
+@OptIn(ExperimentalFoundationApi::class, ExperimentalLayoutApi::class)
 @Composable
 fun InGameMenu(
     state: InGameMenuState,
@@ -213,7 +214,7 @@ fun InGameMenu(
         }
         val shape = if (portrait) RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp) else RoundedCornerShape(topEnd = 22.dp, bottomEnd = 22.dp)
         val panel = if (portrait) Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.86f)
-        else Modifier.align(Alignment.CenterStart).width(minOf(maxWidth * 0.74f, if (controller) 660.dp else 620.dp)).fillMaxHeight()
+        else Modifier.align(Alignment.CenterStart).width(minOf(maxWidth * (if (controller) 0.74f else 0.78f), if (controller) 660.dp else 720.dp)).fillMaxHeight()
         Column(
             panel.clip(shape).background(c.solid(c.sheet))
                 .windowInsetsPadding(WindowInsets.safeDrawing.part(top = !portrait, bottom = true, start = true))
@@ -221,9 +222,10 @@ fun InGameMenu(
             verticalArrangement = Arrangement.spacedBy(if (short) 8.dp else 10.dp),
         ) {
             val dialog = state.confirmingQuit || state.logPicker
-            // Landscape keeps the height for the rows: leaving and the kept changes sit in the head, no footer.
-            Head(model, controller, compactActions = !portrait && !dialog, onClose = { onAction(InGameAction.RESUME) },
+            // Controller mode keeps its existing head; touch actions stay outside the scrolling rows.
+            if (controller) Head(model, controller, compactActions = !portrait && !dialog, onClose = { onAction(InGameAction.RESUME) },
                 onQuit = { onAction(InGameAction.QUIT) }, onChanges = { onPage(InGamePage.SESSION) })
+            else TouchHead(model, short, onClose = { onAction(InGameAction.RESUME) })
             if (model.status.isNotEmpty() && !dialog && roomy) StatusLine(model.status)
             val body = Modifier.weight(1f).fillMaxWidth()
             when {
@@ -248,13 +250,44 @@ fun InGameMenu(
                     XdHint("LB/RB", stringResource(R.string.menu_hint_categories)),
                     XdHint(if (swap) "A" else "B", stringResource(R.string.xd_close)) { onAction(InGameAction.RESUME) }),
                     Modifier.clip(RoundedCornerShape(12.dp)), scrim = false)
-            } else if (!dialog && portrait) {
-                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            } else if (!dialog) {
+                FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     XdButton(stringResource(R.string.menu_continue), { onAction(InGameAction.RESUME) }, kind = XdButtonKind.PRIMARY,
-                        icon = XdIcons.play, modifier = Modifier.weight(1f))
-                    XdButton(stringResource(R.string.menu_exit_game), { onAction(InGameAction.QUIT) }, kind = XdButtonKind.GHOST, icon = XdIcons.exit)
+                        icon = XdIcons.play, modifier = Modifier.heightIn(min = 48.dp))
+                    if (short) XdIconButton(XdIcons.exit, stringResource(R.string.menu_exit_game),
+                        { onAction(InGameAction.QUIT) }, size = 48.dp, tint = c.dangerText)
+                    else XdButton(stringResource(R.string.menu_exit_game), { onAction(InGameAction.QUIT) }, kind = XdButtonKind.GHOST,
+                        icon = XdIcons.exit, modifier = Modifier.heightIn(min = 48.dp))
+                    if (!portrait && model.savedChanges > 0) {
+                        val savedLabel = pluralStringResource(R.plurals.menu_saved_chip, model.savedChanges, model.savedChanges)
+                        XdButton(if (short) model.savedChanges.toString() else savedLabel,
+                            { onPage(InGamePage.SESSION) }, icon = XdIcons.save,
+                            modifier = Modifier.heightIn(min = 48.dp).semantics { contentDescription = savedLabel })
+                    }
                 }
             }
+        }
+    }
+}
+
+/** A static touch header; the pause label is supplied by the host, never inferred from the menu. */
+@Composable
+private fun TouchHead(model: InGameMenuModel, short: Boolean, onClose: () -> Unit) {
+    XdSilverPanel {
+        val c = Xd.colors
+        Row(Modifier.fillMaxWidth().padding(vertical = if (short) 0.dp else 4.dp),
+            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(Modifier.width(4.dp).height(if (short) 38.dp else 48.dp).background(c.acc))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                Text(model.gameName ?: stringResource(R.string.app_name), color = c.fg,
+                    style = XdText.body.copy(fontSize = if (short) 21.sp else 24.sp,
+                        lineHeight = if (short) 25.sp else 28.sp, fontWeight = FontWeight.Bold),
+                    maxLines = if (short) 1 else 2, overflow = TextOverflow.Ellipsis)
+                Text(stringResource(if (model.paused) R.string.xd_menu_paused else R.string.xd_menu_running),
+                    style = XdText.labelSm, color = c.acc)
+            }
+            XdIconButton(XdIcons.x, stringResource(R.string.menu_continue), onClose, size = 48.dp)
         }
     }
 }
@@ -307,7 +340,7 @@ private fun StatusLine(status: List<MenuStat>) {
 private fun PageRail(state: InGameMenuState, controller: Boolean, short: Boolean, onPage: (InGamePage) -> Unit) {
     val c = Xd.colors
     Column(
-        Modifier.width(if (short) 76.dp else 84.dp).fillMaxHeight().verticalScroll(rememberScrollState()),
+        Modifier.width(if (controller) { if (short) 76.dp else 84.dp } else { if (short) 92.dp else 104.dp }).fillMaxHeight().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -316,14 +349,16 @@ private fun PageRail(state: InGameMenuState, controller: Boolean, short: Boolean
             val selected = page == state.page
             val shape = RoundedCornerShape(12.dp)
             Column(
-                Modifier.fillMaxWidth().clip(shape)
-                    .background(if (selected) c.acc.copy(alpha = 0.16f) else Color.Transparent)
+                Modifier.fillMaxWidth().heightIn(min = if (controller) 0.dp else 48.dp).clip(shape)
+                    .background(if (controller) { if (selected) c.acc.copy(alpha = 0.16f) else Color.Transparent }
+                        else { if (selected) c.acc else c.s1 })
                     .clickable(role = Role.Tab) { onPage(page) }.semantics { this.selected = selected }
                     .padding(vertical = if (short) 5.dp else 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                Icon(page.icon(), null, Modifier.size(20.dp), tint = if (selected) c.acc else c.fg3)
-                Text(page.label(), style = XdText.labelSm.copy(fontSize = 11.5.sp), color = if (selected) c.acc else c.fg2, maxLines = 1)
+                Icon(page.icon(), null, Modifier.size(20.dp), tint = if (selected && !controller) c.onAcc else if (selected) c.acc else c.fg3)
+                Text(page.label(), style = XdText.labelSm.copy(fontSize = if (controller) 11.5.sp else 12.sp),
+                    color = if (selected && !controller) c.onAcc else if (selected) c.acc else c.fg2, maxLines = if (controller) 1 else 2)
             }
         }
         if (controller) ButtonGlyph("RB")
@@ -340,14 +375,16 @@ private fun PageTabs(state: InGameMenuState, controller: Boolean, onPage: (InGam
         for (page in InGamePage.entries) {
             val selected = page == state.page
             Row(
-                Modifier.height(36.dp).clip(RoundedCornerShape(50))
-                    .background(if (selected) c.acc.copy(alpha = 0.18f) else Color.Transparent)
+                Modifier.then(if (controller) Modifier.height(36.dp) else Modifier.heightIn(min = 48.dp)).clip(RoundedCornerShape(50))
+                    .background(if (controller) { if (selected) c.acc.copy(alpha = 0.18f) else Color.Transparent }
+                        else { if (selected) c.acc else c.s1 })
                     .clickable(role = Role.Tab) { onPage(page) }.semantics { this.selected = selected }
                     .padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Icon(page.icon(), null, Modifier.size(16.dp), tint = if (selected) c.acc else c.fg3)
-                Text(page.label(), style = XdText.labelSm, color = if (selected) c.acc else c.fg2, maxLines = 1)
+                Icon(page.icon(), null, Modifier.size(16.dp), tint = if (selected && !controller) c.onAcc else if (selected) c.acc else c.fg3)
+                Text(page.label(), style = XdText.labelSm,
+                    color = if (selected && !controller) c.onAcc else if (selected) c.acc else c.fg2, maxLines = 1)
             }
         }
         if (controller) ButtonGlyph("RB")
@@ -370,7 +407,10 @@ private fun Rows(
     onSetDone: (InGameAction) -> Unit,
 ) {
     Column(modifier.verticalScroll(scrollState), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-        if (state.page == InGamePage.HUD) model.hudPreview?.let { HudPreviewBox(it) }
+        if (state.page == InGamePage.HUD) model.hudPreview?.let {
+            if (!Xd.controller) Text(stringResource(R.string.zephyr_ui2_hud_preview), style = XdText.small, color = Xd.colors.fg2)
+            HudPreviewBox(it)
+        }
         var group: MenuGroup? = null
         state.actions().forEachIndexed { index, action ->
             val here = if (action == InGameAction.MORE_OPTIONS) null else groupOf(state.page, action)
@@ -458,12 +498,12 @@ private fun MenuRow(
     // Pills, chips and the slider take their own taps; the other rows act on a tap anywhere.
     val tappable = kind == RowKind.TOGGLE || kind == RowKind.CYCLE || kind == RowKind.BUTTON
     Column(
-        modifier.fillMaxWidth().heightIn(min = 46.dp)
+        modifier.fillMaxWidth().heightIn(min = if (c.controller) 46.dp else 56.dp)
             // U02: the controller's highlight is the screen reader's "selected", for the row and its title.
             .semantics(mergeDescendants = true) { this.selected = selected }
             .clip(shape)
             .background(if (selected) c.acc.copy(alpha = 0.2f).compositeOver(c.solid(c.s1)) else c.s1)
-            .then(if (selected) Modifier.border(2.dp, c.acc, shape) else Modifier)
+            .then(if (selected) Modifier.border(2.dp, c.acc, shape) else if (!c.controller) Modifier.border(1.dp, c.line2, shape) else Modifier)
             .then(if (tappable) Modifier.clickable(enabled = value.enabled, role = Role.Button, onClick = onClick) else Modifier)
             .alpha(if (value.enabled) 1f else 0.45f)
             .padding(horizontal = 14.dp, vertical = 9.dp),
@@ -488,7 +528,7 @@ private fun MenuRow(
                     value.text?.let { Text(it, style = XdText.mono.copy(fontSize = 12.5.sp), color = c.fg) }
                 }
                 Slider(value = value.fraction, onValueChange = onSet, onValueChangeFinished = onSetDone, steps = value.steps, enabled = value.enabled,
-                    modifier = Modifier.fillMaxWidth().height(26.dp),
+                    modifier = Modifier.fillMaxWidth().height(if (c.controller) 26.dp else 48.dp),
                     colors = SliderDefaults.colors(thumbColor = c.acc, activeTrackColor = c.acc, inactiveTrackColor = c.solid(c.s4),
                         activeTickColor = c.onAcc.copy(alpha = 0.4f), inactiveTickColor = c.fg3.copy(alpha = 0.4f)))
             }
@@ -530,12 +570,12 @@ private fun OptionPill(text: String, on: Boolean, check: Boolean, cursor: Boolea
     val c = Xd.colors
     val shape = RoundedCornerShape(50)
     Row(
-        Modifier.height(32.dp).clip(shape)
+        Modifier.then(if (c.controller) Modifier.height(32.dp) else Modifier.heightIn(min = 48.dp)).clip(shape)
             .background(if (on) c.acc.copy(alpha = 0.22f).compositeOver(c.solid(c.s2)) else c.s2)
             .then(if (on || cursor) Modifier.border(if (cursor) 2.dp else 1.dp, if (cursor) c.fg else c.acc.copy(alpha = 0.6f), shape) else Modifier)
             .clickable(enabled = enabled, role = if (check) Role.Checkbox else Role.RadioButton, onClick = onClick)
             .semantics { selected = on }
-            .padding(horizontal = 12.dp),
+            .padding(horizontal = 12.dp, vertical = if (c.controller) 0.dp else 6.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp),
     ) {
         if (check && on) Icon(XdIcons.check, null, Modifier.size(14.dp), tint = c.acc)
@@ -679,3 +719,4 @@ internal fun InGameAction.title(): String = stringResource(
         InGameAction.MORE_OPTIONS -> R.string.menu_fewer_options
     },
 )
+

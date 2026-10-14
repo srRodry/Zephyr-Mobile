@@ -3,4 +3,5 @@
     <string name="zephyr_ui2_settings_title">Settings, your way.</string>
     <string name="zephyr_ui2_profiles_title">Your space.</string>
     <string name="zephyr_ui2_profiles_subtitle">Profiles, players and saves.</string>
+    <string name="zephyr_ui2_hud_preview">Preview — sample data</string>
 </resources>
