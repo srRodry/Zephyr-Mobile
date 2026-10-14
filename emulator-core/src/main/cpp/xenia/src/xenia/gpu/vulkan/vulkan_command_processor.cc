@@ -3832,6 +3832,15 @@ void VulkanCommandProcessor::IssueSwap(uint32_t frontbuffer_ptr,
       s.last_report_ns = now;
     } else if (now - s.last_report_ns >= 1000000000ull) {
       const double f = static_cast<double>(s.frames);
+      const auto pipeline_waits = pipeline_cache_->TakePipelineWaitStats();
+      XELOGI(
+          "VkPipelineWait: {} frames | submission calls={:.2f}/fr "
+          "time={:.3f}ms/fr max={:.3f}ms | explicit calls={:.2f}/fr "
+          "time={:.3f}ms/fr max={:.3f}ms",
+          s.frames, pipeline_waits[0].calls / f,
+          pipeline_waits[0].ns / f / 1e6, pipeline_waits[0].max_ns / 1e6,
+          pipeline_waits[1].calls / f, pipeline_waits[1].ns / f / 1e6,
+          pipeline_waits[1].max_ns / 1e6);
       XELOGI(
           "VkFrameSync: {} frames | per frame: awaits={:.1f} await={:.1f}ms "
           "submissions={:.1f} resolves={:.1f} memexport_awaits={:.1f} "

@@ -33,7 +33,7 @@ class SelectionTests(unittest.TestCase):
         self.save()
         directory, targets = module.plan(self.db)
         self.assertEqual(directory, self.directory)
-        self.assertEqual(targets, [f'CMakeFiles/native.dir/{i}.o' for i in range(3)])
+        self.assertEqual(targets, [f'CMakeFiles/native.dir/{i}.o' for i in range(len(module.SOURCES))])
     def test_rejects_missing_ambiguous_and_non_android_entries(self):
         for mode in ('missing', 'ambiguous', 'host'):
             original = json.loads(json.dumps(self.entries))
@@ -66,6 +66,6 @@ class SelectionTests(unittest.TestCase):
                 result = subprocess.run([sys.executable, str(SCRIPT), '--database', str(self.db)], capture_output=True)
                 self.assertNotEqual(result.returncode, 0)
                 self.assertEqual(json.loads(record.read_text()), ['-C', str(self.directory), '-j', '2',
-                                 *[f'CMakeFiles/native.dir/{i}.o' for i in range(3)]])
+                                 *[f'CMakeFiles/native.dir/{i}.o' for i in range(len(module.SOURCES))]])
 
 if __name__ == '__main__': unittest.main()

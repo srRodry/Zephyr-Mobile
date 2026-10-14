@@ -1202,7 +1202,11 @@ void VulkanPipelineCache::EndSubmission() {
     }
     if (await_creation_completion_event) {
       creation_request_cond_.notify_one();
-      xe::threading::Wait(creation_completion_event_.get(), false);
+      pipeline_wait_stats_.Measure(
+          PipelineWaitStats::Kind::kSubmission,
+          cvars::log_gpu_frame_time_breakdown, [&]() {
+            xe::threading::Wait(creation_completion_event_.get(), false);
+          });
     }
   }
 
@@ -1236,7 +1240,11 @@ void VulkanPipelineCache::AwaitPipelineCompletion() {
 
   if (await_creation_completion_event) {
     creation_request_cond_.notify_one();
-    xe::threading::Wait(creation_completion_event_.get(), false);
+    pipeline_wait_stats_.Measure(
+        PipelineWaitStats::Kind::kExplicit,
+        cvars::log_gpu_frame_time_breakdown, [&]() {
+          xe::threading::Wait(creation_completion_event_.get(), false);
+        });
   }
 }
 

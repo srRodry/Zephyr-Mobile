@@ -37,6 +37,7 @@
 #include "xenia/gpu/shader_storage.h"
 #include "xenia/gpu/spirv_shader_translator.h"
 #include "xenia/gpu/vulkan/vulkan_pipeline_cache_file.h"
+#include "xenia/gpu/vulkan/pipeline_wait_stats.h"
 #include "xenia/gpu/vulkan/vulkan_render_target_cache.h"
 #include "xenia/gpu/vulkan/vulkan_shader.h"
 #include "xenia/gpu/xenos.h"
@@ -226,6 +227,9 @@ class VulkanPipelineCache : public GuestSpirvShaderCache::Host {
   // before state is consumed. This was added so strict ZPD query paths stop
   // racing pipeline compilation and then blocking work on incomplete state.
   void AwaitPipelineCompletion();
+  PipelineWaitStats::Snapshot TakePipelineWaitStats() {
+    return pipeline_wait_stats_.Take();
+  }
 
   VulkanShader* LoadShader(xenos::ShaderType shader_type,
                            const uint32_t* host_address, uint32_t dword_count);
@@ -676,6 +680,9 @@ class VulkanPipelineCache : public GuestSpirvShaderCache::Host {
   std::pair<const PipelineDescription, Pipeline>* last_pipeline_ = nullptr;
 
   void CreationThread();
+
+  // Written and drained by the command-processor thread, never the workers.
+  PipelineWaitStats pipeline_wait_stats_;
 
   // For asynchronous creation.
   std::vector<std::unique_ptr<xe::threading::Thread>> creation_threads_;

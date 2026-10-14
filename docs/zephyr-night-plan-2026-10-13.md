@@ -186,3 +186,18 @@ inventar uma. Consulta a fóruns/vídeos não requer login nem contato com autor
 - Próxima instrumentação candidata: tempo real de bloqueio por pipelines,
   separado do trabalho somado dos workers. Não implementada sem validação.
   Nenhum gargalo, ganho de FPS ou compatibilidade foi demonstrado nesta etapa.
+
+### Etapa de 03h — espera por conclusão de pipelines
+
+- Reconfirmado HEAD `74f6968`, UI #63 aprovado e APK #47 ignorado.
+- Novo coletor mede as duas chamadas Wait já existentes em EndSubmission e
+  AwaitPipelineCompletion, mantendo predicados, mutex/evento e sincronização.
+  Usa somente breakdown GPU opt-in existente; desligado não consulta clocks.
+- Log VkPipelineWait separado por submissão/espera explícita, calls/frame,
+  ms/frame e maior chamada da janela. Parede de API/escalonamento, não CPU útil,
+  worker time ou GPU busy. Calls não prova bloqueio de kernel.
+- 100.000 chamadas desligadas sem clocks e 200 handshakes concorrentes locais
+  aprovados; categorias/reset/overload real/rollback verificados. CI inclui teste
+  e compila também os dois arquivos GPU afetados com NDK (cinco TUs no total).
+- Ler `zephyr-pipeline-wait-diagnostics-2026-10-14.md`. Confirmar CI do novo HEAD
+  antes de continuar. Sem novo APK, mudança de áudio/defaults ou prova de FPS.
