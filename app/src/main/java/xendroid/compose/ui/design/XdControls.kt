@@ -35,6 +35,7 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.Slider
 import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Text
+import androidx.compose.runtime.staticCompositionLocalOf
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.getValue
@@ -78,6 +79,9 @@ fun Modifier.focusRing(shape: Shape, color: Color? = null, width: Dp = 2.dp): Mo
 enum class XdButtonKind { PRIMARY, SECONDARY, GHOST, DANGER }
 enum class XdButtonSize { SM, MD, LG }
 
+/** New content planes can opt into square controls; legacy screens keep the same default. */
+internal val LocalXdButtonShape = staticCompositionLocalOf<Shape> { RoundedCornerShape(50) }
+
 @Composable
 fun XdButton(
     text: String,
@@ -108,7 +112,7 @@ fun XdButton(
         XdButtonSize.MD -> XdText.button
         XdButtonSize.LG -> XdText.button.copy(fontSize = 15.sp)
     }
-    val shape = RoundedCornerShape(50)
+    val shape = LocalXdButtonShape.current
     Row(
         modifier
             // An accent ring would vanish on the accent fill of a primary button.

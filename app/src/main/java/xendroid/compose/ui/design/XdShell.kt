@@ -270,6 +270,8 @@ fun XdSectionedScreen(
     actions: (@Composable RowScope.() -> Unit)? = null,
     hints: List<XdHint>? = null,
     overlay: (@Composable BoxScope.() -> Unit)? = null,
+    /** Optional touch presentation; common selection/history and controller presentation stay shared. */
+    touchFrame: (@Composable (XdSection?, XdSectionHistory) -> Unit)? = null,
     /** Controller mode: pad buttons the screen handles itself (Y favourites…); true = handled. */
     onPad: ((PadButton) -> Boolean)? = null,
 ) {
@@ -278,6 +280,13 @@ fun XdSectionedScreen(
     val history = rememberSectionHistory(selected, onSelect)
     if (Xd.controller) {
         CSectioned(title, sections, current, history, modifier, subtitle, onBack, lead, headIcon, art, actions, hints, overlay, onPad)
+        return
+    }
+    if (touchFrame != null) {
+        Box(modifier.fillMaxSize()) {
+            touchFrame(current, history)
+            overlay?.invoke(this)
+        }
         return
     }
     val c = Xd.colors

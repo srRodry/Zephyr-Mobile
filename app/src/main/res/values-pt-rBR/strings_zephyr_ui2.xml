@@ -15,5 +15,10 @@
     <string name="zephyr_library_all_titles">Todos os jogos</string>
     <string name="zephyr_library_titles">Jogos</string>
     <string name="zephyr_library_medium_covers">Capas médias</string>
+    <string name="zephyr_game_adjustments">Ajustes</string>
+    <string name="zephyr_game_data">Dados</string>
+    <string name="zephyr_game_identifiers">Identificação do jogo</string>
+    <string name="zephyr_game_title_id">Title ID</string>
+    <string name="zephyr_game_media_id">Media ID</string>
 </resources>
 

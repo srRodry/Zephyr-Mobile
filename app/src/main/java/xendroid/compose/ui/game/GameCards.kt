@@ -53,8 +53,6 @@ import xendroid.compose.ui.design.Xd
 import xendroid.compose.ui.design.XdButton
 import xendroid.compose.ui.design.XdButtonKind
 import xendroid.compose.ui.design.XdButtonSize
-import xendroid.compose.ui.design.XdEditorialHero
-import xendroid.compose.ui.design.XdSilverPanel
 import androidx.compose.foundation.layout.heightIn
 import xendroid.compose.ui.design.XdCard
 import xendroid.compose.ui.design.XdEyebrow
@@ -75,6 +73,7 @@ import xendroid.compose.ui.design.XdTwoColumns
 import xendroid.compose.ui.library.CoverArt
 import xendroid.compose.ui.library.GameActions
 import xendroid.compose.ui.library.GameLibraryViewModel
+import xendroid.compose.ui.library.LibraryPlane
 import xendroid.compose.ui.library.LibraryData
 import xendroid.compose.ui.library.RunTimelineDialog
 import xendroid.compose.ui.library.compatShortText
@@ -146,29 +145,17 @@ class GameCards(
     /** Touch "Overview": last session, quick settings, compatibility, patches and content. */
     @OptIn(ExperimentalLayoutApi::class)
     @Composable
-    fun Overview(onPlay: () -> Unit, onLaunch: () -> Unit) {
+    fun Overview() {
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val wide = maxWidth > 620.dp
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                XdEditorialHero(art.model, art.smart, game.name,
-                    listOfNotNull(formatLabel(game.format), game.titleId).joinToString(" · "),
-                    stringResource(R.string.xd_game_sec_overview)) {
-                    FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        XdButton(stringResource(R.string.lib_play), onPlay, Modifier.heightIn(min = 48.dp),
-                            kind = XdButtonKind.PRIMARY, size = XdButtonSize.LG, icon = XdIcons.play, enabled = !actions.preparing)
-                        XdButton(stringResource(R.string.xd_game_sec_launch), onLaunch, Modifier.heightIn(min = 48.dp),
-                            size = XdButtonSize.LG, enabled = !actions.preparing)
+                LibraryPlane(Modifier.fillMaxWidth()) {
+                    Column(Modifier.padding(12.dp)) {
+                        GameSheetLink(stringResource(R.string.xd_game_sec_all), GameSections.SETTINGS, XdIcons.sliders, onSection)
+                        GameSheetLink(stringResource(R.string.xd_game_sec_content), GameSections.CONTENT, XdIcons.patch, onSection)
+                        GameSheetLink(stringResource(R.string.xd_game_sec_data), GameSections.DATA, XdIcons.save, onSection)
+                        GameSheetLink(stringResource(R.string.xd_game_sec_perf), GameSections.PERF, XdIcons.chart, onSection)
                     }
-                }
-                XdSilverPanel {
-                    XdListRow(stringResource(R.string.xd_game_sec_all), icon = XdIcons.sliders,
-                        onClick = { onSection(GameSections.SETTINGS) })
-                    XdListRow(stringResource(R.string.xd_game_sec_content), icon = XdIcons.patch,
-                        onClick = { onSection(GameSections.CONTENT) })
-                    XdListRow(stringResource(R.string.xd_game_sec_data), icon = XdIcons.save,
-                        onClick = { onSection(GameSections.DATA) })
-                    XdListRow(stringResource(R.string.xd_game_sec_perf), icon = XdIcons.chart, divider = false,
-                        onClick = { onSection(GameSections.PERF) })
                 }
                 LastSessionCard(full = false)
                 XdTwoColumns(wide,

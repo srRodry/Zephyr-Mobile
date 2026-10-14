@@ -2,6 +2,8 @@ package xendroid.compose.screens
 
 import androidx.compose.runtime.remember
 import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.hasAnyAncestor
 import androidx.compose.ui.test.hasContentDescription
 import androidx.compose.ui.test.hasTestTag
@@ -105,16 +107,56 @@ class BaseShots {
 
     @Config(qualifiers = Phone.LAND) @Test fun sheetLand() { game(InputMode.TOUCH); compose.shot("base/depois-ficha-paisagem") }
     @Config(qualifiers = Phone.PORT) @Test fun sheetPort() { game(InputMode.TOUCH); compose.shot("base/depois-ficha-retrato") }
-    @Config(qualifiers = Phone.LAND) @Test fun sheetSettings() { game(InputMode.TOUCH, section = "set:IMAGE"); compose.shot("base/depois-ficha-ajustes") }
-    @Config(qualifiers = Phone.LAND) @Test fun sheetPerformance() { game(InputMode.TOUCH, section = "perf"); compose.shot("base/depois-ficha-desempenho") }
-    @Config(qualifiers = Phone.LAND) @Test fun sheetContent() { game(InputMode.TOUCH, section = "cont"); compose.shot("base/depois-ficha-conteudo") }
-    @Config(qualifiers = Phone.LAND) @Test fun sheetData() { game(InputMode.TOUCH, section = "data"); compose.shot("base/depois-ficha-dados") }
+    @Config(qualifiers = Phone.LAND) @Test fun sheetSettings() { game(InputMode.TOUCH, section = "set:IMAGE"); compose.onNodeWithTag("game-sheet-tab:settings").assertIsSelected(); compose.onNodeWithTag("game-sheet-content:set:IMAGE").assertExists(); compose.shot("base/depois-ficha-ajustes") }
+    @Config(qualifiers = Phone.LAND) @Test fun sheetPerformance() { game(InputMode.TOUCH, section = "perf"); compose.onNodeWithTag("game-sheet-tab:data").assertIsSelected(); compose.onNodeWithTag("game-sheet-content:perf").assertExists(); compose.shot("base/depois-ficha-desempenho") }
+    @Config(qualifiers = Phone.LAND) @Test fun sheetContent() { game(InputMode.TOUCH, section = "cont"); compose.onNodeWithTag("game-sheet-tab:data").assertIsSelected(); compose.onNodeWithTag("game-sheet-content:cont").assertExists(); compose.shot("base/depois-ficha-conteudo") }
+    @Config(qualifiers = Phone.LAND) @Test fun sheetData() { game(InputMode.TOUCH, section = "data"); compose.onNodeWithTag("game-sheet-tab:data").assertIsSelected(); compose.onNodeWithTag("game-sheet-content:data").assertExists(); compose.shot("base/depois-ficha-dados") }
     @Config(qualifiers = Phone.LAND) @Test fun sheetController() { game(InputMode.CONTROLLER); compose.shot("base/depois-ficha-controle") }
     @Config(qualifiers = Phone.LAND) @Test fun sheetControllerSettings() { game(InputMode.CONTROLLER, section = "set"); compose.shot("base/depois-ficha-controle-ajustes") }
     @Config(qualifiers = Phone.LAND) @Test fun launchWith() {
         game(InputMode.TOUCH)
-        compose.onAllNodesWithText("Iniciar com…").onFirst().performClick()
+        compose.onNodeWithTag("game-sheet-launch").performScrollTo().performClick()
         Fixture.settle()
         compose.screen("base/depois-iniciar-com")
     }
+    @Config(qualifiers = Phone.PORT) @Test fun sheetOverviewToSettingsAndBack() {
+        game(InputMode.TOUCH)
+        compose.onNodeWithTag("game-sheet-link:settings").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("game-sheet-tab:settings").assertIsSelected()
+        compose.onNodeWithTag("game-sheet-content:settings").assertExists()
+        compose.onNodeWithTag("game-sheet-return").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("game-sheet-tab:ov").assertIsSelected()
+        compose.onNodeWithTag("game-sheet-return").assertDoesNotExist()
+    }
+
+    @Config(qualifiers = Phone.LAND) @Test fun sheetPrimaryDataSections() {
+        game(InputMode.TOUCH)
+        compose.onNodeWithTag("game-sheet-tab:data").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("game-sheet-tab:data").assertIsSelected()
+        compose.onNodeWithTag("game-sheet-content:data").assertExists()
+        compose.onNodeWithTag("game-sheet-return").assertDoesNotExist()
+        compose.onNodeWithTag("game-sheet-section:cont").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("game-sheet-content:cont").assertExists()
+        compose.onNodeWithTag("game-sheet-section:perf").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("game-sheet-content:perf").assertExists()
+        compose.onNodeWithTag("game-sheet-tab:data").assertIsSelected()
+    }
+
+    @Config(qualifiers = Phone.PORT) @Test fun sheetIdentifiersDisclosure() {
+        game(InputMode.TOUCH)
+        compose.onNodeWithTag("game-sheet-identifiers-values").assertDoesNotExist()
+        compose.onNodeWithTag("game-sheet-identifiers").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNode(hasText("4D5307E6") and hasAnyAncestor(hasTestTag("game-sheet-identifiers-values")),
+            useUnmergedTree = true).assertExists()
+        compose.onNodeWithTag("game-sheet-identifiers").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("game-sheet-identifiers-values").assertDoesNotExist()
+    }
+
 }

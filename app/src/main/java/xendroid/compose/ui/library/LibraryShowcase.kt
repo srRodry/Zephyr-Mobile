@@ -43,7 +43,7 @@ internal fun LibraryPlane(modifier: Modifier = Modifier, content: @Composable ()
         s2 = Color(0xFFE8EEF6), s3 = Color(0xFFDEE6F0), s4 = Color(0xFFD0DDEB), sheet = Color(0xFFF5F7FA),
         fg = Color(0xFF15191F), fg2 = Color(0xFF354254), fg3 = Color(0xFF48576B),
         line = Color(0xFFD1D8E2), line2 = Color(0xFFD1D8E2), acc = Color(0xFF155ED2), onAcc = Color.White)
-    CompositionLocalProvider(LocalXd provides colors) {
+    CompositionLocalProvider(LocalXd provides colors, LocalXdButtonShape provides RoundedCornerShape(4.dp)) {
         Box(modifier.background(colors.bg)) { content() }
     }
 }

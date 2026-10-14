@@ -165,7 +165,7 @@ jobs:
             --tests 'xendroid.compose.ui.ingame.InGameLogPickerTest' \
             --tests 'xendroid.compose.ui.library.*' \
             --tests 'xendroid.compose.gamepad.MenuButtonsTest' \
-            --tests 'xendroid.compose.screens.BaseShots.library*' \
+            --tests 'xendroid.compose.screens.BaseShots' \
             --tests 'xendroid.compose.screens.FirstRunReturnTest' \
             --tests 'xendroid.compose.bundle.*' \
             --tests 'xendroid.compose.saves.*' \

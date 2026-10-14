@@ -277,7 +277,7 @@ fun GameScreen(
         val groupMore = stringResource(R.string.xd_game_group_more)
         buildList {
             add(XdSection(GameSections.OVERVIEW, stringResource(R.string.xd_game_sec_overview), XdIcons.home, group = groupGame, heading = null) {
-                cards.Overview(play, { launchOpen = true })
+                cards.Overview()
             })
             // Round 2: "All settings" (the overview's link) lists every group, each a tap from its tab.
             add(XdSection(GameSections.SETTINGS, stringResource(R.string.xd_game_sec_all), XdIcons.gear, group = groupSettings,
@@ -323,6 +323,11 @@ fun GameScreen(
                 XdHint("≡", stringResource(R.string.xd_hint_menu)),
             ),
             onPad = { b -> if (b == PadButton.Y) { actions.toggleFavorite(game); true } else false },
+            touchFrame = { current, history ->
+                GameTouchSheet(game, art, data, sections, current, history, actions.preparing,
+                    onBack = links.onBack, onPlay = play, onLaunch = { launchOpen = true },
+                    onFavorite = { actions.toggleFavorite(game) }, onMore = { moreOpen = true })
+            },
         )
     }
 
