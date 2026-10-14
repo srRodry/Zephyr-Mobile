@@ -40,6 +40,11 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.testTag
 import androidx.compose.runtime.withFrameNanos
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -194,12 +199,25 @@ fun InGameMenu(
 ) {
     val c = Xd.colors
     val controller = Xd.controller
+    var toolsOpen by rememberSaveable(model.gameName) { mutableStateOf(false) }
     BoxWithConstraints(
         modifier.fillMaxSize()
             .background(Color.Black.copy(alpha = 0.5f))
             .pointerInput(Unit) { awaitPointerEventScope { while (true) awaitPointerEvent() } },
     ) {
         val portrait = maxHeight > maxWidth
+        val dialog = state.confirmingQuit || state.logPicker
+        if (!controller && !toolsOpen && !dialog) {
+            val landing = if (portrait) Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.86f)
+                else Modifier.align(Alignment.CenterStart)
+                    .width(minOf(maxWidth, maxOf(240.dp, minOf(maxWidth * 0.48f, 320.dp)))).fillMaxHeight()
+            TouchGameGuide(model, portrait, landing,
+                onResume = { onAction(InGameAction.RESUME) },
+                onControls = { toolsOpen = true; onPage(InGamePage.CONTROLS) },
+                onSettings = { toolsOpen = true; onPage(InGamePage.GRAPHICS) },
+                onQuit = { onAction(InGameAction.QUIT) })
+            return@BoxWithConstraints
+        }
         val short = maxHeight < 400.dp
         // The status line only where the rows keep room for several of them.
         val roomy = maxHeight >= 460.dp
@@ -212,24 +230,24 @@ fun InGameMenu(
             withFrameNanos { }
             selectedRow.bringIntoView()
         }
-        val shape = if (portrait) RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp) else RoundedCornerShape(topEnd = 22.dp, bottomEnd = 22.dp)
+        val shape = if (!controller) RoundedCornerShape(4.dp) else if (portrait) RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp) else RoundedCornerShape(topEnd = 22.dp, bottomEnd = 22.dp)
         val panel = if (portrait) Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.86f)
         else Modifier.align(Alignment.CenterStart).width(minOf(maxWidth * (if (controller) 0.74f else 0.78f), if (controller) 660.dp else 720.dp)).fillMaxHeight()
         Column(
-            panel.clip(shape).background(c.solid(c.sheet))
+            panel.testTag("game-guide-tools").clip(shape).background(c.solid(c.sheet))
                 .windowInsetsPadding(WindowInsets.safeDrawing.part(top = !portrait, bottom = true, start = true))
                 .padding(horizontal = if (short) 12.dp else 16.dp, vertical = if (short) 10.dp else 14.dp),
             verticalArrangement = Arrangement.spacedBy(if (short) 8.dp else 10.dp),
         ) {
-            val dialog = state.confirmingQuit || state.logPicker
             // Controller mode keeps its existing head; touch actions stay outside the scrolling rows.
             if (controller) Head(model, controller, compactActions = !portrait && !dialog, onClose = { onAction(InGameAction.RESUME) },
                 onQuit = { onAction(InGameAction.QUIT) }, onChanges = { onPage(InGamePage.SESSION) })
-            else TouchHead(model, short, onClose = { onAction(InGameAction.RESUME) })
+            else TouchHead(model, short, onClose = { onAction(InGameAction.RESUME) },
+                onGuide = if (dialog) null else ({ toolsOpen = false }))
             if (model.status.isNotEmpty() && !dialog && roomy) StatusLine(model.status)
             val body = Modifier.weight(1f).fillMaxWidth()
             when {
-                dialog -> Column(body.verticalScroll(scrollState), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+                dialog -> Column(body.testTag("game-guide-dialog").verticalScroll(scrollState), verticalArrangement = Arrangement.spacedBy(7.dp)) {
                     if (state.confirmingQuit) QuitConfirm(state, selectedRow, onQuitChoice)
                     else LogPicker(state, model, selectedRow, onLogChoice)
                 }
@@ -273,12 +291,14 @@ fun InGameMenu(
 
 /** A static touch header; the pause label is supplied by the host, never inferred from the menu. */
 @Composable
-private fun TouchHead(model: InGameMenuModel, short: Boolean, onClose: () -> Unit) {
+private fun TouchHead(model: InGameMenuModel, short: Boolean, onClose: () -> Unit, onGuide: (() -> Unit)?) {
     XdSilverPanel {
         val c = Xd.colors
         Row(Modifier.fillMaxWidth().padding(vertical = if (short) 0.dp else 4.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.width(4.dp).height(if (short) 38.dp else 48.dp).background(c.acc))
+            if (onGuide != null) XdIconButton(XdIcons.back, stringResource(R.string.zephyr_game_guide), onGuide,
+                modifier = Modifier.testTag("game-guide-back"), size = 48.dp)
+            else Box(Modifier.width(4.dp).height(if (short) 38.dp else 48.dp).background(c.acc))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(model.gameName ?: stringResource(R.string.app_name), color = c.fg,
                     style = XdText.body.copy(fontSize = if (short) 21.sp else 24.sp,
@@ -606,11 +626,11 @@ private fun QuitConfirm(state: InGameMenuState, selectedRow: BringIntoViewReques
     Text(stringResource(R.string.menu_exit_warning), style = XdText.bodySm, color = c.fg2)
     GuestPanelOption(
         label = stringResource(R.string.menu_cancel), selected = state.selected == 0, onClick = { onQuitChoice(false) },
-        modifier = Modifier.padding(top = 6.dp).then(if (state.selected == 0) Modifier.bringIntoViewRequester(selectedRow) else Modifier),
+        modifier = Modifier.testTag("game-guide-quit-cancel").padding(top = 6.dp).then(if (state.selected == 0) Modifier.bringIntoViewRequester(selectedRow) else Modifier),
     )
     GuestPanelOption(
         label = stringResource(R.string.menu_exit_game), selected = state.selected == 1, onClick = { onQuitChoice(true) }, danger = true,
-        modifier = if (state.selected == 1) Modifier.bringIntoViewRequester(selectedRow) else Modifier,
+        modifier = Modifier.testTag("game-guide-quit-confirm").then(if (state.selected == 1) Modifier.bringIntoViewRequester(selectedRow) else Modifier),
     )
 }
 

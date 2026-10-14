@@ -163,6 +163,7 @@ jobs:
           bash ./gradlew :app:testUitestUnitTest --no-daemon --stacktrace \
             --tests 'xendroid.compose.ui.ingame.InGameMenuStateTest' \
             --tests 'xendroid.compose.ui.ingame.InGameLogPickerTest' \
+            --tests 'xendroid.compose.ui.ingame.TouchGameGuideTest' \
             --tests 'xendroid.compose.ui.library.*' \
             --tests 'xendroid.compose.ui.design.ZephyrPaletteTest' \
             --tests 'xendroid.compose.gamepad.MenuButtonsTest' \
