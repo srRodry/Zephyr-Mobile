@@ -155,9 +155,11 @@ jobs:
           mkdir -p app/build/reports/tests/zephyr-transfer-tests app/build/test-results/zephyr-transfer-tests
           cp -a app/build/reports/tests/testUitestUnitTest/. app/build/reports/tests/zephyr-transfer-tests/
           cp -a app/build/test-results/testUitestUnitTest/. app/build/test-results/zephyr-transfer-tests/
-      - name: Test library navigation and data persistence
+      - name: Test in-game and library navigation and data persistence
         run: |
           bash ./gradlew :app:testUitestUnitTest --no-daemon --stacktrace \
+            --tests 'xendroid.compose.ui.ingame.InGameMenuStateTest' \
+            --tests 'xendroid.compose.ui.ingame.InGameLogPickerTest' \
             --tests 'xendroid.compose.ui.library.*' \
             --tests 'xendroid.compose.gamepad.MenuButtonsTest' \
             --tests 'xendroid.compose.screens.BaseShots.library*' \

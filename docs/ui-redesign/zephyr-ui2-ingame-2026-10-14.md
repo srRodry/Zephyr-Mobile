@@ -11,3 +11,7 @@ No InGameMenuModel/State/action API changes, no new dialogs/windows, no pause/re
 Validation: resource XML parsing and localization parity; existing Compose compilation, menu-state/log-picker and full CI regressions must pass before packaging. This commit does not request an APK.
 
 Remaining device checks: small landscape heights, large fonts and long game names, scroll access to all options with saved-change counts visible, tab/choice touch targets, Back/Guide and LB/RB navigation, quit confirmation, log picker, and paused vs running labels with pause-on-open disabled. CI does not prove visual layout or game behavior on the phone.
+
+## CI coverage follow-up
+
+The implementation HEAD 024048a passed UI #77 with 140 tests, but its artifact contained no InGameMenuStateTest/InGameLogPickerTest suites: the workflow selected library/settings regressions, not these menu tests. A CI-only follow-up adds the two existing classes to the navigation step (8 state cases and 1 log-picker case). Their coverage includes page focus, advanced options, player/developer navigation, chip cursor, reopening, quit confirmation/cancel and log selection. These are state tests, not Android visual or pointer-layout tests.
