@@ -14,6 +14,29 @@ import xendroid.compose.settings.Setting
 import xendroid.compose.settings.SettingsSchema
 
 class SettingsProfilesTest {
+    @Test fun zephyrPerformanceExperimentsStayLocalAndChangeOneGraphicsVariable() {
+        val text = checkNotNull(javaClass.getResource("/zephyr-performance-experiments.json")).readText()
+        val local = SettingsProfiles.parse(text, ProfileSource.LOCAL, "experiments.json")
+        assertTrue(local.skipped.toString(), local.skipped.isEmpty())
+        assertEquals(4, local.profiles.size)
+        local.profiles.forEach { loaded ->
+            val profile = loaded.profile
+            assertEquals(listOf("4D530AA4"), profile.titleIds)
+            assertEquals(1, profile.settings.size)
+            assertTrue(profile.settings.keys.none { it.startsWith("APU|") })
+            assertTrue(profile.evidence.isEmpty())
+            assertTrue(SettingsProfiles.problems(profile, ProfileSource.BUNDLED).isNotEmpty())
+        }
+        val phone = DeviceFacts("Adreno (TM) 730", "Turnip", "custom", "motorola",
+            "motorola edge 30 ultra", 35, 35)
+        assertTrue(local.profiles.all { SettingsProfiles.unmet(it.profile.requires, phone).isEmpty() })
+        val turnip = local.profiles.first().profile
+        assertTrue(SettingsProfiles.unmet(turnip.requires, phone.copy(driverLoader = "system", driverLabel = "Qualcomm")).isNotEmpty())
+        // The experiment uses the existing preview and exact restore machinery.
+        val plan = SettingsProfiles.plan(turnip, emptyMap(), mapOf("Vulkan|turnip_debug" to "sysmem"))
+        assertEquals(mapOf("Vulkan|turnip_debug" to ""), plan.writes)
+    }
+
     @get:Rule val folder = TemporaryFolder()
 
     private val adreno = DeviceFacts("Adreno (TM) 740", "Qualcomm Vulkan 0.762 · Adreno (TM) 740", "system",

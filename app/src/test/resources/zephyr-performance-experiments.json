@@ -1,0 +1,106 @@
+{
+  "format": "xendroid-settings-profiles",
+  "version": 1,
+  "profiles": [
+    {
+      "id": "zephyr-fh2-turnip-default",
+      "name": "A — Turnip: seleção automática",
+      "titleIds": [
+        "4D530AA4"
+      ],
+      "reason": "Experimento sem ganho comprovado: remove somente sysmem para permitir seleção automática do Turnip. Pode causar device loss. Restaurar o perfil anterior se houver falha ou imagem incorreta.",
+      "settings": {
+        "Vulkan|turnip_debug": ""
+      },
+      "requires": {
+        "gpuContains": [
+          "Adreno (TM) 730",
+          "Adreno 730"
+        ],
+        "manufacturers": [
+          "motorola"
+        ],
+        "models": [
+          "motorola edge 30 ultra"
+        ],
+        "driverLoader": "custom",
+        "driverContains": [
+          "Turnip"
+        ]
+      },
+      "evidence": []
+    },
+    {
+      "id": "zephyr-fh2-pipeline-2",
+      "name": "B — Compilação: duas threads",
+      "titleIds": [
+        "4D530AA4"
+      ],
+      "reason": "Experimento sem ganho comprovado: comparar duas versus quatro threads com cache aquecido. Reduz disputa de CPU, mas pode aumentar o tempo de compilação e pop-in.",
+      "settings": {
+        "Vulkan|vulkan_pipeline_creation_threads": "2"
+      },
+      "requires": {
+        "gpuContains": [
+          "Adreno (TM) 730",
+          "Adreno 730"
+        ],
+        "manufacturers": [
+          "motorola"
+        ],
+        "models": [
+          "motorola edge 30 ultra"
+        ]
+      },
+      "evidence": []
+    },
+    {
+      "id": "zephyr-fh2-submit-0",
+      "name": "C — Submissão: sem divisão periódica",
+      "titleIds": [
+        "4D530AA4"
+      ],
+      "reason": "Experimento sem ganho comprovado: desativa apenas divisões periódicas de comandos. Pode reduzir overhead de render passes, mas também reduzir sobreposição CPU/GPU.",
+      "settings": {
+        "GPU|vulkan_mid_frame_submission_draws": "0"
+      },
+      "requires": {
+        "gpuContains": [
+          "Adreno (TM) 730",
+          "Adreno 730"
+        ],
+        "manufacturers": [
+          "motorola"
+        ],
+        "models": [
+          "motorola edge 30 ultra"
+        ]
+      },
+      "evidence": []
+    },
+    {
+      "id": "zephyr-fh2-descriptor-edge",
+      "name": "D — Descritores: gate do upstream",
+      "titleIds": [
+        "4D530AA4"
+      ],
+      "reason": "Experimento sem ganho comprovado: usa o gate de reuso do upstream em vez de hash por draw. Requer cache de descritores ligado. Conferir texturas, transparências, sombras e falhas.",
+      "settings": {
+        "Vulkan|vulkan_texture_descriptor_reuse_edge": "true"
+      },
+      "requires": {
+        "gpuContains": [
+          "Adreno (TM) 730",
+          "Adreno 730"
+        ],
+        "manufacturers": [
+          "motorola"
+        ],
+        "models": [
+          "motorola edge 30 ultra"
+        ]
+      },
+      "evidence": []
+    }
+  ]
+}

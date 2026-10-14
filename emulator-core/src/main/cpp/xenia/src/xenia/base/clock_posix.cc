@@ -24,13 +24,11 @@ uint64_t Clock::host_tick_frequency_platform() {
   return (uint64_t)((1000000000ull * (uint64_t)info.denom) /
                     (uint64_t)info.numer);
 #else
-  timespec res;
-  int error = clock_getres(CLOCK_MONOTONIC_RAW, &res);
-  assert_zero(error);
-  assert_zero(res.tv_sec);  // Sub second resolution is required.
-
-  // Convert nano seconds to hertz. Resolution is 1ns on most systems.
-  return 1000000000ull / res.tv_nsec;
+  // host_tick_count_platform returns nanoseconds, regardless of the clock's
+  // resolution. Resolution describes granularity, not the returned unit.
+  // Keep that unit fixed and avoid querying clock_getres on every frequency
+  // or uptime read. The raw hardware-counter path has its own frequency.
+  return 1000000000ull;
 #endif
 }
 

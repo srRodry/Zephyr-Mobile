@@ -103,6 +103,8 @@ jobs:
           PY
       - name: Test native audio performance hint lifecycle
         run: python3 tools/test-audio-performance-hint.py
+      - name: Test native POSIX clock units and query overhead
+        run: python3 tools/test-native-clock.py
       - name: Compile Compose UI without packaging native libraries
         run: bash ./gradlew :app:compileDebugKotlin --no-daemon --stacktrace
       # These cases deliberately replace config files and the native singleton.
@@ -128,6 +130,7 @@ jobs:
             --tests 'xendroid.compose.saves.*' \
             --tests 'xendroid.compose.data.Profile*' \
             --tests 'xendroid.compose.settings.ConfigFileTransactionTest' \
+            --tests 'xendroid.compose.compatibility.SettingsProfilesTest' \
             --tests 'xendroid.compose.core.SuccessfulInitializationTest' \
             --tests 'xendroid.compose.updater.*'
       - name: Upload library test reports
