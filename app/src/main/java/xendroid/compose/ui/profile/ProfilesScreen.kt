@@ -72,6 +72,9 @@ import xendroid.compose.ui.design.XdButton
 import xendroid.compose.ui.design.XdButtonKind
 import xendroid.compose.ui.design.XdButtonSize
 import xendroid.compose.ui.design.XdCard
+import xendroid.compose.ui.design.XdEditorialHeading
+import xendroid.compose.ui.design.XdSilverPanel
+import androidx.compose.ui.text.font.FontWeight
 import xendroid.compose.ui.design.XdEmpty
 import xendroid.compose.ui.design.XdIconButton
 import xendroid.compose.ui.design.XdIcons
@@ -325,7 +328,11 @@ private fun TouchProfiles(
     onCreate: () -> Unit,
 ) {
     val c = Xd.colors
-    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        XdEditorialHeading(stringResource(R.string.zephyr_ui2_profiles_title), stringResource(R.string.zephyr_ui2_profiles_subtitle))
+        val active = profiles.firstOrNull { it.isActive }
+        if (active != null) ActiveProfileCard(active, slots, summaries[active.xuid],
+            onEdit = { onEdit(active) }, onSaves = { onSaves(active) }, onTrash = { onTrash(active) })
         BoxWithConstraints {
             val columns = when {
                 maxWidth >= 840.dp -> 3
@@ -333,7 +340,7 @@ private fun TouchProfiles(
                 else -> 1
             }
             // The profiles, then the card that creates one (null).
-            val cells: List<ProfileEntry?> = profiles + listOf(null)
+            val cells: List<ProfileEntry?> = profiles.filter { it != active } + listOf(null)
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 cells.chunked(columns).forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -347,6 +354,44 @@ private fun TouchProfiles(
             }
         }
         Text(stringResource(R.string.xd_pf_note), style = XdText.note, color = c.fg3)
+    }
+}
+
+/** The real active profile, presented separately without changing sign-in or save ownership. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ActiveProfileCard(
+    p: ProfileEntry,
+    slots: List<String?>,
+    summary: ProfileContentSummary?,
+    onEdit: () -> Unit,
+    onSaves: () -> Unit,
+    onTrash: () -> Unit,
+) {
+    XdSilverPanel {
+        val c = Xd.colors
+        Column(Modifier.padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
+                ProfileAvatar(p.xuid, p.gamertag, p.hasAvatar, 64.dp)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    statusText(p, slots)?.let { Text(it, style = XdText.labelSm, color = c.acc) }
+                    Text(p.gamertag.ifBlank { p.xuid }, style = XdText.body.copy(fontSize = 26.sp, lineHeight = 30.sp,
+                        fontWeight = FontWeight.Bold), color = c.fg)
+                }
+            }
+            XdKv(listOf(
+                stringResource(R.string.xd_pf_lang_region) to languageText(p),
+                stringResource(R.string.xd_pf_saves) to savesText(summary),
+            ))
+            Text(p.xuid, style = XdText.mono.copy(fontSize = 11.sp), color = c.fg3)
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                XdButton(stringResource(R.string.pf_edit), onEdit, Modifier.heightIn(min = 48.dp),
+                    kind = XdButtonKind.PRIMARY, icon = XdIcons.text)
+                XdButton(stringResource(R.string.xd_pf_saves), onSaves, Modifier.heightIn(min = 48.dp),
+                    icon = XdIcons.save, enabled = summary?.gameTitles?.isNotEmpty() == true)
+                XdIconButton(XdIcons.trash, stringResource(R.string.xd_pf_to_trash_cd, p.gamertag.ifBlank { p.xuid }), onTrash, size = 48.dp)
+            }
+        }
     }
 }
 
@@ -373,20 +418,20 @@ private fun ProfileCard(
         Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             ProfileAvatar(p.xuid, p.gamertag, p.hasAvatar, 52.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(p.gamertag.ifBlank { p.xuid }, style = XdText.label.copy(fontSize = 16.sp), color = c.fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                Text(p.gamertag.ifBlank { p.xuid }, style = XdText.label.copy(fontSize = 16.sp), color = c.fg, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 statusText(p, slots)?.let { XdBadge(it, tone = if (p.isActive) BadgeTone.ACCENT else BadgeTone.NEUTRAL) }
                 Text(p.xuid, style = XdText.mono.copy(fontSize = 11.sp), color = c.fg3)
             }
-            XdIconButton(XdIcons.trash, stringResource(R.string.xd_pf_to_trash_cd, p.gamertag.ifBlank { p.xuid }), onTrash, size = 34.dp)
+            XdIconButton(XdIcons.trash, stringResource(R.string.xd_pf_to_trash_cd, p.gamertag.ifBlank { p.xuid }), onTrash, size = 48.dp)
         }
         XdKv(listOf(
             stringResource(R.string.xd_pf_lang_region) to languageText(p),
             stringResource(R.string.xd_pf_saves) to savesText(summary),
         ))
         FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (!p.isActive) XdButton(stringResource(R.string.xd_pf_make_active), onActive, size = XdButtonSize.SM)
-            XdButton(stringResource(R.string.pf_edit), onEdit, kind = XdButtonKind.GHOST, size = XdButtonSize.SM)
-            XdButton(stringResource(R.string.xd_pf_saves), onSaves, kind = XdButtonKind.GHOST, size = XdButtonSize.SM, icon = XdIcons.save,
+            if (!p.isActive) XdButton(stringResource(R.string.xd_pf_make_active), onActive, modifier = Modifier.heightIn(min = 48.dp), size = XdButtonSize.SM)
+            XdButton(stringResource(R.string.pf_edit), onEdit, modifier = Modifier.heightIn(min = 48.dp), kind = XdButtonKind.GHOST, size = XdButtonSize.SM)
+            XdButton(stringResource(R.string.xd_pf_saves), onSaves, modifier = Modifier.heightIn(min = 48.dp), kind = XdButtonKind.GHOST, size = XdButtonSize.SM, icon = XdIcons.save,
                 enabled = summary?.gameTitles?.isNotEmpty() == true)
         }
     }
@@ -608,3 +653,4 @@ private fun deleteSummaryText(entry: ProfileEntry, summary: ProfileContentSummar
     return listOfNotNull(stringResource(R.string.pf_del_name, name), detail,
         stringResource(R.string.pf_del_partial).takeIf { summary.truncated }, stringResource(R.string.pf_del_trash)).joinToString(" ")
 }
+

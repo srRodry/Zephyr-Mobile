@@ -50,6 +50,8 @@ import xendroid.compose.ui.design.XdButton
 import xendroid.compose.ui.design.XdButtonKind
 import xendroid.compose.ui.design.XdButtonSize
 import xendroid.compose.ui.design.XdCard
+import xendroid.compose.ui.design.XdEditorialHeading
+import xendroid.compose.ui.design.XdSilverPanel
 import xendroid.compose.ui.design.XdEmpty
 import xendroid.compose.ui.design.XdIcons
 import xendroid.compose.ui.design.XdKv
@@ -153,6 +155,9 @@ fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit, links: SettingsLin
     }
     val sections = buildList {
         add(XdSection(Ids.SUMMARY, stringResource(R.string.xd_set_summary), XdIcons.home, group = groupGeneral) {
+            if (!Xd.controller && panel.query.isBlank()) {
+                XdEditorialHeading(stringResource(R.string.zephyr_ui2_settings_title), stringResource(R.string.xd_set_subtitle))
+            }
             // Round 2: the Summary searches every tab, the results by tab.
             XdSearchField(panel.query, { panel.query = it }, stringResource(R.string.xd_set_search_everywhere),
                 Modifier.fillMaxWidth().widthIn(max = 560.dp).padding(bottom = 4.dp))
@@ -240,11 +245,19 @@ private fun Summary(
     }
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val wide = maxWidth > 620.dp
-        Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            if (!c.controller) XdSilverPanel {
+                XdListRow(stringResource(R.string.xd_set_interface), icon = XdIcons.monitor,
+                    onClick = { onSection(Ids.UI) })
+                XdListRow(stringResource(R.string.xd_set_data), icon = XdIcons.save,
+                    onClick = { onSection(Ids.DATA) })
+                XdListRow(stringResource(R.string.xd_set_diagnostics), icon = XdIcons.bug, divider = false,
+                    onClick = { onSection(Ids.DIAGNOSTICS) })
+            }
             XdCard(title = stringResource(R.string.xd_set_summary_changed), icon = XdIcons.sliders, trailing = changed.size.toString()) {
                 if (changed.isEmpty()) Text(stringResource(R.string.xd_set_summary_all_default), style = XdText.note, color = c.fg3)
                 changed.forEachIndexed { i, s ->
-                    XdListRow(settingTitle(s), icon = XdIcons.globe, divider = i < changed.lastIndex,
+                    XdListRow(settingTitle(s), icon = XdIcons.globe, divider = i < changed.lastIndex, actionsBelow = !wide,
                         subtitle = stringResource(R.string.xd_set_summary_value, valueLabel(s, editing.raw(s)), valueLabel(s, editing.defaultRaw(s)))) {
                         XdButton(stringResource(R.string.xd_set_summary_default), { editing.reset(s) }, size = XdButtonSize.SM,
                             kind = XdButtonKind.GHOST, icon = XdIcons.reset)
@@ -382,3 +395,4 @@ private fun DiagnosticsBody(links: SettingsLinks, onLogLevel: () -> Unit) {
         }
     }
 }
+

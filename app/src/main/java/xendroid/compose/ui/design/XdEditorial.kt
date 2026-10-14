@@ -64,11 +64,23 @@ fun XdEditorialHero(
 /** Light surface with its own text tokens; surrounding screens retain their existing theme. */
 @Composable
 fun XdSilverPanel(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    val colors = Xd.colors.copy(s1 = Color(0xFFF5F7FA), fg = Color(0xFF15191F),
+    val colors = Xd.colors.copy(s1 = Color(0xFFF5F7FA),
+        s2 = Color(0xFFE8EEF6), s3 = Color(0xFFDEE6F0), s4 = Color(0xFFD0DDEB), fg = Color(0xFF15191F),
         fg2 = Color(0xFF354254), fg3 = Color(0xFF48576B), line = Color(0xFFD1D8E2),
         acc = Color(0xFF155ED2), onAcc = Color.White)
     CompositionLocalProvider(LocalXd provides colors) {
         Column(modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(colors.s1)
             .padding(horizontal = 16.dp, vertical = 8.dp), content = content)
+    }
+}
+
+
+/** An editorial title in normal flow: it wraps with font scale instead of clipping in a fixed box. */
+@Composable
+fun XdEditorialHeading(title: String, subtitle: String, modifier: Modifier = Modifier) {
+    Column(modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        Box(Modifier.size(42.dp, 4.dp).background(Color(0xFF237BFF)))
+        Text(title, style = XdText.body.copy(fontSize = 36.sp, lineHeight = 40.sp, fontWeight = FontWeight.Bold), color = Xd.colors.fg)
+        Text(subtitle, style = XdText.body, color = Xd.colors.fg2)
     }
 }

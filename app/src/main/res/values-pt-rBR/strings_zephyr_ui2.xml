@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="zephyr_ui2_settings_title">Ajustes sob seu controle.</string>
+    <string name="zephyr_ui2_profiles_title">Seu espaço.</string>
+    <string name="zephyr_ui2_profiles_subtitle">Perfis, jogadores e saves.</string>
+</resources>
