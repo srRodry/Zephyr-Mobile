@@ -17,6 +17,10 @@ on:
       - 'gradlew'
       - '.github/workflows/zephyr-ui-check.yml'
       - 'tools/*signing*'
+      - 'tools/test-a64-vector-select.py'
+      - 'emulator-core/src/test/cpp/a64_vector_select_test.cc'
+      - 'emulator-core/src/main/cpp/xenia/src/xenia/cpu/**'
+      - 'emulator-core/src/main/cpp/xenia/third_party/xbyak_aarch64/**'
   workflow_dispatch:
 
 permissions:
@@ -105,6 +109,8 @@ jobs:
         run: python3 tools/test-audio-performance-hint.py
       - name: Test native POSIX clock units and query overhead
         run: python3 tools/test-native-clock.py
+      - name: Test ARM64 vector select semantics and instruction encoding
+        run: python3 tools/test-a64-vector-select.py
       - name: Compile Compose UI without packaging native libraries
         run: bash ./gradlew :app:compileDebugKotlin --no-daemon --stacktrace
       # These cases deliberately replace config files and the native singleton.

@@ -107,3 +107,15 @@ Testes públicos devem ser descritos como experimentais, com limitações claras
 Cada execução agendada deve acrescentar abaixo: commit, problema concreto,
 verificação, CI, limitação e próxima etapa. Se não existir correção segura, não
 inventar uma. Consulta a fóruns/vídeos não requer login nem contato com autores.
+
+### Sessão aprofundada anterior à meia-noite
+
+- Base `54c74f0`: UI #51 aprovado (136 testes); APK #37/release ignorados.
+- Encontrado trabalho redundante no A64 SELECT V128 quando destino coincide com
+  uma fonte: substituir três instruções por BIT/BIF equivalentes. Regressão usa
+  codificador Xbyak e HIR/DCE/alocador reais, aliases, padrões e preservação.
+- Ver detalhes e fontes em `zephyr-a64-vector-select-review-2026-10-14.md`.
+- Não alterar o alocador genérico com base no fixture ASSIGN: DCE o elimina.
+  Experimento retirado antes de commit. Não ampliar registradores sem ABI/provas.
+- Resultado estático não é resultado de FPS. Compilação completa e comparação
+  Android ficam para a manhã. Continuar com CPU/GPU/esperas; não criar APK à noite.
