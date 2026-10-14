@@ -98,3 +98,50 @@ Não extrapolar o comentário de teste histórico com outro jogo/aparelho.
 revisão. O CI do commit documental ainda precisa ser confirmado. A evidência
 concreta é uma diferença de ambiente e uma lacuna de coleta, não uma otimização
 demonstrada. Link completo e avaliação no aparelho continuam necessários.
+
+## Retorno da manhã — vídeo 1000392058.mp4
+
+Inspeção do arquivo enviado: 92.617.477 bytes, duração de contêiner
+38,568345 segundos; SHA256
+`814946369a985ef0c34eed84ca89f474eec2c1e238bf4c8bf46a305a93ccd566`.
+Contém vídeo H.264 2400×1080 e áudio AAC mono 44.100 Hz. Não confundir
+cadência/timestamps da gravação com frametimes internos do emulador.
+
+O quadro extraído com seek em 20 s mostra no HUD 9 FPS, CPU 51%, GPU 0%,
+RAM 61% e Core 41 °C. São leituras do overlay naquele quadro, não medidas
+independentes, média da sessão ou mínimo global. O vídeo mostra condução e
+aproximações/contatos com paredes; o usuário relata travadas de jogo e áudio
+em aceleração e colisões. Esta revisão visual não ouviu nem mediu a distorção
+de áudio: essa parte permanece relato do usuário.
+
+GPU 0% não demonstra GPU ociosa enquanto há renderização. CPU agregada não
+identifica saturação de uma thread; temperatura isolada não exclui throttling.
+O clip não identifica build/driver de forma verificável. Não atribuir a queda
+às alterações noturnas, à física, ao compilador ou ao callback de áudio sem
+relatório e logs da mesma execução.
+
+### APK matinal verificado, sem atribuição ao vídeo
+
+- Código funcional de 4ed8a96 preservado no commit 285eb7dc; apenas comentário
+  no workflow solicita a compilação. UI #68 / run 38562543783 aprovado:
+  140 testes JVM, 27 suites, zero falhas/erros/ignorados; seis TUs NDK e
+  regressões nativas aprovados. Artefato de testes com SHA256/CRC conferidos.
+- APK #50 / run 38562543833 aprovado, build completo/link/empacotamento.
+  Pacote validado pelo CI: xendroid.compose.zephyr.test. Release ignorada.
+- Artefato 11892234640, SHA256
+  93b70e8525e82589027728f67b54d3824231859bc7dc66f94b8b7ce50984305c,
+  CRC conferido. APK: 51.901.184 bytes, SHA256
+  cb5d1352e6bb0a496a5faee7f31fe1054dc7bbd28c45825a30d8729328bbbef9.
+  check-apk local: 1025 entradas, libe ARM64 com JNI_OnLoad, nove textos de
+  licença, sem dados privados/proprietários. Verificador CI apksigner:
+  assinatura v3 válida, chave TEMPORÁRIA, certificado SHA256
+  1332468c8ed3e8a19ae2a65c79887d6f7ece008d19cbbc481de603ac4517ced6.
+  Não orientar desinstalação/perda de dados para contornar assinatura diferente.
+- Não há prova de que o vídeo foi gravado com esse APK nem ganho de FPS medido.
+
+Próximo dado necessário: build/driver efetivos e a opção
+“Compartilhar relatório da última execução” (run-report.json), junto com os
+logs sanitizados da mesma sessão. Comparar trecho normal, aceleração e colisão
+sem trocar driver/configuração/patches. Procurar primeiro thread crítica,
+compilação JIT/pipelines e esperas; correlacionar counters de áudio com eles.
+Nenhum preset, áudio, sincronização ou default alterado a partir deste vídeo.
