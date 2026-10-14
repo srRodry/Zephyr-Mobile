@@ -69,3 +69,31 @@ preservado na exportação nativa, sem somar métricas com escopos sobrepostos.
 Nenhum FPS ou duração no Edge 30 Ultra foi medido. Esse incremento permite
 testar se os stalls observados correspondem a esperas de pipelines; não prova
 que esse é o gargalo, não modifica áudio e não justifica ligar skip-draws.
+
+## Análise offline das amostras
+
+O analisador `tools/vulkan_diagnostics.py` também lê o formato `VkPipelineWait`
+emitido por este incremento. `pipeline_waits` é uma seção JSON independente:
+
+- Médias aproximadas ponderadas por frames para calls/frame e ms/frame, separadas
+  por submissão e espera explícita.
+- Maior duração de chamada observada por categoria, sem rotulá-la como maior
+  tempo de frame.
+- Janelas válidas/frames selecionados e número de linhas inválidas, separados do
+  `VkFrameSync`. Linhas inválidas não viram zeros nem amostras válidas.
+- Logs antigos sem a nova instrumentação produzem `null`, distinguível de uma
+  janela válida com valores zero. Zero só cobre os dois pontos instrumentados.
+
+`--last N` seleciona as últimas N janelas válidas de CADA tipo de log,
+independentemente. Não significa N segundos, e tipos podem cobrir intervalos
+distintos se houver perdas de linhas. Não correlacionar por proximidade ou por
+contagem de frames igual: nenhum deles é um identificador compartilhado de frame.
+Não somar as médias para deduzir FPS ou inferir GPU busy.
+
+Oito regressões adicionais (16 no total) verificam unidades/categorias, ponderação,
+máximos, ausência/zero, janelas independentes, dados inválidos e a CLI. Um fixture
+é gerado do literal C++ real de VkPipelineWait para detectar deriva do formato.
+São testes sintéticos, não medições no aparelho. O UI checks já executa esse
+arquivo de testes; confirmar seu resultado no novo commit antes de avançar.
+Este incremento altera somente ferramenta/testes/documentação, sem novo custo
+no emulador e sem compilação ou solicitação de outro APK.

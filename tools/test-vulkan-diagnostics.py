@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Synthetic log regressions; no claimed measurements from an Android device."""
 import json
+import re
 from pathlib import Path
 import subprocess
 import sys
 import tempfile
 import unittest
 
-from vulkan_diagnostics import parse_frame_sync, summarize
+from vulkan_diagnostics import parse_frame_sync, parse_pipeline_wait, summarize
 
 
 def line(frames=30, await_ms=2.5, replay=3.0, submissions=4.0, gpu=5.0):
@@ -19,6 +20,12 @@ def line(frames=30, await_ms=2.5, replay=3.0, submissions=4.0, gpu=5.0):
             "resolve_ms=0.00 avg=0.000 max=0.00 dropped=0 | draws=100 "
             f"rp_begins=5 splits=1.0 replay={replay}ms | "
             "resolve_clears=1.0 in_guest_pass=0.0 | uma readbacks=0.0")
+
+
+def pipeline_line(frames=30, calls=2, time=3, maximum=4):
+    return (f"I> gpu VkPipelineWait: {frames} frames | submission calls={calls}/fr "
+            f"time={time}ms/fr max={maximum}ms | explicit calls=5/fr "
+            "time=6ms/fr max=7ms")
 
 
 class VulkanDiagnosticsTests(unittest.TestCase):
@@ -77,6 +84,77 @@ class VulkanDiagnosticsTests(unittest.TestCase):
             result = subprocess.run([sys.executable, str(script), str(log), "--last", "0"],
                                     capture_output=True, text=True)
             self.assertNotEqual(result.returncode, 0)
+
+
+class PipelineLogTests(unittest.TestCase):
+    def test_units_and_categories_are_independent(self):
+        report = parse_pipeline_wait(pipeline_line())
+        self.assertEqual(report["submission_calls_per_frame"], 2)
+        self.assertEqual(report["submission_wait_ms_per_frame"], 3)
+        self.assertEqual(report["submission_wait_max_call_ms"], 4)
+        self.assertEqual(report["explicit_wait_ms_per_frame"], 6)
+        self.assertEqual(report["explicit_wait_max_call_ms"], 7)
+
+    def test_frame_weighted_mean_and_max_call_not_max_frame(self):
+        report = summarize([pipeline_line(10, 1, 10, 40),
+                            pipeline_line(30, 3, 30, 35)])["pipeline_waits"]
+        self.assertEqual(report["approximate_frame_weighted"]["submission_wait_ms_per_frame"], 25)
+        self.assertEqual(report["approximate_frame_weighted"]["submission_calls_per_frame"], 2.5)
+        self.assertEqual(report["largest_observed_wait_call_ms"]["submission_wait_max_call_ms"], 40)
+
+    def test_older_log_missing_pipeline_is_unavailable(self):
+        report = summarize([line()])["pipeline_waits"]
+        self.assertEqual(report["valid_windows_selected"], 0)
+        self.assertIsNone(report["approximate_frame_weighted"]["submission_wait_ms_per_frame"])
+        self.assertIsNone(report["largest_observed_wait_call_ms"]["submission_wait_max_call_ms"])
+
+    def test_no_pairing_by_adjacency_or_equal_frame_count(self):
+        report = summarize([pipeline_line(30), line(30), pipeline_line(30), line(10)])
+        self.assertEqual(report["frames_selected"], 40)
+        self.assertEqual(report["pipeline_waits"]["frames_selected"], 60)
+        self.assertNotIn("pipeline_waits", report["windows"][0])
+
+    def test_rejects_invalid_truncated_duplicate_and_nonfinite(self):
+        for invalid in (pipeline_line(0), pipeline_line(time=-1),
+                        pipeline_line(time="nan"), pipeline_line(time="inf"),
+                        pipeline_line(time="9" * 400),
+                        pipeline_line().split(" | explicit")[0],
+                        pipeline_line() + " max=8ms", pipeline_line() + pipeline_line()):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):
+                parse_pipeline_wait(invalid)
+
+    def test_last_valid_windows_and_rejections_are_independent(self):
+        report = summarize([pipeline_line(10), "VkPipelineWait: truncated",
+                            pipeline_line(20), line(9), pipeline_line(30)], last=2)
+        self.assertEqual(report["frames_selected"], 9)
+        self.assertEqual(report["pipeline_waits"]["frames_selected"], 50)
+        self.assertEqual(report["pipeline_waits"]["malformed_windows_rejected"], 1)
+        self.assertEqual(report["malformed_windows_rejected"], 0)
+
+    def test_valid_zero_window_is_distinct_from_missing(self):
+        zero = pipeline_line(30, 0, 0, 0).replace("calls=5/fr", "calls=0/fr").replace(
+            "time=6ms/fr max=7ms", "time=0ms/fr max=0ms")
+        report = summarize([zero])["pipeline_waits"]
+        self.assertEqual(report["valid_windows_selected"], 1)
+        self.assertEqual(report["approximate_frame_weighted"]["submission_wait_ms_per_frame"], 0)
+
+    def test_actual_cpp_format_contract_and_cli(self):
+        root = Path(__file__).resolve().parents[1]
+        source = (root / "emulator-core/src/main/cpp/xenia/src/xenia/gpu/vulkan/vulkan_command_processor.cc").read_text()
+        body = '"VkPipelineWait:' + source.split('"VkPipelineWait:', 1)[1].split(
+            's.frames, pipeline_waits[0].calls / f', 1)[0]
+        literal = "".join(re.findall(r'"([^"]*)"', body))
+        values = iter(["30", "2.00", "3.000", "4.000", "5.00", "6.000", "7.000"])
+        generated = re.sub(r"\{[^}]*\}", lambda _: next(values), literal)
+        self.assertEqual(parse_pipeline_wait(generated), parse_pipeline_wait(pipeline_line()))
+        with tempfile.TemporaryDirectory(prefix="zephyr-pipeline-log-") as directory:
+            log = Path(directory) / "xe.log"
+            log.write_text(generated + "\n")
+            result = subprocess.run([sys.executable, str(root / "tools/vulkan_diagnostics.py"), str(log)],
+                                    check=True, capture_output=True, text=True)
+            report = json.loads(result.stdout)
+            self.assertEqual(report["pipeline_waits"]["frames_selected"], 30)
+            self.assertEqual(report["valid_windows_selected"], 0)
 
 
 if __name__ == "__main__": unittest.main()

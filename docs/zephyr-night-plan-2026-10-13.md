@@ -201,3 +201,18 @@ inventar uma. Consulta a fóruns/vídeos não requer login nem contato com autor
   e compila também os dois arquivos GPU afetados com NDK (cinco TUs no total).
 - Ler `zephyr-pipeline-wait-diagnostics-2026-10-14.md`. Confirmar CI do novo HEAD
   antes de continuar. Sem novo APK, mudança de áudio/defaults ou prova de FPS.
+
+### Continuação — leitura offline das esperas por pipelines
+
+- Base `456befe`, UI #64 aprovado e APK #48 ignorado.
+- Lacuna corrigida no analisador: VkPipelineWait passa a ter seção independente
+  com calls/frame e ms/frame ponderados por frames e maior chamada por categoria.
+  Não presume pareamento com VkFrameSync nem soma tempos como GPU busy/FPS.
+- Ausência de log permanece null, diferente de janela válida zero. Seleção
+  --last é independente por tipo; linhas truncadas/duplicadas/não finitas são
+  rejeitadas. Fixture deriva do literal C++ real para verificar o formato.
+- 16 regressões locais aprovadas (8 novas). CI existente executa o teste;
+  conferir novo HEAD. Ler a seção de análise offline em
+  `zephyr-pipeline-wait-diagnostics-2026-10-14.md`.
+- Só ferramentas/testes/docs, sem mudança do emulador ou nova coleta. Não existe
+  dado do aparelho nem evidência para promover otimização/default agressivo.
