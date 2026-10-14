@@ -1,6 +1,7 @@
 name: Zephyr Android APK
 
 # Android APK build (arm64-v8a).
+# Morning test build 2026-10-14: package the regression-checked night investigation.
 # - Pull requests into main (including the claude/* branches of cloud
 #   sessions) and manual runs build the test package xendroid.compose.fork.opt:
 #   debuggable and installed alongside the regular app, the package the A/B
