@@ -333,6 +333,7 @@ fun GameLibraryScreen(
                     data, filter, { filterKey = it.key }, query, { query = it }, density,
                     { density = it; CoverDensityStore.write(context, it) }, viewModel::setSort,
                     selected, { selectedId = it.stableId }, art, onOpen = { onOpenGame(it, null) }, onFavorite = actions::toggleFavorite,
+                    onPlay = { actions.play(it) }, preparing = actions.preparing,
                     onMenu = { menuOpen = true }, gridState = gridState,
                     notices = { LibraryNotices(loaded, missing, viewModel, openFolders) { missingOpen = true } },
                     detail = { game ->

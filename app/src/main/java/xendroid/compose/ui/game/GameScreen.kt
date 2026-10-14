@@ -277,7 +277,7 @@ fun GameScreen(
         val groupMore = stringResource(R.string.xd_game_group_more)
         buildList {
             add(XdSection(GameSections.OVERVIEW, stringResource(R.string.xd_game_sec_overview), XdIcons.home, group = groupGame, heading = null) {
-                cards.Overview()
+                cards.Overview(play, { launchOpen = true })
             })
             // Round 2: "All settings" (the overview's link) lists every group, each a tap from its tab.
             add(XdSection(GameSections.SETTINGS, stringResource(R.string.xd_game_sec_all), XdIcons.gear, group = groupSettings,
@@ -304,14 +304,16 @@ fun GameScreen(
             subtitle = subtitle,
             subtitleMono = true,
             onBack = links.onBack,
-            lead = if (controller && shown == "play") null else cover,
+            lead = if ((controller && shown == "play") || (!controller && shown == GameSections.OVERVIEW)) null else cover,
             art = art.model,
             actions = if (controller) null else ({
                 XdIconButton(if (favorite) XdIcons.starFilled else XdIcons.star, stringResource(R.string.lib_favorites),
                     { actions.toggleFavorite(game) }, on = favorite)
                 XdIconButton(XdIcons.more, stringResource(R.string.lib_more), { moreOpen = true })
-                XdButton(stringResource(R.string.xd_game_sec_launch), { launchOpen = true }, enabled = !actions.preparing)
-                XdButton(stringResource(R.string.lib_play), play, kind = XdButtonKind.PRIMARY, icon = XdIcons.play, enabled = !actions.preparing)
+                if (shown != GameSections.OVERVIEW) {
+                    XdButton(stringResource(R.string.xd_game_sec_launch), { launchOpen = true }, enabled = !actions.preparing)
+                    XdButton(stringResource(R.string.lib_play), play, kind = XdButtonKind.PRIMARY, icon = XdIcons.play, enabled = !actions.preparing)
+                }
             }),
             hints = if (!controller) null else listOf(
                 XdHint(if (swap) "B" else "A", stringResource(R.string.xd_hint_select)),

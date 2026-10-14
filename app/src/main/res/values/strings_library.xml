@@ -182,4 +182,9 @@
     <string name="xd_game_patches_others_note">They do not apply to the version you play.</string>
     <string name="xd_game_patches_any">No version stated</string>
     <string name="xd_game_version_of">version %1$s</string>
+    <string name="zephyr_ui2_headline">Your next</string>
+    <string name="zephyr_ui2_headline_accent">game.</string>
+    <string name="zephyr_ui2_featured">In focus</string>
+    <string name="zephyr_ui2_collection">Your collection</string>
+    <string name="zephyr_ui2_list">List</string>
 </resources>

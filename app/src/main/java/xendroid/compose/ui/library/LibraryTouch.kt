@@ -18,6 +18,11 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.windowInsetsPadding
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.ui.text.font.FontWeight
+import xendroid.compose.ui.design.XdEditorialHero
+import xendroid.compose.ui.design.XdButtonSize
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyGridState
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -81,7 +86,7 @@ class CoverArt(val model: Any, val smart: Boolean)
 
 /**
  * The library for touch (B): the rail, search, sort and cover size, the filter chips and a grid of
- * covers; in landscape the chosen game's panel on the right (Play, details, quick settings).
+ * covers (or compact rows); on wide screens the chosen game's panel on the right (Play, details, quick settings).
  */
 @OptIn(ExperimentalFoundationApi::class)
 @Composable
@@ -99,6 +104,8 @@ fun LibraryTouch(
     artOf: (Game) -> CoverArt,
     onOpen: (Game) -> Unit,
     onFavorite: (Game) -> Unit,
+    onPlay: (Game) -> Unit,
+    preparing: Boolean,
     onMenu: () -> Unit,
     gridState: LazyGridState,
     notices: @Composable () -> Unit,
@@ -108,7 +115,9 @@ fun LibraryTouch(
     val c = Xd.colors
     val shown = remember(data, filter, query) { data.shown(filter, query) }
     BoxWithConstraints(Modifier.fillMaxSize().background(c.bg)) {
-        val portrait = maxHeight > maxWidth
+        val portrait = maxHeight > maxWidth || maxWidth < 840.dp
+        val listMode = portrait && density == CoverDensity.MEDIUM
+        val featured = shown.firstOrNull { it.stableId == selected?.stableId } ?: shown.firstOrNull()
         val main: @Composable (Modifier) -> Unit = { m ->
             Column(m.windowInsetsPadding(WindowInsets.safeDrawing.part(top = true)).fillMaxHeight()) {
                 Row(
@@ -118,7 +127,7 @@ fun LibraryTouch(
                     XdSearchField(query, onQuery, stringResource(R.string.lib_search), Modifier.weight(1f))
                     if (!portrait) XdSelect(LibrarySort.entries.map { it to sortText(it) }, data.sort, onSort)
                     XdSegmented(
-                        listOf(CoverDensity.SMALL to stringResource(R.string.xd_lib_density_s), CoverDensity.MEDIUM to stringResource(R.string.xd_lib_density_m),
+                        listOf(CoverDensity.SMALL to stringResource(R.string.xd_lib_density_s), CoverDensity.MEDIUM to stringResource(if (portrait) R.string.zephyr_ui2_list else R.string.xd_lib_density_m),
                             CoverDensity.LARGE to stringResource(R.string.xd_lib_density_l)),
                         density, onDensity,
                     )
@@ -162,15 +171,41 @@ fun LibraryTouch(
                 } else {
                     LazyVerticalGrid(
                         state = gridState,
-                        columns = GridCells.Adaptive(density.minWidth.dp),
+                        columns = if (listMode) GridCells.Fixed(1) else GridCells.Adaptive(density.minWidth.dp),
                         contentPadding = PaddingValues(start = 14.dp, end = 14.dp, top = 4.dp, bottom = 22.dp),
                         verticalArrangement = Arrangement.spacedBy(16.dp),
                         horizontalArrangement = Arrangement.spacedBy(12.dp),
                         modifier = Modifier.weight(1f).fillMaxWidth(),
                     ) {
+                        if (portrait && query.isBlank() && featured != null) {
+                            item(key = "zephyr-editorial", span = { GridItemSpan(maxLineSpan) }) {
+                                Column(verticalArrangement = Arrangement.spacedBy(18.dp)) {
+                                    Column {
+                                        Text(stringResource(R.string.zephyr_ui2_headline), color = c.fg,
+                                            style = XdText.body.copy(fontSize = 40.sp, lineHeight = 44.sp, fontWeight = FontWeight.Bold))
+                                        Text(stringResource(R.string.zephyr_ui2_headline_accent), color = Color(0xFF69A5FF),
+                                            style = XdText.body.copy(fontSize = 40.sp, lineHeight = 44.sp, fontWeight = FontWeight.Bold))
+                                    }
+                                    val featuredArt = artOf(featured)
+                                    XdEditorialHero(featuredArt.model, featuredArt.smart, featured.name,
+                                        listOfNotNull(formatLabel(featured.format), playedAgo(data.played(featured))).joinToString(" · "),
+                                        stringResource(R.string.zephyr_ui2_featured)) {
+                                        Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                            XdButton(stringResource(R.string.lib_play), { onPlay(featured) },
+                                                Modifier.weight(1f).heightIn(min = 48.dp), kind = XdButtonKind.PRIMARY,
+                                                size = XdButtonSize.LG, icon = XdIcons.play, enabled = !preparing)
+                                            XdButton(stringResource(R.string.xd_lib_sheet), { onOpen(featured) },
+                                                Modifier.heightIn(min = 48.dp), size = XdButtonSize.LG)
+                                        }
+                                    }
+                                    Text(stringResource(R.string.zephyr_ui2_collection), style = XdText.h2, color = c.fg,
+                                        modifier = Modifier.padding(top = 10.dp))
+                                }
+                            }
+                        }
                         items(shown, key = { it.stableId }) { game ->
                             LibraryCard(
-                                game, data, artOf(game), picked = !portrait && game.stableId == selected?.stableId, small = density == CoverDensity.SMALL,
+                                game, data, artOf(game), picked = !portrait && game.stableId == selected?.stableId, small = density == CoverDensity.SMALL, listMode = listMode,
                                 onClick = { if (portrait || game.stableId == selected?.stableId) onOpen(game) else onSelect(game) },
                                 onLongClick = { onOpen(game) },
                                 onFocused = { if (!portrait) onSelect(game) },
@@ -210,6 +245,7 @@ private fun LibraryCard(
     art: CoverArt,
     picked: Boolean,
     small: Boolean,
+    listMode: Boolean,
     onClick: () -> Unit,
     onLongClick: () -> Unit,
     onFocused: () -> Unit,
@@ -238,15 +274,33 @@ private fun LibraryCard(
             .padding(8.dp),
         verticalArrangement = Arrangement.spacedBy(6.dp),
     ) {
-        // The card outline already indicates focus/selection; avoid a second border around the art.
-        GameCover(art.model, game.name, art.smart, favorite = data.favorite(game), discLabel = discBadge(game))
-        Text(game.name, style = XdText.labelSm.copy(fontSize = if (small) 11.5.sp else 12.5.sp, lineHeight = 15.sp), color = c.fg,
-            maxLines = 2, overflow = TextOverflow.Ellipsis)
-        if (!small) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
-            val status = data.status(game)
-            XdDot(status.tone())
-            Text(listOfNotNull(compatShortText(status), playedAgo(data.played(game)) ?: stringResource(R.string.xd_lib_never)).joinToString(" · "),
-                style = XdText.small, color = c.fg2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+        if (listMode) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                GameCover(art.model, game.name, art.smart, modifier = Modifier.width(60.dp),
+                    favorite = data.favorite(game), discLabel = discBadge(game))
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(game.name, style = XdText.label.copy(fontSize = 18.sp, lineHeight = 22.sp), color = c.fg,
+                        maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text(listOfNotNull(formatLabel(game.format), playedAgo(data.played(game)) ?: stringResource(R.string.xd_lib_never)).joinToString(" · "),
+                        style = XdText.small, color = c.fg2)
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
+                        val status = data.status(game)
+                        XdDot(status.tone())
+                        Text(compatShortText(status), style = XdText.small, color = c.fg2)
+                    }
+                }
+            }
+        } else {
+            // The card outline already indicates focus/selection; avoid a second border around the art.
+            GameCover(art.model, game.name, art.smart, favorite = data.favorite(game), discLabel = discBadge(game))
+            Text(game.name, style = XdText.labelSm.copy(fontSize = if (small) 11.5.sp else 12.5.sp, lineHeight = 15.sp), color = c.fg,
+                maxLines = 2, overflow = TextOverflow.Ellipsis)
+            if (!small) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
+                val status = data.status(game)
+                XdDot(status.tone())
+                Text(listOfNotNull(compatShortText(status), playedAgo(data.played(game)) ?: stringResource(R.string.xd_lib_never)).joinToString(" · "),
+                    style = XdText.small, color = c.fg2, maxLines = 1, overflow = TextOverflow.Ellipsis)
+            }
         }
     }
 }
