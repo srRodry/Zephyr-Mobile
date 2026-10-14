@@ -38,7 +38,7 @@ DEFINE_bool(apu_aaudio_dynamic_rate, true,
             "Slow playback toward 0.9x as the audio queue drains, so a guest "
             "that cannot keep real time bends pitch instead of popping.",
             "APU");
-DEFINE_bool(apu_aaudio_log_stats, false,
+DEFINE_bool(apu_aaudio_log_stats, true,
             "Log Android audio callback statistics (gaps, queue depth, "
             "underruns) once a second.",
             "APU");
