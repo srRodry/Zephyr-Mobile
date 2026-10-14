@@ -136,6 +136,9 @@ jobs:
         run: python3 tools/test-vulkan-diagnostics.py
       - name: Test optional pipeline wait timing and concurrent completion
         run: python3 tools/test-pipeline-wait-stats.py
+
+      - name: Check CPU 0 scheduler phase diagnostics
+        run: python3 tools/test-scheduler-phase-stats.py
       - name: Test GPU completion timeline and exact fence collection policy
         run: python3 tools/test-gpu-completion-timeline.py
       - name: Compile Compose UI without packaging native libraries

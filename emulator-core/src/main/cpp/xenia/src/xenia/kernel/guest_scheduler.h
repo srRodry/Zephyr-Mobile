@@ -19,6 +19,7 @@
 #include <unordered_set>
 
 #include "xenia/base/threading.h"
+#include "xenia/kernel/scheduler_phase_stats.h"
 
 namespace xe {
 namespace kernel {
@@ -358,6 +359,8 @@ class GuestScheduler {
     std::atomic<uint64_t> io_queue_max_ns{0};
   };
   Stats stats_;
+  // Only CPU 0 owns the counters; other workers use disabled Measure only.
+  SchedulerPhaseStats cpu0_phase_stats_;
   uint64_t stats_last_report_ms_ = 0;
   // Missed-wake tripwire window, guarded by lock_.
   uint64_t backstop_rescue_window_ms_ = 0;

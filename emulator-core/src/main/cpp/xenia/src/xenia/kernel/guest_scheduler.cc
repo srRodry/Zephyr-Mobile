@@ -1409,7 +1409,10 @@ void GuestScheduler::RunLoop(int cpu_index) {
     uint64_t now = Clock::QueryHostUptimeMillis();
     bool poked = cpu.repoll_now.exchange(false, std::memory_order_relaxed);
     if (poked || now >= cpu.next_timed_repoll_ms) {
-      RereadyBlocked(cpu_index, poked);
+      cpu0_phase_stats_.Measure(
+          cpu_index == 0 && cvars::guest_scheduler_stats,
+          SchedulerPhaseStats::Kind::kRepoll,
+          [&]() { RereadyBlocked(cpu_index, poked); });
     }
 
     XThread* next = DequeueReady(cpu_index);
@@ -1441,7 +1444,9 @@ void GuestScheduler::RunLoop(int cpu_index) {
         continue;
       }
       cpu.exited_thread = nullptr;
-      SwitchTo(next);
+      cpu0_phase_stats_.Measure(
+          cpu_index == 0 && cvars::guest_scheduler_stats,
+          SchedulerPhaseStats::Kind::kFiber, [&]() { SwitchTo(next); });
       if (cpu.exited_thread) {
         // On the idle fiber with the exited fiber parked on its final yield, so
         // reclaiming never frees a stack still in use.
@@ -1471,13 +1476,20 @@ void GuestScheduler::RunLoop(int cpu_index) {
     }
     if (!have_blocked) {
       if (dispatched_any_.load()) {
-        xe::threading::Wait(cpu.ready_event.get(), false);
+        cpu0_phase_stats_.Measure(
+            cpu_index == 0 && cvars::guest_scheduler_stats,
+            SchedulerPhaseStats::Kind::kIdle,
+            [&]() { xe::threading::Wait(cpu.ready_event.get(), false); });
         cpu.parked.store(false);
         continue;
       }
       // Nothing has ever run, so poll instead of sleeping forever and say so.
-      xe::threading::Wait(cpu.ready_event.get(), false,
-                          std::chrono::seconds(1));
+      cpu0_phase_stats_.Measure(
+          cpu_index == 0 && cvars::guest_scheduler_stats,
+          SchedulerPhaseStats::Kind::kIdle, [&]() {
+            xe::threading::Wait(cpu.ready_event.get(), false,
+                                std::chrono::seconds(1));
+          });
       cpu.parked.store(false);
       bool warned = false;
       if (!dispatched_any_.load() &&
@@ -1491,8 +1503,12 @@ void GuestScheduler::RunLoop(int cpu_index) {
     now = Clock::QueryHostUptimeMillis();
     uint64_t due = cpu.next_timed_repoll_ms;
     uint64_t sleep_ms = due > now ? due - now : 0;
-    xe::threading::Wait(cpu.ready_event.get(), false,
-                        std::chrono::milliseconds(sleep_ms));
+    cpu0_phase_stats_.Measure(
+        cpu_index == 0 && cvars::guest_scheduler_stats,
+        SchedulerPhaseStats::Kind::kIdle, [&]() {
+          xe::threading::Wait(cpu.ready_event.get(), false,
+                              std::chrono::milliseconds(sleep_ms));
+        });
     cpu.parked.store(false);
     stats_.idle_wakes.fetch_add(1, std::memory_order_relaxed);
   }
@@ -1512,7 +1528,18 @@ void GuestScheduler::ReportStatsIfDue() {
   if (now_ms - stats_last_report_ms_ < 1000) {
     return;
   }
+  const uint64_t phase_window_ms =
+      stats_last_report_ms_ ? now_ms - stats_last_report_ms_ : 0;
   stats_last_report_ms_ = now_ms;
+  const auto phases = cpu0_phase_stats_.Take();
+  XELOGI(
+      "GuestSchedulerCPU0: window {} ms | repoll calls {} wall {:.3f} ms max {:.3f} ms | "
+      "fiber calls {} wall {:.3f} ms max {:.3f} ms | "
+      "idle calls {} wall {:.3f} ms max {:.3f} ms",
+      phase_window_ms, phases[0].calls, phases[0].wall_ns / 1e6,
+      phases[0].max_ns / 1e6, phases[1].calls, phases[1].wall_ns / 1e6,
+      phases[1].max_ns / 1e6, phases[2].calls, phases[2].wall_ns / 1e6,
+      phases[2].max_ns / 1e6);
   auto take = [](std::atomic<uint64_t>& v) {
     return v.exchange(0, std::memory_order_relaxed);
   };

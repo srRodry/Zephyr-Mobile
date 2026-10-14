@@ -19,6 +19,7 @@ SOURCES = (
     'emulator-core/src/main/cpp/xenia/src/xenia/gpu/vulkan/vulkan_pipeline_cache.cc',
     'emulator-core/src/main/cpp/xenia/src/xenia/gpu/vulkan/vulkan_command_processor.cc',
     'emulator-core/src/main/cpp/xenia/src/xenia/ui/vulkan/vulkan_gpu_completion_timeline.cc',
+    'emulator-core/src/main/cpp/xenia/src/xenia/kernel/guest_scheduler.cc',
 )
 
 def plan(database):
