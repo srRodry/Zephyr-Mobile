@@ -20,6 +20,8 @@ on:
       - 'tools/test-a64-vector-select.py'
       - 'tools/test-jit-compile-stats.py'
       - 'tools/test-a64-logical-immediate.py'
+      - 'tools/compile-native-regressions.py'
+      - 'tools/test-native-regression-selection.py'
       - 'emulator-core/src/test/cpp/a64_logical_immediate_test.cc'
       - 'emulator-core/src/test/cpp/jit_compile_stats_test.cc'
       - 'emulator-core/src/test/cpp/a64_vector_select_test.cc'
@@ -164,3 +166,38 @@ jobs:
             app/build/test-results/zephyr-transfer-tests/
           if-no-files-found: ignore
           retention-days: 14
+
+  native-android:
+    name: Android ARM64 release translation-unit integration
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    env:
+      GRADLE_OPTS: -Dorg.gradle.jvmargs=-Xmx3g
+      XENDROID_NINJA_JOBS: '2'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - name: Test strict native object selection and failure propagation
+        run: python3 tools/test-native-regression-selection.py
+      - name: Install shader compiler tools
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq --no-install-recommends ninja-build glslang-tools spirv-tools
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: 'platform-tools'
+          log-accepted-android-sdk-licenses: false
+      - name: Install Android native toolchain
+        run: sdkmanager --install "platforms;android-35" "build-tools;35.0.0" "ndk;29.0.14206865" "cmake;3.30.3"
+      - uses: gradle/actions/setup-gradle@v4
+      # Configure the same Release CMake variant as the experimental APK, then
+      # build object targets only. No assemble/package/signing/release task.
+      - name: Configure Android ARM64 Release without packaging
+        run: bash ./gradlew -PxendroidReleaseDebuggable ':emulator-core:configureCMakeRelease[arm64-v8a]' --no-daemon --stacktrace
+      - name: Compile production emitter, translator and JNI objects
+        run: python3 tools/compile-native-regressions.py --jobs 2

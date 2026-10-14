@@ -157,3 +157,16 @@ inventar uma. Consulta a fóruns/vídeos não requer login nem contato com autor
   de avançar; não confundir redução de instruções com FPS ganho no telefone.
 - Primeiro ciclo agendado de 00h deve apenas ler/conferir CI para evitar corrida
   com esta continuação manual. Ciclos posteriores mantêm a investigação autorizada.
+
+### Etapa de 01h — integração nativa com o NDK
+
+- Reconfirmado remoto `994316e`, UI #55 aprovado; APK #40/release ignorados.
+- Lacuna identificada: testes de emitter no host não compilam unidades completas
+  com tipos/headers/flags Android. Acrescentado job de objetos ARM64 Release para
+  a64_sequences, ppc_translator e emulator_xendroid, sem link/assemble/APK.
+- Seletor de targets tem quatro regressões locais aprovadas. Ler
+  `zephyr-native-integration-check-2026-10-14.md` para limites e pré-requisitos.
+- Conferir o CI deste incremento antes da próxima alteração. Caso pendente ou
+  falhando, priorizar sua conclusão/correção; não presumir aprovação Android.
+- Não existe nova medição do aparelho nem evidência para mudar scheduler ou
+  ampliar registradores. APK completo e teste de desempenho continuam para manhã.
