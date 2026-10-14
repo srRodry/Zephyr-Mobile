@@ -1,10 +1,12 @@
 package xendroid.compose.ui.design
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ColumnScope
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
@@ -44,19 +46,36 @@ fun XdEditorialHero(
     modifier: Modifier = Modifier,
     actions: @Composable ColumnScope.() -> Unit,
 ) {
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        Box(Modifier.fillMaxWidth().height(196.dp).clip(EditorialCut).background(Color(0xFF237BFF))) {
-            Box(Modifier.fillMaxWidth().height(188.dp).background(Color(0xFF1C2532)), contentAlignment = Alignment.Center) {
-                AsyncImage(model, null,
-                    modifier = if (smart) Modifier.size(104.dp) else Modifier.fillMaxWidth().height(188.dp),
-                    contentScale = if (smart) ContentScale.Fit else ContentScale.Crop)
+    if (smart) {
+        val c = Xd.colors
+        val shape = RoundedCornerShape(16.dp)
+        Column(modifier.fillMaxWidth().clip(shape).background(c.s1).border(1.dp, c.line2, shape).padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                Box(Modifier.size(4.dp, 64.dp).background(Color(0xFF237BFF)))
+                AsyncImage(model, null, Modifier.size(64.dp).clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.Fit)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                    Text(eyebrow, style = XdText.labelSm, color = Color(0xFF91BAFF))
+                    Text(title, style = XdText.body.copy(fontSize = 24.sp, lineHeight = 28.sp,
+                        fontWeight = FontWeight.Bold), color = c.fg)
+                    Text(subtitle, style = XdText.small, color = c.fg2)
+                }
             }
-        }
-        Column(Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text(eyebrow, style = XdText.labelSm, color = Color(0xFF91BAFF))
-            Text(title, style = XdText.body.copy(fontSize = 30.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold), color = Xd.colors.fg)
-            Text(subtitle, style = XdText.small, color = Xd.colors.fg2)
             actions()
+        }
+    } else {
+        Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Box(Modifier.fillMaxWidth().height(196.dp).clip(EditorialCut).background(Color(0xFF237BFF))) {
+                Box(Modifier.fillMaxWidth().height(188.dp).background(Color(0xFF1C2532))) {
+                    AsyncImage(model, null, Modifier.fillMaxWidth().height(188.dp), contentScale = ContentScale.Crop)
+                }
+            }
+            Column(Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                Text(eyebrow, style = XdText.labelSm, color = Color(0xFF91BAFF))
+                Text(title, style = XdText.body.copy(fontSize = 30.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold), color = Xd.colors.fg)
+                Text(subtitle, style = XdText.small, color = Xd.colors.fg2)
+                actions()
+            }
         }
     }
 }
@@ -84,3 +103,4 @@ fun XdEditorialHeading(title: String, subtitle: String, modifier: Modifier = Mod
         Text(subtitle, style = XdText.body, color = Xd.colors.fg2)
     }
 }
+

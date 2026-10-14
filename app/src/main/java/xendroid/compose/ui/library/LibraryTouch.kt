@@ -8,6 +8,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.WindowInsets
@@ -39,13 +41,10 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.draw.blur
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
-import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
@@ -53,7 +52,6 @@ import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import coil.compose.AsyncImage
 import xendroid.compose.R
 import xendroid.compose.data.Game
 import xendroid.compose.ui.design.BBottomBar
@@ -306,9 +304,10 @@ private fun LibraryCard(
 }
 
 /**
- * The chosen game's panel (touch, landscape): its art behind the head, Play / Details / favourite,
+ * The chosen game's panel (touch, landscape): editorial art, Play / Details / favourite,
  * play time, last session, patches, who plays, and the quick settings of this game.
  */
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 fun LibraryDetailPanel(
     game: Game,
@@ -326,29 +325,21 @@ fun LibraryDetailPanel(
 ) {
     val c = Xd.colors
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
-        Box(Modifier.fillMaxWidth()) {
-            AsyncImage(art.model, null, Modifier.matchParentSize().blur(26.dp), contentScale = ContentScale.Crop, alpha = 0.5f)
-            Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Color(0x3315191C), c.s1), startY = 0f)))
-            Row(Modifier.fillMaxWidth().padding(start = 16.dp, end = 16.dp, top = 16.dp, bottom = 14.dp),
-                verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(Modifier.width(86.dp)) { GameCover(art.model, game.name, art.smart, favorite = data.favorite(game)) }
-                Column(Modifier.weight(1f)) {
-                    Text(game.name, style = XdText.h2.copy(lineHeight = 22.sp), color = c.fg, maxLines = 3, overflow = TextOverflow.Ellipsis,
-                        modifier = Modifier.padding(bottom = 6.dp))
-                    Text(listOfNotNull(game.titleId, formatLabel(game.format)).joinToString(" · "), style = XdText.mono.copy(fontSize = 11.sp),
-                        color = c.fg3, modifier = Modifier.padding(bottom = 6.dp))
-                    XdStatusPill(compatShortText(data.status(game)), data.status(game).tone())
+        Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+            XdEditorialHero(art.model, art.smart, game.name,
+                listOfNotNull(game.titleId, formatLabel(game.format)).joinToString(" · "),
+                stringResource(R.string.zephyr_ui2_featured)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                    XdButton(stringResource(R.string.lib_play), onPlay, kind = XdButtonKind.PRIMARY,
+                        icon = XdIcons.play, enabled = !preparing, modifier = Modifier.heightIn(min = 48.dp))
+                    XdButton(stringResource(R.string.xd_lib_sheet), onOpen, modifier = Modifier.heightIn(min = 48.dp))
+                    XdIconButton(if (data.favorite(game)) XdIcons.starFilled else XdIcons.star,
+                        stringResource(R.string.lib_favorites), onFavorite, on = data.favorite(game))
                 }
             }
+            XdStatusPill(compatShortText(data.status(game)), data.status(game).tone())
         }
         Column(Modifier.padding(start = 16.dp, end = 16.dp, top = 2.dp, bottom = 18.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                XdButton(stringResource(R.string.lib_play), onPlay, kind = XdButtonKind.PRIMARY, icon = XdIcons.play, enabled = !preparing,
-                    modifier = Modifier.weight(1f))
-                XdButton(stringResource(R.string.xd_lib_sheet), onOpen)
-                XdIconButton(if (data.favorite(game)) XdIcons.starFilled else XdIcons.star, stringResource(R.string.lib_favorites), onFavorite,
-                    on = data.favorite(game))
-            }
             val played = data.played(game)
             XdKv(listOf(
                 stringResource(R.string.xd_lib_play_time) to (playTime(played) ?: "—"),
@@ -376,3 +367,4 @@ fun sortText(sort: LibrarySort): String = when (sort) {
     LibrarySort.FORMAT -> stringResource(R.string.lib_sort_format)
     LibrarySort.RECENT -> stringResource(R.string.lib_sort_recent)
 }
+

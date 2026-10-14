@@ -296,7 +296,7 @@ fun GameScreen(
     val swap = LocalSwapConfirm.current
     WithCoverColors(colors?.dyn, colors?.accent) {
         XdSectionedScreen(
-            title = game.name,
+            title = if (!controller && shown == GameSections.OVERVIEW) stringResource(R.string.xd_lib_sheet) else game.name,
             sections = sections,
             selected = shown,
             onSelect = { id -> if (controller && id == "play" && shown == "play") play() else section = id },
@@ -305,7 +305,7 @@ fun GameScreen(
             subtitleMono = true,
             onBack = links.onBack,
             lead = if ((controller && shown == "play") || (!controller && shown == GameSections.OVERVIEW)) null else cover,
-            art = art.model,
+            art = if (!controller && shown == GameSections.OVERVIEW) null else art.model,
             actions = if (controller) null else ({
                 XdIconButton(if (favorite) XdIcons.starFilled else XdIcons.star, stringResource(R.string.lib_favorites),
                     { actions.toggleFavorite(game) }, on = favorite)
@@ -430,3 +430,4 @@ private fun TomlSheet(editing: SettingsEditing, onDismiss: () -> Unit) {
         XdToml(text)
     }
 }
+
