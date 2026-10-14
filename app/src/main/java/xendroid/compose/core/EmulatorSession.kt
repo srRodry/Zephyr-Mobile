@@ -189,7 +189,10 @@ class EmulatorSession {
     fun guestFrameTimeHistogram(): LongArray? = if (booted) core.guest_frame_time_histogram() else null
     /** GPU time per timed frame-generation pass (0.25 ms buckets) + untimed passes last; null before boot. */
     fun frameGenerationGpuHistogram(): LongArray? = if (booted) core.frame_generation_gpu_histogram() else null
-    /** {pipeline creations, ns spent in them, in flight} since the process started; null before boot. */
+    /** PRE-boot, optional test diagnostics; older native libraries may lack the hook. */
+    fun setJitCompileDiagnostics(enabled: Boolean): Boolean =
+        runCatching { core.set_jit_compile_diagnostics(enabled); true }.getOrDefault(false)
+    /** {pipeline creations, ns, in flight}; optional JIT suffix, see RunPerformanceAccumulator. */
     fun shaderCompileStats(): LongArray? = if (booted) core.shader_compile_stats() else null
     /** {backend, blocks played, blocks concealed, device xruns} since the process started; null before boot. */
     fun audioRunStats(): LongArray? = if (booted) core.audio_run_stats() else null

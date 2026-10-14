@@ -4,6 +4,50 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class RunPerformanceTest {
+    private fun jitStats(count: Long, ns: Long, failed: Long, vararg histogram: Long): LongArray =
+        longArrayOf(10, 20_000_000, 0, count, ns, failed, *histogram)
+
+    @Test fun jitCompilationUsesOptionalNativeSuffixAndNanosecondUnits() {
+        val acc = RunPerformanceAccumulator()
+        acc.compiles(longArrayOf(10, 20_000_000, 0)) // older library
+        assertNull(acc.snapshot().jitCompilation)
+        val baseline = jitStats(100, 200_000_000, 2, 0, 100, 0, 0, 0, 0)
+        acc.compiles(baseline)
+        baseline[3] = 9999 // caller mutation cannot alter baseline
+        acc.compiles(jitStats(106, 372_500_000, 3, 1, 101, 1, 1, 1, 1))
+        val report = acc.snapshot().jitCompilation!!
+        assertEquals(6L, report.translations)
+        assertEquals(1L, report.failedTranslations)
+        assertEquals(172.5, report.summedWallMs, 0.000001)
+        assertEquals(List(6) { 1L }, report.timeHistogram)
+        assertEquals(0L, acc.snapshot().pipelineCreations) // legacy prefix remains independent
+    }
+
+    @Test fun jitProcessResetKeepsPreviousSegmentWithoutFabricatedSpikes() {
+        val acc = RunPerformanceAccumulator()
+        acc.compiles(jitStats(100, 200_000_000, 2, 0, 100, 0, 0, 0, 0))
+        acc.compiles(jitStats(106, 372_500_000, 3, 1, 101, 1, 1, 1, 1))
+        acc.compiles(jitStats(1, 5_000_000, 0, 0, 0, 1, 0, 0, 0))
+        acc.compiles(jitStats(2, 15_000_000, 0, 0, 0, 2, 0, 0, 0))
+        val report = acc.snapshot().jitCompilation!!
+        assertEquals(7L, report.translations)
+        assertEquals(182.5, report.summedWallMs, 0.000001)
+        assertEquals(listOf(1L, 1L, 2L, 1L, 1L, 1L), report.timeHistogram)
+    }
+
+    @Test fun malformedJitCountersStayAbsentAndOldReportsRemainReadable() {
+        val acc = RunPerformanceAccumulator()
+        acc.compiles(jitStats(2, 1, 3, 2, 0, 0, 0, 0, 0)) // failures exceed translations
+        acc.compiles(jitStats(2, 1, 0, 1, 0, 0, 0, 0, 0)) // incoherent histogram
+        acc.compiles(jitStats(2, -1, 0, 2, 0, 0, 0, 0, 0))
+        assertNull(acc.snapshot().jitCompilation)
+        val json = kotlinx.serialization.json.Json
+        val old = json.decodeFromString(RunPerformance.serializer(), "{}")
+        assertNull(old.jitCompilation)
+        val report = old.copy(jitCompilation = JitCompilationReport(translations = 1, summedWallMs = 3.5, timeHistogram = listOf(0,1,0,0,0,0)))
+        assertEquals(report, json.decodeFromString(RunPerformance.serializer(), json.encodeToString(RunPerformance.serializer(), report)))
+    }
+
     @Test fun onlyRunningSecondsWithNewFramesBecomeFpsSamples() {
         val acc = RunPerformanceAccumulator()
         acc.sample(running = true, guestFps = 30.0, presentCount = 100, generatedCount = 0, frameGenerationActive = false)

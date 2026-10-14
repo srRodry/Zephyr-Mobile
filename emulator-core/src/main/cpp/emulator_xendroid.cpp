@@ -22,6 +22,7 @@
 #include "xenia/base/mapped_memory.h"
 #include "xenia/base/cvar.h"
 #include "xenia/base/frame_stats.h"
+#include "xenia/cpu/jit_compile_stats.h"
 #include "xenia/ui/presentation_runtime.h"
 #include "xenia/gpu/gpu_live_options.h"
 #include "third_party/lsfg/lsfg_dll.h"
@@ -1267,14 +1268,28 @@ static void j_set_fatal_report_path(JNIEnv* env, jobject thiz, jstring path) {
     xe::SetFatalReportPath(chars);
     env->ReleaseStringUTFChars(path, chars);
 }
-// {pipeline creations so far, nanoseconds spent creating them, creations in flight}.
+// Optional test diagnostics, enabled before boot; ordinary packages leave it off.
+static void j_set_jit_compile_diagnostics(JNIEnv*, jobject, jboolean enabled) {
+    xe::cpu::TranslationCompileStats().enabled.store(enabled == JNI_TRUE, std::memory_order_relaxed);
+}
+// Legacy prefix: {pipeline count, ns, in flight}. Optional suffix: completed
+// guest translations, summed wall ns, failures, six per-translation time buckets.
 static jlongArray j_shader_compile_stats(JNIEnv* env, jobject thiz) {
-    const jlong values[] = {
+    jlong values[12] = {
         jlong(xe::shader_compiles_total().load(std::memory_order_relaxed)),
         jlong(xe::shader_compile_ns_total().load(std::memory_order_relaxed)),
         jlong(xe::shader_compiles_in_flight_count())};
-    auto array = env->NewLongArray(3);
-    if (array) env->SetLongArrayRegion(array, 0, 3, values);
+    auto& jit = xe::cpu::TranslationCompileStats();
+    const jsize count = jit.enabled.load(std::memory_order_relaxed) ? 12 : 3;
+    if (count == 12) {
+        const auto stats = jit.Snapshot();
+        values[3] = jlong(stats.completed);
+        values[4] = jlong(stats.duration_ns);
+        values[5] = jlong(stats.failed);
+        for (size_t i = 0; i < stats.histogram.size(); ++i) values[6+i] = jlong(stats.histogram[i]);
+    }
+    auto array = env->NewLongArray(count);
+    if (array) env->SetLongArrayRegion(array, 0, count, values);
     return array;
 }
 // "key=value;..." identity of the Vulkan driver in use; empty before the presenter starts.
@@ -2074,6 +2089,7 @@ int register_xendroid_Emulator(JNIEnv* env){
             ,{"active_driver_identity", "()Ljava/lang/String;", (void *) j_active_driver_identity}
             ,{"guest_frame_time_histogram", "()[J", (void *) j_guest_frame_time_histogram}
             ,{"shader_compile_stats", "()[J", (void *) j_shader_compile_stats}
+            ,{"set_jit_compile_diagnostics", "(Z)V", (void *) j_set_jit_compile_diagnostics}
             ,{"audio_run_stats", "()[J", (void *) j_audio_run_stats}
             ,{"key_event_slot", "(IIZI)V", (void *) j_key_event_slot}
             ,{"set_slot_connected", "(IZLjava/lang/String;)V", (void *) j_set_slot_connected}

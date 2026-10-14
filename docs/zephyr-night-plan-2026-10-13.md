@@ -131,3 +131,16 @@ inventar uma. Consulta a fóruns/vídeos não requer login nem contato com autor
   ligar `log_gpu_frame_time_breakdown`. Default detalhado true pode distorcer
   medidas; não ativar globalmente nem contornar allowlist de perfis. Essas métricas
   existem em logs nativos, ainda não no resumo compartilhado RunPerformance.
+
+### Continuação com prioridade extrema em desempenho
+
+- UI #53 (`dacc5c4`, documentação) também aprovado; código SELECT segue idêntico
+  ao incremento anterior. Nenhum APK noturno.
+- Auditoria encontrou ausência de tempo de compilação guest no resumo: novo
+  diagnóstico opcional em `PPCTranslator::Translate`, ativo só em `.zephyr.test`,
+  acrescenta sufixo ao JNI de compile stats, relatório e eventos distintos de GPU.
+- Ler `zephyr-jit-compile-diagnostics-2026-10-14.md` para unidades, overhead e
+  baseline. Medição de parede somada não é runtime de guest nem uso de CPU.
+- Mapa de símbolos já existe (`a64_perf_map=true`, fflush por função); não é fsync
+  nem gargalo comprovado. Sem alteração. Promoção vetorial tem regressões conhecidas;
+  não ligar globalmente. Confirmar CI desse próximo incremento após commit.

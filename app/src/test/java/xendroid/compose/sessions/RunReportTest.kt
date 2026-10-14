@@ -10,6 +10,17 @@ import xendroid.compose.compatibility.CompatStatus
 import xendroid.compose.compatibility.CompatibilityReport
 
 class RunReportTest {
+    @Test fun jitCompileCountersAndTheirLimitsAreVisibleBeforeSharing() {
+        val jit = JitCompilationReport(translations = 6, failedTranslations = 1,
+            summedWallMs = 172.5, timeHistogram = List(6) { 1L })
+        val report = RunReports.build(run.copy(performance = RunPerformance(jitCompilation = jit)), null, emptyList(), device, 0)
+        val lines = RunReports.preview(report)
+        assertTrue(lines.any { it.contains("6 translations, 1 failed") && it.contains("172.500 ms") })
+        assertTrue(lines.any { it.contains("not guest execution or frame stall time") })
+        assertTrue(lines.any { it.contains("<1/<4/<16.7/<33.3/<100/>=100 ms: 1/1/1/1/1/1") })
+        assertEquals(jit, report.run.performance!!.jitCompilation)
+    }
+
     @Test fun hostThreadNamesAreRedactedAndEveryReportedThreadIsPreviewed() {
         val threads = (1..12).map { tid ->
             HostThreadCpuUsage(tid, 99, if (tid == 1) "me@example.com" else "Guest CPU $tid", 2, 50.0, 60.0)

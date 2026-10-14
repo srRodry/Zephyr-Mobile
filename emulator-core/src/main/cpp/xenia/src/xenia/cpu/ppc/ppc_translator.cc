@@ -26,6 +26,7 @@
 DECLARE_path(log_file);
 #include "xenia/cpu/compiler/compiler_passes.h"
 #include "xenia/cpu/cpu_flags.h"
+#include "xenia/cpu/jit_compile_stats.h"
 #include "xenia/cpu/ppc/ppc_frontend.h"
 #include "xenia/cpu/ppc/ppc_hir_builder.h"
 #include "xenia/cpu/ppc/ppc_opcode_info.h"
@@ -285,6 +286,7 @@ void PPCTranslator::DumpMachineCode(GuestFunction* function) {
 bool PPCTranslator::Translate(GuestFunction* function,
                               uint32_t debug_info_flags) {
   SCOPE_profile_cpu_f("cpu");
+  ScopedJitCompile<> compile_measurement(TranslationCompileStats());
   HirBuilderScope hir_build_scope{builder_.get()};
   // Reset() all caching when we leave.
   xe::make_reset_scope(builder_);
@@ -407,6 +409,7 @@ bool PPCTranslator::Translate(GuestFunction* function,
     DumpTargetFunction(function);
   }
 
+  compile_measurement.Succeeded();
   return true;
 }
 

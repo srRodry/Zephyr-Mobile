@@ -93,6 +93,12 @@ object RunReports {
             describeFrameTimes(perf)?.let { add("Frame time: $it") }
             describeAudio(perf)?.let { add("Audio: $it") }
             describeFrameGeneration(perf)?.let { add("Frame generation: $it") }
+            perf.jitCompilation?.let { jit ->
+                add("Guest JIT compilation: ${jit.translations} translations, ${jit.failedTranslations} failed; " +
+                    "%.3f ms summed wall time across workers (not guest execution or frame stall time)".format(
+                        java.util.Locale.ROOT, jit.summedWallMs))
+                add("  Compile-time buckets <1/<4/<16.7/<33.3/<100/>=100 ms: ${jit.timeHistogram.joinToString("/")}")
+            }
             perf.hostThreadCpu?.let { cpu ->
                 add("Host thread CPU: ${cpu.attempts} probes, ${cpu.unavailableReads} unavailable; percentages relative to one core")
                 cpu.threads.forEach { thread ->

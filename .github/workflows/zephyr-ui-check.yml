@@ -18,6 +18,8 @@ on:
       - '.github/workflows/zephyr-ui-check.yml'
       - 'tools/*signing*'
       - 'tools/test-a64-vector-select.py'
+      - 'tools/test-jit-compile-stats.py'
+      - 'emulator-core/src/test/cpp/jit_compile_stats_test.cc'
       - 'emulator-core/src/test/cpp/a64_vector_select_test.cc'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/cpu/**'
       - 'emulator-core/src/main/cpp/xenia/third_party/xbyak_aarch64/**'
@@ -111,6 +113,10 @@ jobs:
         run: python3 tools/test-native-clock.py
       - name: Test ARM64 vector select semantics and instruction encoding
         run: python3 tools/test-a64-vector-select.py
+      - name: Check Java and native JNI signatures
+        run: python3 tools/check-jni.py
+      - name: Test optional JIT compile timing lifecycle and concurrent snapshots
+        run: python3 tools/test-jit-compile-stats.py
       - name: Compile Compose UI without packaging native libraries
         run: bash ./gradlew :app:compileDebugKotlin --no-daemon --stacktrace
       # These cases deliberately replace config files and the native singleton.

@@ -73,6 +73,8 @@ public class Emulator extends xendroid.emulator.Emulator{
     public native long[] guest_frame_time_histogram();
     // {pipeline creations so far, ns spent in them, creations in flight}; take deltas.
     public native long[] shader_compile_stats();
+    /** Test-only compile timing; call before boot, no guest instruction tracing. */
+    public native void set_jit_compile_diagnostics(boolean enabled);
     // {backend 0 none/1 AAudio/2 OpenSL ES, blocks played, blocks concealed (late emulator),
     // device xruns} since the process started; take deltas.
     public native long[] audio_run_stats();

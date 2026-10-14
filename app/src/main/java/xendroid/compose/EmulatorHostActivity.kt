@@ -213,6 +213,8 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
     private var driverRecorded = false
     /** Seconds with >= 100 ms spent creating pipelines (ns counter, pipelines alongside). */
     private val compileBursts = xendroid.compose.sessions.BurstTracker(threshold = 100_000_000, quietSeconds = 2)
+    /** Summed compiler wall time per sampling window; not a measured frame stall. */
+    private val jitCompileBursts = xendroid.compose.sessions.BurstTracker(threshold = 16_700_000, quietSeconds = 2)
     /** Seconds with concealed audio blocks; 5 quiet seconds end a burst, so sporadic dropouts stay one event pair. */
     private val audioBursts = xendroid.compose.sessions.BurstTracker(threshold = 1, quietSeconds = 5)
     /** Shown over the black screen until the first guest frame (U09); null afterwards. */
@@ -1722,6 +1724,15 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
                                     }
                                     compileStats?.let { stats ->
                                         runPerformance.compiles(stats)
+                                        if (stats.size >= 12) {
+                                            when (val burst = jitCompileBursts.sample(stats[4], stats[3])) {
+                                                xendroid.compose.sessions.BurstTracker.Burst.Started ->
+                                                    recordEvent("jit_compile", "guest translation burst started")
+                                                is xendroid.compose.sessions.BurstTracker.Burst.Ended -> recordEvent("jit_compile",
+                                                    "${burst.events} translations, ${burst.amount / 1_000_000} ms summed compiler wall time over ${burst.seconds} s")
+                                                null -> {}
+                                            }
+                                        }
                                         when (val burst = compileBursts.sample(stats[1], stats[0])) {
                                             // Driver crashes during compiles happen: keep the start on disk.
                                             xendroid.compose.sessions.BurstTracker.Burst.Started ->
@@ -2169,6 +2180,10 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
                     )
                 }
 
+                if (BuildConfig.APPLICATION_ID.endsWith(".zephyr.test") &&
+                    !session.setJitCompileDiagnostics(true)) {
+                    Log.w(TAG, "Native JIT compile diagnostics unavailable")
+                }
                 session.bootOnce()
                 bootedState.value = true
             } catch (

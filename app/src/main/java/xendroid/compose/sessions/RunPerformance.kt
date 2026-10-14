@@ -4,6 +4,18 @@ import kotlin.math.ceil
 import kotlin.math.roundToInt
 import kotlinx.serialization.Serializable
 
+/** Translation/optimization/assembly wall time, summed across compiler workers.
+ * Not CPU execution time, frame stall duration or a measure of runtime JIT code cost.
+ * Histogram bounds: <1, <4, <16.7, <33.3, <100, >=100 milliseconds. */
+@Serializable
+data class JitCompilationReport(
+    val version: Int = 1,
+    val translations: Long = 0,
+    val failedTranslations: Long = 0,
+    val summedWallMs: Double = 0.0,
+    val timeHistogram: List<Long> = emptyList(),
+)
+
 /**
  * Performance summary of one run (C02), built from the host's one-second samples
  * and the core's per-frame counters. What it is and is not:
@@ -70,6 +82,7 @@ data class RunPerformance(
     val guestRefreshCap: Boolean? = null,
     /** Diagnostic test builds only; CPU time per host thread, not GPU execution time. */
     val hostThreadCpu: HostThreadCpuReport? = null,
+    val jitCompilation: JitCompilationReport? = null,
 ) {
     val sampledSeconds: Int get() = fpsHistogram.sum()
     val frames: Long get() = frameTimeHistogramMs.sum()
@@ -259,6 +272,7 @@ class RunPerformanceAccumulator(private val maxFps: Int = 240) {
     private var frameLatest: LongArray? = null
     private var compileBaseline: LongArray? = null
     private var compileLatest: LongArray? = null
+    private val jitCompiles = JitCompilationAccumulator()
     private var firstFrameSeconds: Int? = null
     private var audioBaseline: LongArray? = null
     private var audioLatest: LongArray? = null
@@ -328,6 +342,7 @@ class RunPerformanceAccumulator(private val maxFps: Int = 240) {
         if (stats == null || stats.size < 2) return
         if (compileBaseline == null) compileBaseline = stats.copyOf(2)
         compileLatest = stats.copyOf(2)
+        jitCompiles.sample(stats)
     }
 
     /** Cumulative native frame-time counts; the first call is the run's baseline. */
@@ -419,6 +434,7 @@ class RunPerformanceAccumulator(private val maxFps: Int = 240) {
         displayHz = displayHz.toList(),
         guestRefreshCap = guestRefreshCap,
         hostThreadCpu = hostThreadCpu,
+        jitCompilation = jitCompiles.snapshot(),
     )
 
     private fun compileDelta(index: Int): Long? {
@@ -436,5 +452,32 @@ class RunPerformanceAccumulator(private val maxFps: Int = 240) {
     private companion object {
         /** Distinct FPS limits / refresh rates kept per run: more says "it kept changing". */
         const val MAX_PACING_VALUES = 8
+    }
+}
+
+/** Optional suffix of native shader_compile_stats; a coherent process snapshot.
+ * First reading establishes baseline. A process reset renews it and keeps already
+ * collected deltas. Missing/legacy snapshots never invent zero JIT timings. */
+internal class JitCompilationAccumulator {
+    private var previous: LongArray? = null
+    private val collected = LongArray(9)
+    fun sample(stats: LongArray) {
+        if (stats.size < 12) return
+        val now = stats.copyOfRange(3, 12)
+        if (now.any { it < 0 } || now[2] > now[0]) return
+        val histogramTotal = try { now.drop(3).fold(0L) { sum, count -> Math.addExact(sum, count) } } catch (_: ArithmeticException) { return }
+        if (histogramTotal != now[0]) return
+        val before = previous
+        previous = now
+        if (before == null || now.indices.any { now[it] < before[it] }) return
+        val deltas = LongArray(9) { now[it] - before[it] }
+        // Reject an impossible/wrapped aggregate without partially mutating it.
+        val next = try { LongArray(9) { Math.addExact(collected[it], deltas[it]) } }
+                   catch (_: ArithmeticException) { return }
+        next.copyInto(collected)
+    }
+    fun snapshot(): JitCompilationReport? = previous?.let {
+        JitCompilationReport(translations = collected[0], failedTranslations = collected[2],
+            summedWallMs = collected[1] / 1_000_000.0, timeHistogram = collected.drop(3))
     }
 }
