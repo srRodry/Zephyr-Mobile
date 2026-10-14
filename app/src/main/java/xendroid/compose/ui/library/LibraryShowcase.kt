@@ -22,6 +22,8 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.selected
 import androidx.compose.ui.semantics.semantics
@@ -82,7 +84,7 @@ internal fun LibraryShowcase(
     }
     BoxWithConstraints(Modifier.fillMaxWidth()) {
         val tileWidth = ((maxWidth - 16.dp) / 3f).coerceIn(84.dp, 144.dp)
-        LazyRow(state = state, modifier = Modifier.fillMaxWidth(),
+        LazyRow(state = state, modifier = Modifier.fillMaxWidth().testTag("library-showcase"),
             horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.Bottom) {
             items(games, key = { it.stableId }) { game ->
                 val picked = game.stableId == selected?.stableId
@@ -99,7 +101,7 @@ internal fun LibraryShowcase(
                             else -> false
                         }
                     }.combinedClickable(role = Role.Button, onClick = { onSelect(game) }, onLongClick = { onOpen(game) })
-                    .semantics { this.selected = picked }.padding(4.dp),
+                    .semantics { contentDescription = game.name; this.selected = picked }.padding(4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
                     LibraryArtwork(game, artOf(game), Modifier.width(tileWidth - if (picked) 8.dp else 20.dp), data.favorite(game))
                     Text(game.name, color = c.fg, style = XdText.labelSm.copy(fontWeight = if (picked) FontWeight.Bold else FontWeight.Medium),

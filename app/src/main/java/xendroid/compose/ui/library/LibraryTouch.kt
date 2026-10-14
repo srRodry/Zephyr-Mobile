@@ -35,6 +35,7 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.VerticalDivider
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalFocusManager
 import xendroid.compose.ui.design.LocalXd
 import xendroid.compose.ui.design.XdColors
@@ -130,7 +131,7 @@ fun LibraryTouch(
                     columns = if (listMode) GridCells.Fixed(1) else GridCells.Adaptive(density.minWidth.dp),
                     contentPadding = PaddingValues(horizontal = 14.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(10.dp), horizontalArrangement = Arrangement.spacedBy(10.dp),
-                    modifier = Modifier.fillMaxSize()) {
+                    modifier = Modifier.fillMaxSize().testTag("library-grid")) {
                     item(key = "library-tools", span = { GridItemSpan(maxLineSpan) }) {
                         Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                             Row(verticalAlignment = Alignment.CenterVertically) {

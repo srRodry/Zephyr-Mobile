@@ -1,12 +1,19 @@
 package xendroid.compose.screens
 
 import androidx.compose.runtime.remember
+import androidx.compose.ui.test.assertIsSelected
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasContentDescription
+import androidx.compose.ui.test.hasTestTag
+import androidx.compose.ui.test.onNodeWithTag
+import androidx.compose.ui.test.performScrollToNode
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onAllNodesWithContentDescription
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import org.junit.Assert.assertEquals
 import org.junit.Rule
 import org.junit.Test
 import org.junit.runner.RunWith
@@ -28,6 +35,7 @@ import xendroid.compose.ui.design.InputMode
 import xendroid.compose.ui.game.GameScreen
 import xendroid.compose.ui.game.GameScreenLinks
 import xendroid.compose.ui.library.GameLibraryScreen
+import xendroid.compose.ui.library.LibraryUiState
 
 /** Base batch "depois": the library (grid and panel, carousel) and the game sheet, as the app draws them. */
 @RunWith(AndroidJUnit4::class)
@@ -40,15 +48,28 @@ class BaseShots {
         val container = AppContainer(Fixture.context)
         val vm = Fixture.library(container)
         val compress = container.gameCompressViewModelFactory().create(GameCompressViewModel::class.java)
+        var sheetsOpened = 0
         compose.app(mode) {
             GameLibraryScreen(vm, {}, {}, {}, {}, {}, { _, _, _, _ -> }, { _, _ -> }, { _, _ -> }, { _, _ -> }, {}, {}, {}, compress,
+                onOpenGame = { _, _ -> sheetsOpened++ },
                 gameSettings = { id -> remember(id) { container.gameSettingsViewModelFactory(id).create(GameSettingsViewModel::class.java) } })
         }
         if (pick != null) {
-            compose.onAllNodesWithContentDescription(pick, useUnmergedTree = true).onFirst().performClick()
-            // The pick recomposes first; only then does the panel ask for the game's details.
+            // The new toolbar and shelf share a scrollable viewport: do not assume a cover is already composed.
+            compose.onNodeWithTag("library-grid").performScrollToNode(hasTestTag("library-showcase"))
+            compose.onNodeWithTag("library-showcase").performScrollToNode(hasContentDescription(pick))
+            val cover = compose.onNode(
+                hasContentDescription(pick) and hasAnyAncestor(hasTestTag("library-showcase")),
+                useUnmergedTree = true,
+            )
+            cover.performClick()
             compose.waitForIdle()
-            Fixture.settleUntil { vm.details.value?.lastRun != null }
+            cover.assertIsSelected()
+            assertEquals("A shelf tap selects; it must not open the game sheet", 0, sheetsOpened)
+            val wanted = (vm.state.value as LibraryUiState.Loaded).games.first { it.name == pick }.identityKey
+            Fixture.settleUntil {
+                vm.details.value?.let { it.identityKey == wanted && it.lastRun != null } == true
+            }
         }
         Fixture.settle()
         compose.waitForIdle()
@@ -77,6 +98,7 @@ class BaseShots {
     }
 
     @Config(qualifiers = Phone.LAND) @Test fun libraryLand() { library(InputMode.TOUCH, pick = "Forza Horizon"); compose.shot("base/depois-biblioteca-paisagem") }
+    @Config(qualifiers = Phone.PORT) @Test fun libraryPortSelect() { library(InputMode.TOUCH, pick = "Forza Horizon"); compose.shot("base/depois-biblioteca-retrato-selecao") }
     @Config(qualifiers = Phone.PORT) @Test fun libraryPort() { library(InputMode.TOUCH); compose.shot("base/depois-biblioteca-retrato") }
     @Config(qualifiers = Phone.LAND) @Test fun libraryController() { library(InputMode.CONTROLLER); compose.shot("base/depois-biblioteca-controle") }
     @Config(qualifiers = Phone.PORT) @Test fun libraryControllerPort() { library(InputMode.CONTROLLER); compose.shot("base/depois-biblioteca-controle-retrato") }

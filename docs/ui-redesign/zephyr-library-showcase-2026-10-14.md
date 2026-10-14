@@ -23,7 +23,7 @@ Contraste calculado: #155ED2/#F5F7FA 5,49:1; #354254/#F5F7FA 9,50:1; #48576B/#F5
 
 ## Validação
 XML de recursos inglês/pt-BR analisado com chaves únicas e paridade de nomes. Contratos revisados contra a base. CI do commit desta etapa deve compilar Compose e executar regressões existentes; resultado efetivo está no workflow, sem inferir aprovação antecipada.
-Sem novos testes que apenas espelhem composição visual; testes existentes cobrem modelos de biblioteca, dados/persistência, navegação e menu em jogo. Isso não substitui teste de interação da nova prateleira.
+Testes existentes cobrem modelos de biblioteca, dados/persistência, navegação e menu em jogo. A regressão Compose/Robolectric da prateleira descrita abaixo verifica interação real no ambiente simulado; não substitui teste físico.
 Pendentes no aparelho: 0/1/3/muitos jogos, busca/filtros, retorno da ficha, troca de orientação, fonte ampliada, ícones sem capas, multidisco, uso de teclado/controle e gestos de refresh. Retorno de foco e posições são preservados pelos estados existentes, mas ainda não comprovados fisicamente para a composição nova.
 
 ## Continuidade
@@ -31,3 +31,6 @@ Ficha, perfis, hubs e guia em jogo ainda devem receber a nova apresentação; es
 
 ## Seleção ao consultar ficha
 Correção de revisão: todas as aberturas pela prateleira/lista/toque longo/X passam por openSelected, que atualiza onSelect antes de onOpen. Evita retornar à biblioteca com destaque de outro jogo. Contratos de lançamento e estado selectedId do host são reutilizados; retorno visual ainda depende de teste no aparelho.
+
+## Regressão de seleção e rolagem
+UI #87 compilou Compose e aprovou integração ARM64, mas falhou em BaseShots.libraryLand: o seletor de contentDescription do cartão antigo não estava composto na viewport. A prateleira agora expõe explicitamente o nome completo do jogo aos serviços de acessibilidade. BaseShots rola o grid até a prateleira e a prateleira até a capa, seleciona e exige selected=true, zero callbacks de abertura de ficha e detalhes pertencentes à identidade correta. Novo caso equivalente em retrato. Sem remover asserções de seleção nem substituir clique por chamada direta de callback. Tags delimitam os dois layouts lazy e evitam pressupor posição/altura de tela. Resultado final deve ser consultado no CI seguinte.
