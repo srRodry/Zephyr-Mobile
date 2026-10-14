@@ -250,7 +250,15 @@ aaudio_data_callback_result_t AAudioAudioDriver::AudioCallback(
   // producer below real time bends pitch instead of gapping.
   uint32_t depth_now;
   {
+    const auto lock_begin = std::chrono::steady_clock::now();
     std::unique_lock<std::mutex> guard(driver->frames_mutex_);
+    const uint32_t wait_us = static_cast<uint32_t>(
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - lock_begin).count());
+    driver->stat_queue_lock_wait_us_sum_.fetch_add(wait_us, std::memory_order_relaxed);
+    uint32_t old_max = driver->stat_queue_lock_wait_us_max_.load(std::memory_order_relaxed);
+    while (wait_us > old_max && !driver->stat_queue_lock_wait_us_max_.compare_exchange_weak(
+        old_max, wait_us, std::memory_order_relaxed)) {}
     depth_now = static_cast<uint32_t>(driver->frames_queued_.size());
   }
   // Only once the sink is close to running dry, and always below the depth the
@@ -358,6 +366,8 @@ void AAudioAudioDriver::LogAndResetStats() {
       stat_callback_us_sum_.exchange(0, std::memory_order_relaxed);
   const uint32_t callback_us_max =
       stat_callback_us_max_.exchange(0, std::memory_order_relaxed);
+  const uint64_t lock_wait_sum = stat_queue_lock_wait_us_sum_.exchange(0, std::memory_order_relaxed);
+  const uint32_t lock_wait_max = stat_queue_lock_wait_us_max_.exchange(0, std::memory_order_relaxed);
   const uint64_t played = (callbacks - gaps) * host_block_samples_;
 
   int32_t xruns = -1;
@@ -370,13 +380,14 @@ void AAudioAudioDriver::LogAndResetStats() {
 
   XELOGI(
       "AAudio: {} cb, {} gaps ({:.1f}%), queue avg {:.2f} max {}, rate {:.3f}, "
-      "xruns {}, clipped {} ({:.3f}%), callback {:.0f} us avg {} max{}",
+      "xruns {}, clipped {} ({:.3f}%), callback {:.0f} us avg {} max, queue lock {:.1f} us avg {} max{}",
       callbacks, gaps, 100.0 * double(gaps) / double(callbacks),
       double(depth_sum) / double(callbacks), depth_max,
       stat_rate_milli_.load(std::memory_order_relaxed) / 1000.0, xruns,
       clipped,
       played ? 100.0 * double(clipped) / double(played) : 0.0,
       double(callback_us_sum) / double(callbacks), callback_us_max,
+      double(lock_wait_sum) / double(callbacks), lock_wait_max,
       odd_frames ? fmt::format(", UNEXPECTED framesPerCallback {}", odd_frames)
                  : "");
 }
