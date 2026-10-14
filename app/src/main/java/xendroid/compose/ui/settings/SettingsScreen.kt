@@ -154,7 +154,8 @@ fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit, links: SettingsLin
             onOpenDrivers = links.onDrivers, onShowOverriding = { overridingOf = it }, onJump = jump)
     }
     val sections = buildList {
-        add(XdSection(Ids.SUMMARY, stringResource(R.string.xd_set_summary), XdIcons.home, group = groupGeneral) {
+        add(XdSection(Ids.SUMMARY, stringResource(R.string.xd_set_summary), XdIcons.home, group = groupGeneral,
+            heading = if (Xd.controller) stringResource(R.string.xd_set_summary) else null) {
             if (!Xd.controller && panel.query.isBlank()) {
                 XdEditorialHeading(stringResource(R.string.zephyr_ui2_settings_title), stringResource(R.string.xd_set_subtitle))
             }
@@ -395,4 +396,5 @@ private fun DiagnosticsBody(links: SettingsLinks, onLogLevel: () -> Unit) {
         }
     }
 }
+
 

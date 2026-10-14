@@ -1,5 +1,8 @@
 package xendroid.compose.ui.profile
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.content.Context
 import android.net.Uri
 import android.text.format.DateUtils
 import android.text.format.Formatter
@@ -138,6 +141,7 @@ fun ProfilesScreen(
 ) {
     val context = LocalContext.current
     val toast = LocalXdToast.current
+    val clipboard = remember(context) { context.getSystemService(Context.CLIPBOARD_SERVICE) as? ClipboardManager }
     val listState by vm.listState.collectAsStateWithLifecycle()
     val opState by vm.opState.collectAsStateWithLifecycle()
     val trash by vm.trash.collectAsStateWithLifecycle()
@@ -146,6 +150,7 @@ fun ProfilesScreen(
     var purgeTarget by remember { mutableStateOf<TrashedProfile?>(null) }
     var menuOf by remember { mutableStateOf<ProfileEntry?>(null) }
     var savesOf by remember { mutableStateOf<ProfileEntry?>(null) }
+    var detailsOf by remember { mutableStateOf<String?>(null) }
     var slotPicking by remember { mutableStateOf<Int?>(null) }
     var section by rememberSaveable { mutableStateOf(initialSection ?: ProfilesSections.LIST) }
 
@@ -153,6 +158,9 @@ fun ProfilesScreen(
     val profiles = loaded?.profiles.orEmpty()
     val slots = loaded?.slots ?: List(ProfileSlots.COUNT) { null }
     val active = profiles.firstOrNull { it.isActive }
+    LaunchedEffect(loaded, detailsOf) {
+        if (loaded != null && detailsOf != null && profiles.none { it.xuid == detailsOf }) detailsOf = null
+    }
 
     val listBody: @Composable () -> Unit = {
         when (val s = listState) {
@@ -163,11 +171,12 @@ fun ProfilesScreen(
             }
             is ListState.Loaded -> if (Xd.colors.controller) ControllerProfiles(s.profiles, s.slots, onPick = { menuOf = it }, onCreate = { editing = Editing.Create })
                 else TouchProfiles(s.profiles, s.slots, summaries, onActive = { vm.setActive(it.xuid) }, onEdit = { editing = Editing.Rename(it) },
-                    onSaves = { savesOf = it }, onTrash = { vm.requestDelete(it) }, onCreate = { editing = Editing.Create })
+                    onSaves = { savesOf = it }, onTrash = { vm.requestDelete(it) }, onDetails = { detailsOf = it.xuid })
         }
     }
     val sections = listOf(
-        XdSection(ProfilesSections.LIST, stringResource(R.string.xd_pf_sec_list), XdIcons.user, badge = profiles.size.takeIf { it > 0 }?.toString()) {
+        XdSection(ProfilesSections.LIST, stringResource(R.string.xd_pf_sec_list), XdIcons.user, badge = profiles.size.takeIf { it > 0 }?.toString(),
+            heading = if (Xd.controller) stringResource(R.string.xd_pf_sec_list) else null) {
             listBody()
         },
         XdSection(ProfilesSections.PLAYERS, stringResource(R.string.xd_pf_sec_players), XdIcons.gamepad,
@@ -185,8 +194,29 @@ fun ProfilesScreen(
         area = XdArea.PROFILES, onBack = onBack, headIcon = XdIcons.user,
         subtitle = count + " · " + (active?.let { stringResource(R.string.xd_pf_active_is, it.gamertag.ifBlank { it.xuid }) }
             ?: stringResource(R.string.xd_pf_no_active)),
-        actions = { XdButton(stringResource(R.string.pf_create), { editing = Editing.Create }, size = XdButtonSize.SM, icon = XdIcons.plus) },
+        actions = { XdButton(stringResource(R.string.pf_create), { editing = Editing.Create }, size = XdButtonSize.SM, icon = XdIcons.plus,
+            modifier = if (Xd.controller) Modifier else Modifier.heightIn(min = 48.dp)) },
     )
+
+    profiles.firstOrNull { it.xuid == detailsOf }?.let { p ->
+        XdSheet(onDismiss = { detailsOf = null }, title = p.gamertag.ifBlank { p.xuid }, subtitle = statusText(p, slots),
+            actions = {
+                XdButton(stringResource(R.string.common_close), { detailsOf = null }, kind = XdButtonKind.GHOST,
+                    modifier = Modifier.heightIn(min = 48.dp))
+                XdButton(stringResource(R.string.zephyr_ui2_copy_profile_id), {
+                    clipboard?.let {
+                        it.setPrimaryClip(ClipData.newPlainText("XUID", p.xuid))
+                        toast.show(context.getString(R.string.xd_copied))
+                    }
+                }, icon = XdIcons.copy, enabled = clipboard != null, modifier = Modifier.heightIn(min = 48.dp))
+            }) {
+            XdKv(listOf(
+                stringResource(R.string.zephyr_ui2_profile_id) to p.xuid,
+                stringResource(R.string.xd_pf_lang_region) to languageText(p),
+                stringResource(R.string.xd_pf_saves) to savesText(summaries[p.xuid]),
+            ))
+        }
+    }
 
     when (val e = editing) {
         Editing.None -> {}
@@ -325,28 +355,30 @@ private fun TouchProfiles(
     onEdit: (ProfileEntry) -> Unit,
     onSaves: (ProfileEntry) -> Unit,
     onTrash: (ProfileEntry) -> Unit,
-    onCreate: () -> Unit,
+    onDetails: (ProfileEntry) -> Unit,
 ) {
     val c = Xd.colors
     Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
         XdEditorialHeading(stringResource(R.string.zephyr_ui2_profiles_title), stringResource(R.string.zephyr_ui2_profiles_subtitle))
         val active = profiles.firstOrNull { it.isActive }
         if (active != null) ActiveProfileCard(active, slots, summaries[active.xuid],
-            onEdit = { onEdit(active) }, onSaves = { onSaves(active) }, onTrash = { onTrash(active) })
+            onEdit = { onEdit(active) }, onSaves = { onSaves(active) }, onTrash = { onTrash(active) },
+            onDetails = { onDetails(active) })
+        if (profiles.isEmpty()) XdEmpty(stringResource(R.string.zephyr_ui2_profiles_empty))
         BoxWithConstraints {
             val columns = when {
                 maxWidth >= 840.dp -> 3
                 maxWidth >= 500.dp -> 2
                 else -> 1
             }
-            // The profiles, then the card that creates one (null).
-            val cells: List<ProfileEntry?> = profiles.filter { it != active } + listOf(null)
+            // Creation stays in the fixed screen header; list cells are existing profiles only.
+            val cells = profiles.filter { it != active }
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 cells.chunked(columns).forEach { row ->
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         row.forEach { p ->
-                            if (p == null) NewProfileCard(onCreate, Modifier.weight(1f))
-                            else ProfileCard(p, slots, summaries[p.xuid], { onActive(p) }, { onEdit(p) }, { onSaves(p) }, { onTrash(p) }, Modifier.weight(1f))
+                            ProfileCard(p, slots, summaries[p.xuid], { onActive(p) }, { onEdit(p) }, { onSaves(p) },
+                                { onTrash(p) }, { onDetails(p) }, Modifier.weight(1f))
                         }
                         repeat(columns - row.size) { Box(Modifier.weight(1f)) }
                     }
@@ -367,6 +399,7 @@ private fun ActiveProfileCard(
     onEdit: () -> Unit,
     onSaves: () -> Unit,
     onTrash: () -> Unit,
+    onDetails: () -> Unit,
 ) {
     XdSilverPanel {
         val c = Xd.colors
@@ -383,12 +416,13 @@ private fun ActiveProfileCard(
                 stringResource(R.string.xd_pf_lang_region) to languageText(p),
                 stringResource(R.string.xd_pf_saves) to savesText(summary),
             ))
-            Text(p.xuid, style = XdText.mono.copy(fontSize = 11.sp), color = c.fg3)
             FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 XdButton(stringResource(R.string.pf_edit), onEdit, Modifier.heightIn(min = 48.dp),
                     kind = XdButtonKind.PRIMARY, icon = XdIcons.text)
                 XdButton(stringResource(R.string.xd_pf_saves), onSaves, Modifier.heightIn(min = 48.dp),
                     icon = XdIcons.save, enabled = summary?.gameTitles?.isNotEmpty() == true)
+                XdButton(stringResource(R.string.zephyr_ui2_profile_details), onDetails, Modifier.heightIn(min = 48.dp),
+                    kind = XdButtonKind.GHOST, icon = XdIcons.info)
                 XdIconButton(XdIcons.trash, stringResource(R.string.xd_pf_to_trash_cd, p.gamertag.ifBlank { p.xuid }), onTrash, size = 48.dp)
             }
         }
@@ -405,6 +439,7 @@ private fun ProfileCard(
     onEdit: () -> Unit,
     onSaves: () -> Unit,
     onTrash: () -> Unit,
+    onDetails: () -> Unit,
     modifier: Modifier,
 ) {
     val c = Xd.colors
@@ -420,7 +455,6 @@ private fun ProfileCard(
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
                 Text(p.gamertag.ifBlank { p.xuid }, style = XdText.label.copy(fontSize = 16.sp), color = c.fg, maxLines = 2, overflow = TextOverflow.Ellipsis)
                 statusText(p, slots)?.let { XdBadge(it, tone = if (p.isActive) BadgeTone.ACCENT else BadgeTone.NEUTRAL) }
-                Text(p.xuid, style = XdText.mono.copy(fontSize = 11.sp), color = c.fg3)
             }
             XdIconButton(XdIcons.trash, stringResource(R.string.xd_pf_to_trash_cd, p.gamertag.ifBlank { p.xuid }), onTrash, size = 48.dp)
         }
@@ -433,21 +467,9 @@ private fun ProfileCard(
             XdButton(stringResource(R.string.pf_edit), onEdit, modifier = Modifier.heightIn(min = 48.dp), kind = XdButtonKind.GHOST, size = XdButtonSize.SM)
             XdButton(stringResource(R.string.xd_pf_saves), onSaves, modifier = Modifier.heightIn(min = 48.dp), kind = XdButtonKind.GHOST, size = XdButtonSize.SM, icon = XdIcons.save,
                 enabled = summary?.gameTitles?.isNotEmpty() == true)
+            XdButton(stringResource(R.string.zephyr_ui2_profile_details), onDetails, modifier = Modifier.heightIn(min = 48.dp),
+                kind = XdButtonKind.GHOST, size = XdButtonSize.SM, icon = XdIcons.info)
         }
-    }
-}
-
-@Composable
-private fun NewProfileCard(onCreate: () -> Unit, modifier: Modifier) {
-    val c = Xd.colors
-    val shape = RoundedCornerShape(16.dp)
-    Column(
-        modifier.heightIn(min = 170.dp).focusRing(shape).clip(shape).border(1.5.dp, c.line2, shape)
-            .clickable(role = Role.Button, onClick = onCreate).padding(14.dp),
-        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterVertically),
-    ) {
-        Icon(XdIcons.plus, null, Modifier.size(30.dp), tint = c.fg2)
-        Text(stringResource(R.string.pf_create), style = XdText.label, color = c.fg2)
     }
 }
 
@@ -653,4 +675,5 @@ private fun deleteSummaryText(entry: ProfileEntry, summary: ProfileContentSummar
     return listOfNotNull(stringResource(R.string.pf_del_name, name), detail,
         stringResource(R.string.pf_del_partial).takeIf { summary.truncated }, stringResource(R.string.pf_del_trash)).joinToString(" ")
 }
+
 

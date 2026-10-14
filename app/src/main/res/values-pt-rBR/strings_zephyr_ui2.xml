@@ -4,4 +4,9 @@
     <string name="zephyr_ui2_profiles_title">Seu espaço.</string>
     <string name="zephyr_ui2_profiles_subtitle">Perfis, jogadores e saves.</string>
     <string name="zephyr_ui2_hud_preview">Prévia — dados de exemplo</string>
+    <string name="zephyr_ui2_profile_details">Detalhes</string>
+    <string name="zephyr_ui2_profile_id">Identificador do perfil (XUID)</string>
+    <string name="zephyr_ui2_copy_profile_id">Copiar identificador</string>
+    <string name="zephyr_ui2_profiles_empty">Nenhum perfil criado.</string>
 </resources>
+
