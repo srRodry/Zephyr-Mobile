@@ -9,5 +9,11 @@
     <string name="zephyr_ui2_copy_profile_id">Copy identifier</string>
     <string name="zephyr_ui2_profiles_empty">No profiles yet.</string>
     <string name="zephyr_ui2_system">System</string>
+    <string name="zephyr_library_view">View: %1$s</string>
+    <string name="zephyr_library_small_covers">Small covers</string>
+    <string name="zephyr_library_large_covers">Large covers</string>
+    <string name="zephyr_library_all_titles">All games</string>
+    <string name="zephyr_library_titles">Games</string>
+    <string name="zephyr_library_medium_covers">Medium covers</string>
 </resources>
 
