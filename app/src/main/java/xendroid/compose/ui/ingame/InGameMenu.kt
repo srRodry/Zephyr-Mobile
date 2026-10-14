@@ -351,14 +351,14 @@ private fun PageRail(state: InGameMenuState, controller: Boolean, short: Boolean
             Column(
                 Modifier.fillMaxWidth().heightIn(min = if (controller) 0.dp else 48.dp).clip(shape)
                     .background(if (controller) { if (selected) c.acc.copy(alpha = 0.16f) else Color.Transparent }
-                        else { if (selected) Color(0xFF155ED2) else c.s1 })
+                        else { if (selected) c.action else c.s1 })
                     .clickable(role = Role.Tab) { onPage(page) }.semantics { this.selected = selected }
                     .padding(vertical = if (short) 5.dp else 8.dp),
                 horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(2.dp),
             ) {
-                Icon(page.icon(), null, Modifier.size(20.dp), tint = if (selected && !controller) c.onAcc else if (selected) c.acc else c.fg3)
+                Icon(page.icon(), null, Modifier.size(20.dp), tint = if (selected && !controller) c.onAction else if (selected) c.acc else c.fg3)
                 Text(page.label(), style = XdText.labelSm.copy(fontSize = if (controller) 11.5.sp else 12.sp),
-                    color = if (selected && !controller) c.onAcc else if (selected) c.acc else c.fg2, maxLines = if (controller) 1 else 2)
+                    color = if (selected && !controller) c.onAction else if (selected) c.acc else c.fg2, maxLines = if (controller) 1 else 2)
             }
         }
         if (controller) ButtonGlyph("RB")
@@ -377,14 +377,14 @@ private fun PageTabs(state: InGameMenuState, controller: Boolean, onPage: (InGam
             Row(
                 Modifier.then(if (controller) Modifier.height(36.dp) else Modifier.heightIn(min = 48.dp)).clip(RoundedCornerShape(50))
                     .background(if (controller) { if (selected) c.acc.copy(alpha = 0.18f) else Color.Transparent }
-                        else { if (selected) Color(0xFF155ED2) else c.s1 })
+                        else { if (selected) c.action else c.s1 })
                     .clickable(role = Role.Tab) { onPage(page) }.semantics { this.selected = selected }
                     .padding(horizontal = 12.dp),
                 verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp),
             ) {
-                Icon(page.icon(), null, Modifier.size(16.dp), tint = if (selected && !controller) c.onAcc else if (selected) c.acc else c.fg3)
+                Icon(page.icon(), null, Modifier.size(16.dp), tint = if (selected && !controller) c.onAction else if (selected) c.acc else c.fg3)
                 Text(page.label(), style = XdText.labelSm,
-                    color = if (selected && !controller) c.onAcc else if (selected) c.acc else c.fg2, maxLines = 1)
+                    color = if (selected && !controller) c.onAction else if (selected) c.acc else c.fg2, maxLines = 1)
             }
         }
         if (controller) ButtonGlyph("RB")

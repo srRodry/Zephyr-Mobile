@@ -19,7 +19,6 @@ import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -52,10 +51,10 @@ fun XdEditorialHero(
         Column(modifier.fillMaxWidth().clip(shape).background(c.s1).border(1.dp, c.line2, shape).padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                Box(Modifier.size(4.dp, 64.dp).background(Color(0xFF237BFF)))
+                Box(Modifier.size(4.dp, 64.dp).background(Xd.colors.acc))
                 AsyncImage(model, null, Modifier.size(64.dp).clip(RoundedCornerShape(10.dp)), contentScale = ContentScale.Fit)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    Text(eyebrow, style = XdText.labelSm, color = Color(0xFF91BAFF))
+                    Text(eyebrow, style = XdText.labelSm, color = Xd.colors.acc)
                     Text(title, style = XdText.body.copy(fontSize = 24.sp, lineHeight = 28.sp,
                         fontWeight = FontWeight.Bold), color = c.fg)
                     Text(subtitle, style = XdText.small, color = c.fg2)
@@ -65,13 +64,13 @@ fun XdEditorialHero(
         }
     } else {
         Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Box(Modifier.fillMaxWidth().height(196.dp).clip(EditorialCut).background(Color(0xFF237BFF))) {
-                Box(Modifier.fillMaxWidth().height(188.dp).background(Color(0xFF1C2532))) {
+            Box(Modifier.fillMaxWidth().height(196.dp).clip(EditorialCut).background(Xd.colors.acc)) {
+                Box(Modifier.fillMaxWidth().height(188.dp).background(Xd.colors.s1)) {
                     AsyncImage(model, null, Modifier.fillMaxWidth().height(188.dp), contentScale = ContentScale.Crop)
                 }
             }
             Column(Modifier.padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                Text(eyebrow, style = XdText.labelSm, color = Color(0xFF91BAFF))
+                Text(eyebrow, style = XdText.labelSm, color = Xd.colors.acc)
                 Text(title, style = XdText.body.copy(fontSize = 30.sp, lineHeight = 34.sp, fontWeight = FontWeight.Bold), color = Xd.colors.fg)
                 Text(subtitle, style = XdText.small, color = Xd.colors.fg2)
                 actions()
@@ -80,13 +79,10 @@ fun XdEditorialHero(
     }
 }
 
-/** Light surface with its own text tokens; surrounding screens retain their existing theme. */
+/** Feature panel using the shared green tokens; legacy function name retained for callers. */
 @Composable
 fun XdSilverPanel(modifier: Modifier = Modifier, content: @Composable ColumnScope.() -> Unit) {
-    val colors = Xd.colors.copy(s1 = Color(0xFFF5F7FA),
-        s2 = Color(0xFFE8EEF6), s3 = Color(0xFFDEE6F0), s4 = Color(0xFFD0DDEB), fg = Color(0xFF15191F),
-        fg2 = Color(0xFF354254), fg3 = Color(0xFF48576B), line = Color(0xFFD1D8E2),
-        acc = Color(0xFF155ED2), onAcc = Color.White)
+    val colors = Xd.colors
     CompositionLocalProvider(LocalXd provides colors) {
         Column(modifier.fillMaxWidth().clip(RoundedCornerShape(18.dp)).background(colors.s1)
             .padding(horizontal = 16.dp, vertical = 8.dp), content = content)
@@ -98,7 +94,7 @@ fun XdSilverPanel(modifier: Modifier = Modifier, content: @Composable ColumnScop
 @Composable
 fun XdEditorialHeading(title: String, subtitle: String, modifier: Modifier = Modifier) {
     Column(modifier.fillMaxWidth().padding(vertical = 8.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Box(Modifier.size(42.dp, 4.dp).background(Color(0xFF237BFF)))
+        Box(Modifier.size(42.dp, 4.dp).background(Xd.colors.acc))
         Text(title, style = XdText.body.copy(fontSize = 36.sp, lineHeight = 40.sp, fontWeight = FontWeight.Bold), color = Xd.colors.fg)
         Text(subtitle, style = XdText.body, color = Xd.colors.fg2)
     }

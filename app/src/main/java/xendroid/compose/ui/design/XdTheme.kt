@@ -50,6 +50,9 @@ data class XdColors(
     val dyn: Color,
     val controller: Boolean,
 ) {
+    /** Deep green actions keep white labels readable; lime is for focus and highlights. */
+    val action: Color get() = if (controller) acc else Color(0xFF107C10)
+    val onAction: Color get() = if (controller) onAcc else Color.White
     val playable = Color(0xFF7BD77D)
     val ingame = Color(0xFFE8C55A)
     val intro = Color(0xFFEC9B52)
@@ -69,21 +72,21 @@ data class XdColors(
     val coverRadius: Dp get() = if (controller) 12.dp else 7.dp
 
     companion object {
-        // Zephyr-Mobile: shared dark surfaces and restrained electric-blue accents.
+        // Zephyr-Mobile: dark green surfaces, deep green actions and restrained lime highlights.
         // Keep semantic compatibility colors independent of branding.
         val Touch = XdColors(
-            bg = Color(0xFF15191F), s1 = Color(0xFF1C232D), s2 = Color(0xFF263241), s3 = Color(0xFF304155),
-            s4 = Color(0xFF3A4D63), sheet = Color(0xFF1C232D),
-            line = Color(0x1F6486AC), line2 = Color(0x406486AC),
-            fg = Color(0xFFF5F7FA), fg2 = Color(0xFFB7C2D1), fg3 = Color(0xFF8797AB),
-            acc = Color(0xFF237BFF), onAcc = Color.White, dyn = Color(0xFF263241), controller = false,
+            bg = Color(0xFF070D08), s1 = Color(0xFF0F1A11), s2 = Color(0xFF16251A), s3 = Color(0xFF203625),
+            s4 = Color(0xFF304B35), sheet = Color(0xFF0F1A11),
+            line = Color(0xFF40552D), line2 = Color(0xFF64834A),
+            fg = Color(0xFFEAF3EA), fg2 = Color(0xFFB8CBB9), fg3 = Color(0xFFA0B9A2),
+            acc = Color(0xFF9BF00B), onAcc = Color(0xFF0B1A0C), dyn = Color(0xFF16251A), controller = false,
         )
         val Controller = XdColors(
-            bg = Color(0xFF15191F), s1 = Color(0x18FFFFFF), s2 = Color(0x24FFFFFF), s3 = Color(0x30FFFFFF),
-            s4 = Color(0x40FFFFFF), sheet = Color(0xFF1C232D),
+            bg = Color(0xFF070D08), s1 = Color(0x18FFFFFF), s2 = Color(0x24FFFFFF), s3 = Color(0x30FFFFFF),
+            s4 = Color(0x40FFFFFF), sheet = Color(0xFF0F1A11),
             line = Color(0x1FFFFFFF), line2 = Color(0x38FFFFFF),
-            fg = Color(0xFFF5F7FA), fg2 = Color(0xC7F4F7FB), fg3 = Color(0x8FF4F7FB),
-            acc = Color(0xFF237BFF), onAcc = Color.White, dyn = Color(0xFF263241), controller = true,
+            fg = Color(0xFFEAF3EA), fg2 = Color(0xC7EAF3EA), fg3 = Color(0x8FEAF3EA),
+            acc = Color(0xFF9BF00B), onAcc = Color(0xFF0B1A0C), dyn = Color(0xFF16251A), controller = true,
         )
 
         fun of(mode: InputMode) = if (mode == InputMode.CONTROLLER) Controller else Touch
@@ -188,7 +191,7 @@ private fun scheme(c: XdColors): ColorScheme {
     return darkColorScheme(
         primary = c.acc, onPrimary = c.onAcc,
         primaryContainer = c.acc.copy(alpha = 0.2f).compositeOver(s2), onPrimaryContainer = c.fg,
-        inversePrimary = Color(0xFF237BFF),
+        inversePrimary = c.action,
         secondary = c.fg2, onSecondary = c.bg,
         secondaryContainer = s3, onSecondaryContainer = c.fg,
         tertiary = c.exposed, onTertiary = c.bg,

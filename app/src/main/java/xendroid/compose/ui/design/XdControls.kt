@@ -96,7 +96,7 @@ fun XdButton(
     val source = remember { MutableInteractionSource() }
     val pressed by source.collectIsPressedAsState()
     val (bg, fg) = when (kind) {
-        XdButtonKind.PRIMARY -> c.acc to c.onAcc
+        XdButtonKind.PRIMARY -> c.action to c.onAction
         XdButtonKind.SECONDARY -> (if (pressed) c.s4 else c.s3) to c.fg
         XdButtonKind.GHOST -> (if (pressed) c.s2 else Color.Transparent) to c.fg
         XdButtonKind.DANGER -> c.nothing.copy(alpha = 0.22f) to c.dangerText

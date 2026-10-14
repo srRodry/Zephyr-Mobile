@@ -7,31 +7,31 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- Silver upper stroke -->
-    <path android:fillColor="#F5F7FA"
+    <!-- Lime upper stroke -->
+    <path android:fillColor="#9BF00B"
         android:pathData="M31,34 L43,26 L78,26 L66,34 Z"/>
     <!-- Three speed cuts, evoking the console / motion theme -->
-    <path android:fillColor="#11B9F4"
+    <path android:fillColor="#9BF00B"
         android:pathData="M29,39 L35,39 L31,43 L25,43 Z"/>
-    <path android:fillColor="#11B9F4"
+    <path android:fillColor="#9BF00B"
         android:pathData="M37,39 L43,39 L39,43 L33,43 Z"/>
-    <path android:fillColor="#11B9F4"
+    <path android:fillColor="#9BF00B"
         android:pathData="M45,39 L51,39 L47,43 L41,43 Z"/>
-    <!-- Main silver Z, two interlocking diagonals -->
-    <path android:fillColor="#E5EBF2"
+    <!-- Main green Z, two interlocking diagonals -->
+    <path android:fillColor="#74CB18"
         android:pathData="M61,36 L73,36 L44,67 L31,75 L42,59 Z"/>
-    <path android:fillColor="#F5F7FA"
+    <path android:fillColor="#9BF00B"
         android:pathData="M42,68 L72,68 L64,76 L30,76 Z"/>
-    <!-- Electric blue cut through the mark -->
-    <path android:fillColor="#078BFA"
+    <!-- Deep green cut through the mark -->
+    <path android:fillColor="#107C10"
         android:pathData="M73,34 L81,28 L53,61 L43,65 Z"/>
-    <path android:fillColor="#237BFF"
+    <path android:fillColor="#50B82B"
         android:pathData="M53,62 L78,62 L69,69 L46,69 Z"/>
-    <path android:fillColor="#0867D4"
+    <path android:fillColor="#107C10"
         android:pathData="M46,70 L70,70 L64,75 L37,75 Z"/>
     <!-- Speed cuts on the lower edge -->
-    <path android:fillColor="#11B9F4"
+    <path android:fillColor="#9BF00B"
         android:pathData="M73,58 L78,58 L75,61 L70,61 Z"/>
-    <path android:fillColor="#11B9F4"
+    <path android:fillColor="#9BF00B"
         android:pathData="M80,58 L85,58 L82,61 L77,61 Z"/>
 </vector>

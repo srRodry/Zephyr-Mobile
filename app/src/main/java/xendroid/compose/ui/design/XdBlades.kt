@@ -17,7 +17,6 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -48,7 +47,6 @@ private val bladeShape = GenericShape { size, _ ->
     lineTo(0f, size.height)
     close()
 }
-private val bladeBlue = Color(0xFF155ED2) // White text: contrast 5.89:1.
 
 /** Portrait navigation belongs above the viewport; its parent supplies bottom safe insets. */
 @Composable
@@ -121,7 +119,7 @@ private fun BladeTab(group: BladeGroup, current: XdArea?, modifier: Modifier) {
     })
     Box(modifier) {
         Column(Modifier.fillMaxWidth().heightIn(min = 56.dp).focusRing(bladeShape).clip(bladeShape)
-            .background(if (picked) bladeBlue else c.s1)
+            .background(if (picked) c.action else c.s1)
             .clickable(role = if (group == BladeGroup.SYSTEM || group == BladeGroup.GAMES) Role.Button else Role.Tab) {
                 when (group) {
                     BladeGroup.GAMES, BladeGroup.SYSTEM -> expanded = true
@@ -131,15 +129,15 @@ private fun BladeTab(group: BladeGroup, current: XdArea?, modifier: Modifier) {
             }.semantics { selected = picked }.padding(horizontal = 12.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.Center) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Text(label, Modifier.weight(1f), color = if (picked) Color.White else c.fg2,
+                Text(label, Modifier.weight(1f), color = if (picked) c.onAction else c.fg2,
                     style = XdText.label.copy(fontSize = 13.sp, lineHeight = 17.sp,
                         fontWeight = if (picked) FontWeight.Bold else FontWeight.Medium))
                 if (group == BladeGroup.GAMES || group == BladeGroup.SYSTEM) {
-                    Icon(XdIcons.chevD, null, Modifier.size(12.dp), tint = if (picked) Color.White else c.fg2)
+                    Icon(XdIcons.chevD, null, Modifier.size(12.dp), tint = if (picked) c.onAction else c.fg2)
                 }
             }
             // A geometric selection mark accompanies color; the complete shape is the touch target.
-            if (picked) Box(Modifier.padding(top = 5.dp).width(20.dp).height(2.dp).background(Color.White))
+            if (picked) Box(Modifier.padding(top = 5.dp).width(20.dp).height(2.dp).background(c.onAction))
         }
         DropdownMenu(expanded, onDismissRequest = { expanded = false }, modifier = Modifier.background(c.s1)) {
             val areas = when (group) {

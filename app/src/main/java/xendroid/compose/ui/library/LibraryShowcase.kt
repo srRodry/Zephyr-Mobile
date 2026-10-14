@@ -36,13 +36,10 @@ import xendroid.compose.R
 import xendroid.compose.data.Game
 import xendroid.compose.ui.design.*
 
-/** Silver belongs to the library viewport, not to the shell or the application-wide theme. */
+/** Library and game sheet share the green theme; the viewport only overrides button geometry. */
 @Composable
 internal fun LibraryPlane(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
-    val colors = Xd.colors.copy(bg = Color(0xFFF5F7FA), s1 = Color(0xFFF5F7FA),
-        s2 = Color(0xFFE8EEF6), s3 = Color(0xFFDEE6F0), s4 = Color(0xFFD0DDEB), sheet = Color(0xFFF5F7FA),
-        fg = Color(0xFF15191F), fg2 = Color(0xFF354254), fg3 = Color(0xFF48576B),
-        line = Color(0xFFD1D8E2), line2 = Color(0xFFD1D8E2), acc = Color(0xFF155ED2), onAcc = Color.White)
+    val colors = Xd.colors
     CompositionLocalProvider(LocalXd provides colors, LocalXdButtonShape provides RoundedCornerShape(4.dp)) {
         Box(modifier.background(colors.bg)) { content() }
     }
