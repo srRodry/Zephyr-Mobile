@@ -170,3 +170,19 @@ inventar uma. Consulta a fóruns/vídeos não requer login nem contato com autor
   falhando, priorizar sua conclusão/correção; não presumir aprovação Android.
 - Não existe nova medição do aparelho nem evidência para mudar scheduler ou
   ampliar registradores. APK completo e teste de desempenho continuam para manhã.
+
+### Etapa de 02h — semântica dos diagnósticos GPU / CPU–GPU
+
+- Base remota `27d93cc`: UI #62 aprovado antes da alteração. APK #46 solicitado
+  por outra continuação já terminou; esta etapa não o disparou nem alterou áudio.
+- Encontradas unidades distintas e uma lacuna: GPU médio é por submissão,
+  submit->fence inclui atraso de observação e replay exclui espera por pipelines.
+  Não multiplicar médias de submissões novas e completadas como GPU/frame exato.
+- Novo analisador offline `tools/vulkan_diagnostics.py`, sem mudar o emulador:
+  unidades explícitas, CPU ponderada por frames, dados ausentes nulos, recusa de
+  linhas inválidas e avisos de escopos sobrepostos/zeros GPU ambíguos.
+- Oito regressões sintéticas locais aprovadas; incluídas no UI checks. Conferir
+  CI do commit antes de prosseguir. Ler `zephyr-gpu-diagnostic-audit-2026-10-14.md`.
+- Próxima instrumentação candidata: tempo real de bloqueio por pipelines,
+  separado do trabalho somado dos workers. Não implementada sem validação.
+  Nenhum gargalo, ganho de FPS ou compatibilidade foi demonstrado nesta etapa.

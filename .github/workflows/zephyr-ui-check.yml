@@ -22,6 +22,8 @@ on:
       - 'tools/test-a64-logical-immediate.py'
       - 'tools/compile-native-regressions.py'
       - 'tools/test-native-regression-selection.py'
+      - 'tools/vulkan_diagnostics.py'
+      - 'tools/test-vulkan-diagnostics.py'
       - 'emulator-core/src/test/cpp/a64_logical_immediate_test.cc'
       - 'emulator-core/src/test/cpp/jit_compile_stats_test.cc'
       - 'emulator-core/src/test/cpp/a64_vector_select_test.cc'
@@ -123,6 +125,8 @@ jobs:
         run: python3 tools/check-jni.py
       - name: Test optional JIT compile timing lifecycle and concurrent snapshots
         run: python3 tools/test-jit-compile-stats.py
+      - name: Test Vulkan diagnostic units and unavailable samples
+        run: python3 tools/test-vulkan-diagnostics.py
       - name: Compile Compose UI without packaging native libraries
         run: bash ./gradlew :app:compileDebugKotlin --no-daemon --stacktrace
       # These cases deliberately replace config files and the native singleton.
