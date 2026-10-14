@@ -1,7 +1,7 @@
 name: Zephyr Android APK
 
 # Android APK build (arm64-v8a).
-# UI 2.0 preview 2026-10-14: package the regression-checked interface; native/audio unchanged.
+# UI 2.0 compact preview 2026-10-14: package the device-reviewed icon-only layout correction.
 # - Pull requests into main (including the claude/* branches of cloud
 #   sessions) and manual runs build the test package xendroid.compose.fork.opt:
 #   debuggable and installed alongside the regular app, the package the A/B
