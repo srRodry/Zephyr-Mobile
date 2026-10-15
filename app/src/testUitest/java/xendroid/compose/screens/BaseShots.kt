@@ -199,6 +199,16 @@ class BaseShots {
         compose.onNodeWithTag("game-sheet-launch").assertExists()
     }
 
+    @Config(qualifiers = Phone.PORT) @Test fun sheetPrimaryTabsStayReachable() {
+        game(InputMode.TOUCH)
+        compose.onNodeWithTag("game-sheet-main-tabs").assertExists()
+        compose.onNodeWithTag("game-sheet-tab:ov").assertIsSelected()
+        compose.onNodeWithTag("game-sheet-tab:settings").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("game-sheet-tab:settings").assertIsSelected()
+        compose.onNodeWithTag("game-sheet-content:settings").assertExists()
+    }
+
     @Config(qualifiers = Phone.PORT) @Test fun libraryRecentFilterIsReachableByTouch() {
         library(InputMode.TOUCH)
         compose.onNodeWithTag("library-grid").performScrollToNode(hasTestTag("library-filter-recent"))
