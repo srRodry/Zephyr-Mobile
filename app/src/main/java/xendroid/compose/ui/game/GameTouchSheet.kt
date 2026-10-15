@@ -106,7 +106,7 @@ internal fun GameTouchSheet(
 private fun SheetIdentity(game: Game, art: CoverArt, data: LibraryData, preparing: Boolean, onPlay: () -> Unit, onLaunch: () -> Unit, prominent: Boolean) {
     var identifiers by rememberSaveable(game.identityKey) { mutableStateOf(false) }
     val c = Xd.colors
-    val heroShape = RoundedCornerShape(6.dp)
+    val heroShape = ZephyrPanelShape
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Column(
             Modifier.fillMaxWidth().clip(heroShape).background(c.s1).border(1.dp, c.line2, heroShape)
