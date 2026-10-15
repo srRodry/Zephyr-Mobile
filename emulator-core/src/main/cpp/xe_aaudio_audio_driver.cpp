@@ -38,9 +38,10 @@ DEFINE_bool(apu_aaudio_dynamic_rate, true,
             "Slow playback toward 0.9x as the audio queue drains, so a guest "
             "that cannot keep real time bends pitch instead of popping.",
             "APU");
-DEFINE_bool(apu_aaudio_log_stats, true,
-            "Log Android audio callback statistics (gaps, queue depth, "
-            "underruns) once a second.",
+DEFINE_bool(apu_aaudio_log_stats, false,
+            "Log detailed Android audio callback statistics once a second. "
+            "Off by default so callback timing and lock diagnostics add no "
+            "clock reads to the realtime path.",
             "APU");
 
 namespace xe {
@@ -81,7 +82,7 @@ bool AAudioAudioDriver::Initialize() {
     return false;
   }
   {
-    std::unique_lock<std::mutex> guard(frames_mutex_);
+    std::unique_lock<std::mutex> guard(frames_unused_mutex_);
     for (int i = 0; i < 2; i++) {
       float* buffer = new float[submit_samples_];
       frames_unused_.push(buffer);
@@ -121,6 +122,8 @@ bool AAudioAudioDriver::BuildStream() {
     AAudioStreamBuilder_setPerformanceMode(builder_,
                                            AAUDIO_PERFORMANCE_MODE_LOW_LATENCY);
     AAudioStreamBuilder_setSharingMode(builder_, mode);
+    // Let Android route and schedule this stream as interactive game audio.
+    AAudioStreamBuilder_setUsage(builder_, AAUDIO_USAGE_GAME);
     // A low-latency stream is otherwise granted the shallowest buffer the
     // device allows. AAudio requires capacity >= twice the callback size.
     // 15j: room for the adaptive buffer to grow into, when it is on.
@@ -207,8 +210,7 @@ void AAudioAudioDriver::Resume() {
 }
 
 size_t AAudioAudioDriver::GetQueuedFrameCount() {
-  std::unique_lock<std::mutex> guard(frames_mutex_);
-  return frames_queued_.size();
+  return queued_frame_count_.load(std::memory_order_relaxed);
 }
 
 void AAudioAudioDriver::SetVolume(float volume) {
@@ -223,20 +225,24 @@ aaudio_data_callback_result_t AAudioAudioDriver::AudioCallback(
     void* audioData,
     int32_t numFrames) {
   SCOPE_profile_cpu_f("apu");
-  const auto callback_begin = std::chrono::steady_clock::now();
-
   auto driver = static_cast<AAudioAudioDriver*>(userdata);
   float* output_buffer = reinterpret_cast<float*>(audioData);
+  const bool detailed_stats = cvars::apu_aaudio_log_stats;
+  const auto callback_begin =
+      detailed_stats ? std::chrono::steady_clock::now()
+                     : std::chrono::steady_clock::time_point{};
 
   // setFramesPerDataCallback is only a request, renegotiated on the
   // shared-mode fallback and on every rebuild. The conversion below uses
   // channel_samples_ as its source stride, so it must run at that size
   // whatever this callback was handed.
-  if (numFrames != static_cast<int32_t>(driver->channel_samples_)) {
-    driver->stat_unexpected_frames_.store(numFrames, std::memory_order_relaxed);
+  if (detailed_stats) {
+    if (numFrames != static_cast<int32_t>(driver->channel_samples_)) {
+      driver->stat_unexpected_frames_.store(numFrames,
+                                            std::memory_order_relaxed);
+    }
+    driver->stat_callbacks_.fetch_add(1, std::memory_order_relaxed);
   }
-
-  driver->stat_callbacks_.fetch_add(1, std::memory_order_relaxed);
 
   // Diagnostic-only: observe callback duration and queue-lock contention.
   // Avoid logging or allocating on the realtime callback thread.
@@ -248,19 +254,8 @@ aaudio_data_callback_result_t AAudioAudioDriver::AudioCallback(
   }
   // Queue depth steers the resample rate, slewed to avoid zipper noise: a
   // producer below real time bends pitch instead of gapping.
-  uint32_t depth_now;
-  {
-    const auto lock_begin = std::chrono::steady_clock::now();
-    std::unique_lock<std::mutex> guard(driver->frames_mutex_);
-    const uint32_t wait_us = static_cast<uint32_t>(
-        std::chrono::duration_cast<std::chrono::microseconds>(
-            std::chrono::steady_clock::now() - lock_begin).count());
-    driver->stat_queue_lock_wait_us_sum_.fetch_add(wait_us, std::memory_order_relaxed);
-    uint32_t old_max = driver->stat_queue_lock_wait_us_max_.load(std::memory_order_relaxed);
-    while (wait_us > old_max && !driver->stat_queue_lock_wait_us_max_.compare_exchange_weak(
-        old_max, wait_us, std::memory_order_relaxed)) {}
-    depth_now = static_cast<uint32_t>(driver->frames_queued_.size());
-  }
+  const uint32_t depth_now = static_cast<uint32_t>(
+      driver->queued_frame_count_.load(std::memory_order_relaxed));
   // Only once the sink is close to running dry, and always below the depth the
   // producer refills to (AudioSystem's top-up line) - bending pitch at a depth
   // the producer is content with leaves the rate permanently modulated.
@@ -271,9 +266,11 @@ aaudio_data_callback_result_t AAudioAudioDriver::AudioCallback(
   }
   driver->rate_ +=
       std::clamp(rate_target - driver->rate_, -0.003f, 0.003f);
-  driver->stat_rate_milli_.store(
-      static_cast<uint32_t>(driver->rate_ * 1000.0f + 0.5f),
-      std::memory_order_relaxed);
+  if (detailed_stats) {
+    driver->stat_rate_milli_.store(
+        static_cast<uint32_t>(driver->rate_ * 1000.0f + 0.5f),
+        std::memory_order_relaxed);
+  }
 
   // AAudio has no stream volume control, so the gain is applied in software.
   const float gain = driver->driver_volume_.load(std::memory_order_relaxed) *
@@ -282,7 +279,7 @@ aaudio_data_callback_result_t AAudioAudioDriver::AudioCallback(
       output_buffer, numFrames, driver->rate_, gain,
       [driver]() { return driver->NextGuestBlock(); },
       [driver](const float* block) { driver->ReturnGuestBlock(block); });
-  if (result.clipped) {
+  if (detailed_stats && result.clipped) {
     driver->stat_clipped_.fetch_add(result.clipped, std::memory_order_relaxed);
   }
 
@@ -296,34 +293,50 @@ aaudio_data_callback_result_t AAudioAudioDriver::AudioCallback(
     driver->semaphore_->Release(1, nullptr);
   }
 
-  const uint32_t callback_us = static_cast<uint32_t>(
-      std::chrono::duration_cast<std::chrono::microseconds>(
-          std::chrono::steady_clock::now() - callback_begin)
-          .count());
-  driver->stat_callback_us_sum_.fetch_add(callback_us,
+  if (detailed_stats) {
+    const uint32_t callback_us = static_cast<uint32_t>(
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - callback_begin)
+            .count());
+    driver->stat_callback_us_sum_.fetch_add(callback_us,
+                                            std::memory_order_relaxed);
+    if (callback_us >
+        driver->stat_callback_us_max_.load(std::memory_order_relaxed)) {
+      driver->stat_callback_us_max_.store(callback_us,
                                           std::memory_order_relaxed);
-  if (callback_us >
-      driver->stat_callback_us_max_.load(std::memory_order_relaxed)) {
-    driver->stat_callback_us_max_.store(callback_us,
-                                        std::memory_order_relaxed);
+    }
   }
   return AAUDIO_CALLBACK_RESULT_CONTINUE;
 }
 
 const float* AAudioAudioDriver::NextGuestBlock() {
   float* buffer = nullptr;
+  const bool detailed_stats = cvars::apu_aaudio_log_stats;
+  const auto lock_begin =
+      detailed_stats ? std::chrono::steady_clock::now()
+                     : std::chrono::steady_clock::time_point{};
   uint32_t depth = 0;
   {
-    std::unique_lock<std::mutex> guard(frames_mutex_);
-    depth = static_cast<uint32_t>(frames_queued_.size());
+    std::unique_lock<std::mutex> guard(frames_queued_mutex_);
+    if (detailed_stats) {
+      RecordQueueLockWait(static_cast<uint32_t>(
+          std::chrono::duration_cast<std::chrono::microseconds>(
+              std::chrono::steady_clock::now() - lock_begin)
+              .count()));
+    }
+    depth = static_cast<uint32_t>(
+        queued_frame_count_.load(std::memory_order_relaxed));
     if (!frames_queued_.empty()) {
       buffer = frames_queued_.front();
       frames_queued_.pop();
+      queued_frame_count_.fetch_sub(1, std::memory_order_relaxed);
     }
   }
-  stat_queue_depth_sum_.fetch_add(depth, std::memory_order_relaxed);
-  if (depth > stat_queue_depth_max_.load(std::memory_order_relaxed)) {
-    stat_queue_depth_max_.store(depth, std::memory_order_relaxed);
+  if (detailed_stats) {
+    stat_queue_depth_sum_.fetch_add(depth, std::memory_order_relaxed);
+    if (depth > stat_queue_depth_max_.load(std::memory_order_relaxed)) {
+      stat_queue_depth_max_.store(depth, std::memory_order_relaxed);
+    }
   }
   // Before the guest's first block the device only plays startup silence: not
   // an underrun anyone hears, so the run summary starts counting after it.
@@ -331,7 +344,9 @@ const float* AAudioAudioDriver::NextGuestBlock() {
     ae::RunStats().blocks.fetch_add(1, std::memory_order_relaxed);
   }
   if (!buffer) {
-    stat_gaps_.fetch_add(1, std::memory_order_relaxed);
+    if (detailed_stats) {
+      stat_gaps_.fetch_add(1, std::memory_order_relaxed);
+    }
     if (played_once_) {
       ae::RunStats().concealed.fetch_add(1, std::memory_order_relaxed);
     }
@@ -345,8 +360,28 @@ const float* AAudioAudioDriver::NextGuestBlock() {
 }
 
 void AAudioAudioDriver::ReturnGuestBlock(const float* block) {
-  std::unique_lock<std::mutex> guard(frames_mutex_);
+  const bool detailed_stats = cvars::apu_aaudio_log_stats;
+  const auto lock_begin =
+      detailed_stats ? std::chrono::steady_clock::now()
+                     : std::chrono::steady_clock::time_point{};
+  std::unique_lock<std::mutex> guard(frames_unused_mutex_);
+  if (detailed_stats) {
+    RecordQueueLockWait(static_cast<uint32_t>(
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - lock_begin)
+            .count()));
+  }
   frames_unused_.push(const_cast<float*>(block));
+}
+
+void AAudioAudioDriver::RecordQueueLockWait(uint32_t wait_us) {
+  stat_queue_lock_wait_us_sum_.fetch_add(wait_us, std::memory_order_relaxed);
+  uint32_t old_max =
+      stat_queue_lock_wait_us_max_.load(std::memory_order_relaxed);
+  while (wait_us > old_max &&
+         !stat_queue_lock_wait_us_max_.compare_exchange_weak(
+             old_max, wait_us, std::memory_order_relaxed)) {
+  }
 }
 
 void AAudioAudioDriver::LogAndResetStats() {
@@ -506,7 +541,7 @@ bool AAudioAudioDriver::RestartStream() {
 void AAudioAudioDriver::SubmitFrame(float* samples) {
   float* output_frame;
   {
-    std::unique_lock<std::mutex> guard(frames_mutex_);
+    std::unique_lock<std::mutex> guard(frames_unused_mutex_);
     if (frames_unused_.empty()) {
       output_frame = new float[submit_samples_];
     } else {
@@ -518,8 +553,9 @@ void AAudioAudioDriver::SubmitFrame(float* samples) {
   std::memcpy(output_frame, samples, submit_samples_ * sizeof(float));
 
   {
-    std::unique_lock<std::mutex> guard(frames_mutex_);
+    std::unique_lock<std::mutex> guard(frames_queued_mutex_);
     frames_queued_.push(output_frame);
+    queued_frame_count_.fetch_add(1, std::memory_order_relaxed);
   }
 }
 
@@ -552,15 +588,21 @@ void AAudioAudioDriver::Shutdown() {
     stream_initialized_ = false;
   }
 
-  std::unique_lock<std::mutex> guard(frames_mutex_);
-  while (!frames_unused_.empty()) {
-    delete[] frames_unused_.top();
-    frames_unused_.pop();
+  {
+    std::unique_lock<std::mutex> guard(frames_unused_mutex_);
+    while (!frames_unused_.empty()) {
+      delete[] frames_unused_.top();
+      frames_unused_.pop();
+    }
   }
 
-  while (!frames_queued_.empty()) {
-    delete[] frames_queued_.front();
-    frames_queued_.pop();
+  {
+    std::unique_lock<std::mutex> guard(frames_queued_mutex_);
+    while (!frames_queued_.empty()) {
+      delete[] frames_queued_.front();
+      frames_queued_.pop();
+    }
+    queued_frame_count_.store(0, std::memory_order_relaxed);
   }
 }
 

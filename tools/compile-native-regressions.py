@@ -22,6 +22,7 @@ SOURCES = (
     'emulator-core/src/main/cpp/xenia/src/xenia/ui/vulkan/vulkan_gpu_completion_timeline.cc',
     'emulator-core/src/main/cpp/xenia/src/xenia/kernel/guest_scheduler.cc',
     'emulator-core/src/main/cpp/xenia/src/xenia/base/threading_posix.cc',
+    'emulator-core/src/main/cpp/xe_aaudio_audio_driver.cpp',
 )
 
 def plan(database):

@@ -26,6 +26,8 @@ on:
       - 'tools/test-vulkan-diagnostics.py'
       - 'tools/test-pipeline-wait-stats.py'
       - 'tools/test-gpu-completion-timeline.py'
+      - 'tools/test-aaudio-hotpath.py'
+      - 'emulator-core/src/main/cpp/xe_aaudio_audio_driver.*'
       - 'emulator-core/src/test/cpp/gpu_completion_timeline_test.cc'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/ui/gpu_completion_timeline.h'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/ui/vulkan/vulkan_gpu_completion_timeline.*'
@@ -125,6 +127,8 @@ jobs:
           PY
       - name: Test native audio performance hint lifecycle
         run: python3 tools/test-audio-performance-hint.py
+      - name: Guard AAudio realtime hot path
+        run: python3 tools/test-aaudio-hotpath.py
       - name: Test native POSIX clock units and query overhead
         run: python3 tools/test-native-clock.py
       - name: Test ARM64 vector select semantics and instruction encoding

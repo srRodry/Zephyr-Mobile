@@ -99,9 +99,15 @@ class AAudioAudioDriver : public AudioDriver {
   const uint32_t channel_samples_;
   const uint32_t submit_samples_;
   const uint32_t host_block_samples_;
+  // Ready blocks and recycled blocks travel in opposite SPSC directions.
+  // Keep separate locks so the realtime callback never waits on an unrelated
+  // operation on the other queue. Queue depth is advisory for pacing and is
+  // published atomically, so reading it never takes a callback-side mutex.
   std::queue<float*> frames_queued_ = {};
   std::stack<float*> frames_unused_ = {};
-  std::mutex frames_mutex_ = {};
+  std::mutex frames_queued_mutex_ = {};
+  std::mutex frames_unused_mutex_ = {};
+  std::atomic<size_t> queued_frame_count_{0};
 
   // Conversion, gain, gap concealment and resampling of the guest blocks
   // (xe_audio_block_renderer.h). Callback thread only.
@@ -138,6 +144,7 @@ class AAudioAudioDriver : public AudioDriver {
   // Diagnostic only: total and maximum time spent acquiring the audio queue mutex.
   std::atomic<uint64_t> stat_queue_lock_wait_us_sum_{0};
   std::atomic<uint32_t> stat_queue_lock_wait_us_max_{0};
+  void RecordQueueLockWait(uint32_t wait_us);
   void LogAndResetStats();
   // Adds the stream's new xruns to ae::RunStats(); AAudio counts per stream, so
   // the count seen so far restarts with every rebuild. recovery_thread_ only.
