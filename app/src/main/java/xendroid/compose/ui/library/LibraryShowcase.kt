@@ -40,7 +40,7 @@ import xendroid.compose.ui.design.*
 @Composable
 internal fun LibraryPlane(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val colors = Xd.colors
-    CompositionLocalProvider(LocalXd provides colors, LocalXdButtonShape provides RoundedCornerShape(4.dp)) {
+    CompositionLocalProvider(LocalXd provides colors, LocalXdButtonShape provides ZephyrActionShape) {
         Box(modifier.background(colors.bg)) { content() }
     }
 }
@@ -169,7 +169,7 @@ internal fun LibraryShowcase(
                 val picked = game.stableId == selected?.stableId
                 val c = Xd.colors
                 var focused by remember { mutableStateOf(false) }
-                val shape = RoundedCornerShape(4.dp)
+                val shape = ZephyrActionShape
                 Column(Modifier.width(tileWidth).border(if (picked || focused) 2.dp else 1.dp,
                     if (picked || focused) c.acc else Color.Transparent, shape)
                     .clip(shape).onFocusChanged { focused = it.isFocused; if (it.isFocused) onSelect(game) }
