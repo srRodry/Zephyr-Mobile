@@ -1132,30 +1132,54 @@ bool VulkanPipelineCache::ConfigurePipeline(
   return true;
 }
 
+void VulkanPipelineCache::VkPipelineCacheSaveThread() {
+  // Only the GPU/title lifecycle thread changes the store or VkPipelineCache,
+  // and it joins this worker before either can be invalidated.
+  std::unique_lock<std::mutex> lock(vk_pipeline_cache_save_mutex_);
+  for (;;) {
+    vk_pipeline_cache_save_cv_.wait(lock, [this]() {
+      return vk_pipeline_cache_save_requested_ ||
+             vk_pipeline_cache_save_stopping_;
+    });
+    if (vk_pipeline_cache_save_stopping_) {
+      return;
+    }
+    vk_pipeline_cache_save_requested_ = false;
+    lock.unlock();
+
+    // Clear only the generation being saved. Concurrent pipeline creations
+    // can set dirty again while the driver extracts or writes cache data.
+    if (vk_pipeline_cache_dirty_.exchange(false, std::memory_order_acq_rel)) {
+      if (!SaveVkPipelineCache()) {
+        vk_pipeline_cache_dirty_.store(true, std::memory_order_release);
+      }
+    }
+
+    lock.lock();
+  }
+}
+
 void VulkanPipelineCache::MaybeSaveVkPipelineCache() {
-  // Startup shader/pipeline preloading is already competing for CPU and GPU
-  // resources. Avoid synchronous cache serialization during that phase; the
-  // dirty generation is retained for the next regular save or shutdown.
+  // Startup preload and on-frame work must never execute synchronous cache
+  // serialization or file I/O. Only enqueue work for the per-title worker.
   if (startup_loading_) {
     return;
   }
-  // Periodically persist vk_pipeline_cache_ to disk so it survives Android
-  // process kills (upstream only writes it in ShutdownShaderStorage, which
-  // Android frequently skips). Throttled, and only when new pipelines were
-  // created since the last save. Safe on the GPU thread concurrently with the
-  // creation threads (the pipeline cache is internally synchronized).
   if (vk_pipeline_cache_dirty_.load(std::memory_order_relaxed) &&
-      vk_pipeline_cache_ != VK_NULL_HANDLE && !vk_pipeline_cache_path_.empty()) {
+      vk_pipeline_cache_ != VK_NULL_HANDLE &&
+      !vk_pipeline_cache_path_.empty()) {
     static constexpr uint64_t kVkPipelineCacheSaveIntervalMs = 20000;
     const uint64_t now = xe::Clock::QueryHostUptimeMillis();
     if (vk_pipeline_cache_last_save_ms_ == 0 ||
-        now - vk_pipeline_cache_last_save_ms_ >= kVkPipelineCacheSaveIntervalMs) {
-      // Exchange before saving so pipelines created concurrently mark a new
-      // dirty generation. Restore the flag if serialization fails.
-      vk_pipeline_cache_dirty_.exchange(false, std::memory_order_acq_rel);
-      vk_pipeline_cache_last_save_ms_ = now;
-      if (!SaveVkPipelineCache()) {
-        vk_pipeline_cache_dirty_.store(true, std::memory_order_release);
+        now - vk_pipeline_cache_last_save_ms_ >=
+            kVkPipelineCacheSaveIntervalMs) {
+      std::lock_guard<std::mutex> lock(vk_pipeline_cache_save_mutex_);
+      if (vk_pipeline_cache_save_thread_.joinable() &&
+          !vk_pipeline_cache_save_stopping_ &&
+          !vk_pipeline_cache_save_requested_) {
+        vk_pipeline_cache_save_requested_ = true;
+        vk_pipeline_cache_last_save_ms_ = now;
+        vk_pipeline_cache_save_cv_.notify_one();
       }
     }
   }
@@ -3607,6 +3631,16 @@ void VulkanPipelineCache::InitializeShaderStorage(
     }
   }
 
+  // Start the persistence worker only after the cache and backing store
+  // have been created. Startup preload doesn't schedule any saves.
+  {
+    std::lock_guard<std::mutex> lock(vk_pipeline_cache_save_mutex_);
+    vk_pipeline_cache_save_stopping_ = false;
+    vk_pipeline_cache_save_requested_ = false;
+  }
+  vk_pipeline_cache_save_thread_ =
+      std::thread([this]() { VkPipelineCacheSaveThread(); });
+
   // Invoke completion callback if no async work was queued.
   if (completion_callback) {
     completion_callback();
@@ -3651,7 +3685,23 @@ bool VulkanPipelineCache::SaveVkPipelineCache() {
 }
 
 void VulkanPipelineCache::ShutdownShaderStorage() {
-  // Save VkPipelineCache to disk before shutting down storage.
+  // A title switch or device shutdown must join the background worker before
+  // replacing its store or destroying its VkPipelineCache handle.
+  {
+    std::lock_guard<std::mutex> lock(vk_pipeline_cache_save_mutex_);
+    vk_pipeline_cache_save_stopping_ = true;
+  }
+  vk_pipeline_cache_save_cv_.notify_one();
+  if (vk_pipeline_cache_save_thread_.joinable()) {
+    vk_pipeline_cache_save_thread_.join();
+  }
+  {
+    std::lock_guard<std::mutex> lock(vk_pipeline_cache_save_mutex_);
+    vk_pipeline_cache_save_requested_ = false;
+    vk_pipeline_cache_save_stopping_ = false;
+  }
+  // Final synchronous persistence is limited to shutdown/title transitions,
+  // when blocking for a complete cache snapshot is acceptable.
   SaveVkPipelineCache();
   vk_pipeline_cache_path_.clear();
   vk_pipeline_cache_store_.reset();
