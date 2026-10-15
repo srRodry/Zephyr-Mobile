@@ -5,8 +5,8 @@ Usage: python3 tools/analyze-audio-timing.py xendroid.log
 Optional: --json for machine-readable interval records.
 
 Each AudioPump window covers 5 seconds, each AAudio window about 1 second.
-Input order is preserved; matching is by timestamp when a logcat time prefix
-exists, otherwise only aggregate summaries are emitted.
+Input order and original logcat timestamps are preserved. The report provides
+aggregate metrics only; it does not infer causality from overlapping windows.
 """
 import argparse
 import json
@@ -50,6 +50,24 @@ def parse(lines):
     return events
 
 
+def xrun_increase(sinks):
+    """XRunCount is cumulative per stream, not a per-second measurement.
+
+    Resets can occur after a stream rebuild. Do not count the first observed
+    value as a delta; its starting point is unknown.
+    """
+    previous = None
+    increase = 0
+    for sink in sinks:
+        current = sink["xruns"]
+        if current < 0:
+            continue
+        if previous is not None and current >= previous:
+            increase += current - previous
+        previous = current
+    return increase
+
+
 def summarize(events):
     pumps = [e for e in events if e["kind"] == "pump"]
     sinks = [e for e in events if e["kind"] == "aaudio"]
@@ -69,6 +87,7 @@ def summarize(events):
         "max_dispatch_us": max((e["max_dispatch_us"] for e in pumps), default=None),
         "last_xruns": next((e["xruns"] for e in reversed(sinks)
                             if e["xruns"] >= 0), None),
+        "observed_xrun_increase": xrun_increase(sinks),
     }
 
 
