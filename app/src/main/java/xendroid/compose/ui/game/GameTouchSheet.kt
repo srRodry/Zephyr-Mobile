@@ -63,7 +63,7 @@ internal fun GameTouchSheet(
                     HorizontalDivider(color = c.line)
                     val scroll = rememberSaveable(current?.id, saver = ScrollState.Saver) { ScrollState(0) }
                     Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(scroll).testTag("game-sheet-scroll")
-                        .padding(horizontal = 14.dp, vertical = 14.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
+                        .padding(horizontal = 14.dp, vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                         SheetIdentity(game, art, data, preparing, onPlay, onLaunch, prominent = mainSection(current?.id) == GameSections.OVERVIEW)
                         MainTabs(mainSection(current?.id), history::pick)
                         val active = mainSection(current?.id)
@@ -110,7 +110,7 @@ private fun SheetIdentity(game: Game, art: CoverArt, data: LibraryData, preparin
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Column(
             Modifier.fillMaxWidth().clip(heroShape).background(c.s1).border(1.dp, c.line2, heroShape)
-                .padding(12.dp).testTag("game-sheet-hero"),
+                .padding(14.dp).testTag("game-sheet-hero"),
             verticalArrangement = Arrangement.spacedBy(12.dp),
         ) {
             LibraryFeatureIdentity(game, art, data, prominent, Modifier.testTag("game-sheet-identity"))
