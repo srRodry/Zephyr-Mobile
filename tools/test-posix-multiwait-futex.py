@@ -33,7 +33,8 @@ class PosixMultiWaitFutexTests(unittest.TestCase):
         self.assertIn("g_multi_wait_gen.fetch_add", poke)
         self.assertIn("g_multi_waiters.load", poke)
         self.assertIn("FUTEX_WAKE_PRIVATE", poke)
-        self.assertNotIn("mutex", poke)
+        # A comment may mention mutexes; reject actual locking operations.
+        self.assertNotRegex(poke, r"\b(?:pthread_mutex_lock|lock_guard|unique_lock|mutex_\.lock)\b")
         self.assertNotIn("condition_variable", poke)
 
     def test_generation_is_sampled_before_handle_check_and_wait_is_bounded(self):
