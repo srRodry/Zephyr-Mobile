@@ -37,5 +37,10 @@
     <string name="zephyr_settings_system_note">Interface, idioma, console e atualizações do aplicativo.</string>
     <string name="zephyr_settings_advanced">Avançado</string>
     <string name="zephyr_settings_advanced_note">Opções de compatibilidade, diagnóstico e ajustes alterados.</string>
+    <string name="zephyr_profiles_local">Perfis locais</string>
+    <string name="zephyr_profiles_inspect_hint">Selecione um perfil para ver sua ficha. O jogador só muda ao ativá-lo.</string>
+    <string name="zephyr_profiles_identity">Ficha do perfil</string>
+    <string name="zephyr_profiles_saves_pending">Informações dos saves indisponíveis</string>
+    <string name="zephyr_profiles_gamertag_example">ZephyrPlayer</string>
 </resources>
 

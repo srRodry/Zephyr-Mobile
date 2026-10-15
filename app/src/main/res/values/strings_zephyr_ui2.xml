@@ -37,5 +37,10 @@
     <string name="zephyr_settings_system_note">Interface, language, console and app updates.</string>
     <string name="zephyr_settings_advanced">Advanced</string>
     <string name="zephyr_settings_advanced_note">Compatibility options, diagnostics and changed settings.</string>
+    <string name="zephyr_profiles_local">Local profiles</string>
+    <string name="zephyr_profiles_inspect_hint">Select a profile to view its details. Sign-in changes only when you activate it.</string>
+    <string name="zephyr_profiles_identity">Profile details</string>
+    <string name="zephyr_profiles_saves_pending">Save information unavailable</string>
+    <string name="zephyr_profiles_gamertag_example">ZephyrPlayer</string>
 </resources>
 

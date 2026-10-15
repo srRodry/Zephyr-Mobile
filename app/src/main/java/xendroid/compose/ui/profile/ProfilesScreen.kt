@@ -26,11 +26,15 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.selection.selectable
+import androidx.compose.foundation.selection.selectableGroup
+import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
 import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.Text
+import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -43,8 +47,8 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.compositeOver
 import androidx.compose.ui.layout.ContentScale
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.pluralStringResource
 import androidx.compose.ui.res.stringResource
@@ -65,19 +69,15 @@ import xendroid.compose.saves.ProfileContentSummary
 import xendroid.compose.saves.TrashedProfile
 import xendroid.compose.settings.Setting
 import xendroid.compose.settings.SettingsSchema
-import xendroid.compose.ui.design.BadgeTone
+import xendroid.compose.ui.design.LocalXdButtonShape
 import xendroid.compose.ui.design.LocalXdToast
 import xendroid.compose.ui.design.NoteTone
 import xendroid.compose.ui.design.Xd
 import xendroid.compose.ui.design.XdArea
-import xendroid.compose.ui.design.XdBadge
 import xendroid.compose.ui.design.XdButton
 import xendroid.compose.ui.design.XdButtonKind
 import xendroid.compose.ui.design.XdButtonSize
 import xendroid.compose.ui.design.XdCard
-import xendroid.compose.ui.design.XdEditorialHeading
-import xendroid.compose.ui.design.XdSilverPanel
-import androidx.compose.ui.text.font.FontWeight
 import xendroid.compose.ui.design.XdEmpty
 import xendroid.compose.ui.design.XdIconButton
 import xendroid.compose.ui.design.XdIcons
@@ -345,12 +345,12 @@ fun ProfileAvatar(xuid: String, gamertag: String, hasAvatar: Boolean, size: Dp, 
     }
 }
 
-@OptIn(ExperimentalLayoutApi::class)
+/** Inspecting a local profile never signs it in; activation remains an explicit action. */
 @Composable
-private fun TouchProfiles(
+internal fun TouchProfiles(
     profiles: List<ProfileEntry>,
     slots: List<String?>,
-    summaries: Map<String, ProfileContentSummary>,
+    summaries: Map<String, ProfileContentSummary?>,
     onActive: (ProfileEntry) -> Unit,
     onEdit: (ProfileEntry) -> Unit,
     onSaves: (ProfileEntry) -> Unit,
@@ -358,117 +358,84 @@ private fun TouchProfiles(
     onDetails: (ProfileEntry) -> Unit,
 ) {
     val c = Xd.colors
-    Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-        XdEditorialHeading(stringResource(R.string.zephyr_ui2_profiles_title), stringResource(R.string.zephyr_ui2_profiles_subtitle))
-        val active = profiles.firstOrNull { it.isActive }
-        if (active != null) ActiveProfileCard(active, slots, summaries[active.xuid],
-            onEdit = { onEdit(active) }, onSaves = { onSaves(active) }, onTrash = { onTrash(active) },
-            onDetails = { onDetails(active) })
-        if (profiles.isEmpty()) XdEmpty(stringResource(R.string.zephyr_ui2_profiles_empty))
-        BoxWithConstraints {
-            val columns = when {
-                maxWidth >= 840.dp -> 3
-                maxWidth >= 500.dp -> 2
-                else -> 1
-            }
-            // Creation stays in the fixed screen header; list cells are existing profiles only.
-            val cells = profiles.filter { it != active }
-            Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                cells.chunked(columns).forEach { row ->
-                    Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                        row.forEach { p ->
-                            ProfileCard(p, slots, summaries[p.xuid], { onActive(p) }, { onEdit(p) }, { onSaves(p) },
-                                { onTrash(p) }, { onDetails(p) }, Modifier.weight(1f))
-                        }
-                        repeat(columns - row.size) { Box(Modifier.weight(1f)) }
+    var inspected by rememberSaveable { mutableStateOf<String?>(null) }
+    val chosen = profiles.firstOrNull { it.xuid == inspected }
+        ?: profiles.firstOrNull { it.isActive } ?: profiles.firstOrNull()
+    Column(Modifier.testTag("profiles-workspace"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+        Text(stringResource(R.string.zephyr_profiles_local), style = XdText.h2, color = c.fg)
+        Text(stringResource(R.string.zephyr_profiles_inspect_hint), style = XdText.bodySm, color = c.fg2)
+        if (chosen == null) XdEmpty(stringResource(R.string.zephyr_ui2_profiles_empty))
+        else {
+            androidx.compose.foundation.lazy.LazyRow(
+                Modifier.fillMaxWidth().selectableGroup().testTag("profiles-selector"),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+            ) {
+                items(profiles.size, key = { profiles[it].xuid }) { i ->
+                    val p = profiles[i]
+                    val selected = p.xuid == chosen.xuid
+                    Column(Modifier.width(132.dp).heightIn(min = 164.dp).testTag("profile-select:${p.xuid}")
+                        .focusRing(profileCut).clip(profileCut).background(if (selected) c.s2 else c.s1)
+                        .border(1.dp, if (selected) c.acc else c.line2, profileCut)
+                        .selectable(selected = selected, role = Role.RadioButton, onClick = { inspected = p.xuid })
+                        .padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally,
+                        verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ProfileAvatar(p.xuid, p.gamertag, p.hasAvatar, 60.dp)
+                        Text(p.gamertag.ifBlank { p.xuid }, style = XdText.label, color = c.fg,
+                            maxLines = 2, overflow = TextOverflow.Ellipsis)
+                        statusText(p, slots)?.let { Text(it, style = XdText.small, color = if (p.isActive) c.acc else c.fg2) }
                     }
                 }
             }
+            ProfileIdentityCard(chosen, slots, summaries[chosen.xuid],
+                onActive = { onActive(chosen) }, onEdit = { onEdit(chosen) }, onSaves = { onSaves(chosen) },
+                onTrash = { onTrash(chosen) }, onDetails = { onDetails(chosen) })
         }
         Text(stringResource(R.string.xd_pf_note), style = XdText.note, color = c.fg3)
     }
 }
 
-/** The real active profile, presented separately without changing sign-in or save ownership. */
-@OptIn(ExperimentalLayoutApi::class)
-@Composable
-private fun ActiveProfileCard(
-    p: ProfileEntry,
-    slots: List<String?>,
-    summary: ProfileContentSummary?,
-    onEdit: () -> Unit,
-    onSaves: () -> Unit,
-    onTrash: () -> Unit,
-    onDetails: () -> Unit,
-) {
-    XdSilverPanel {
-        val c = Xd.colors
-        Column(Modifier.padding(vertical = 12.dp), verticalArrangement = Arrangement.spacedBy(14.dp)) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                ProfileAvatar(p.xuid, p.gamertag, p.hasAvatar, 64.dp)
-                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    statusText(p, slots)?.let { Text(it, style = XdText.labelSm, color = c.acc) }
-                    Text(p.gamertag.ifBlank { p.xuid }, style = XdText.body.copy(fontSize = 26.sp, lineHeight = 30.sp,
-                        fontWeight = FontWeight.Bold), color = c.fg)
-                }
-            }
-            XdKv(listOf(
-                stringResource(R.string.xd_pf_lang_region) to languageText(p),
-                stringResource(R.string.xd_pf_saves) to savesText(summary),
-            ))
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                XdButton(stringResource(R.string.pf_edit), onEdit, Modifier.heightIn(min = 48.dp),
-                    kind = XdButtonKind.PRIMARY, icon = XdIcons.text)
-                XdButton(stringResource(R.string.xd_pf_saves), onSaves, Modifier.heightIn(min = 48.dp),
-                    icon = XdIcons.save, enabled = summary?.gameTitles?.isNotEmpty() == true)
-                XdButton(stringResource(R.string.zephyr_ui2_profile_details), onDetails, Modifier.heightIn(min = 48.dp),
-                    kind = XdButtonKind.GHOST, icon = XdIcons.info)
-                XdIconButton(XdIcons.trash, stringResource(R.string.xd_pf_to_trash_cd, p.gamertag.ifBlank { p.xuid }), onTrash, size = 48.dp)
-            }
-        }
-    }
+private val profileCut = GenericShape { size, _ ->
+    val cut = minOf(16f, size.width * 0.08f)
+    moveTo(0f, 0f); lineTo(size.width - cut, 0f); lineTo(size.width, cut)
+    lineTo(size.width, size.height); lineTo(0f, size.height); close()
 }
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun ProfileCard(
-    p: ProfileEntry,
-    slots: List<String?>,
-    summary: ProfileContentSummary?,
-    onActive: () -> Unit,
-    onEdit: () -> Unit,
-    onSaves: () -> Unit,
-    onTrash: () -> Unit,
-    onDetails: () -> Unit,
-    modifier: Modifier,
+private fun ProfileIdentityCard(
+    p: ProfileEntry, slots: List<String?>, summary: ProfileContentSummary?,
+    onActive: () -> Unit, onEdit: () -> Unit, onSaves: () -> Unit, onTrash: () -> Unit, onDetails: () -> Unit,
 ) {
     val c = Xd.colors
-    val shape = RoundedCornerShape(16.dp)
-    Column(
-        modifier.clip(shape).background(if (p.isActive) c.acc.copy(alpha = 0.07f).compositeOver(c.solid(c.s1)) else c.s1)
-            .then(if (p.isActive) Modifier.border(1.dp, c.acc.copy(alpha = 0.35f), shape) else Modifier)
-            .padding(14.dp),
-        verticalArrangement = Arrangement.spacedBy(10.dp),
-    ) {
-        Row(verticalAlignment = Alignment.Top, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            ProfileAvatar(p.xuid, p.gamertag, p.hasAvatar, 52.dp)
-            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(3.dp)) {
-                Text(p.gamertag.ifBlank { p.xuid }, style = XdText.label.copy(fontSize = 16.sp), color = c.fg, maxLines = 2, overflow = TextOverflow.Ellipsis)
-                statusText(p, slots)?.let { XdBadge(it, tone = if (p.isActive) BadgeTone.ACCENT else BadgeTone.NEUTRAL) }
+    CompositionLocalProvider(LocalXdButtonShape provides RoundedCornerShape(4.dp)) {
+        Column(Modifier.fillMaxWidth().testTag("profile-inspected:${p.xuid}").clip(profileCut)
+            .background(c.s1).border(1.dp, c.line2, profileCut).padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                ProfileAvatar(p.xuid, p.gamertag, p.hasAvatar, 72.dp)
+                Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
+                    Text(stringResource(R.string.zephyr_profiles_identity), style = XdText.labelSm, color = c.fg2)
+                    Text(p.gamertag.ifBlank { p.xuid }, style = XdText.h2, color = c.fg)
+                    statusText(p, slots)?.let { Text(it, style = XdText.labelSm, color = c.acc) }
+                }
             }
-            XdIconButton(XdIcons.trash, stringResource(R.string.xd_pf_to_trash_cd, p.gamertag.ifBlank { p.xuid }), onTrash, size = 48.dp)
-        }
-        XdKv(listOf(
-            stringResource(R.string.xd_pf_lang_region) to languageText(p),
-            stringResource(R.string.xd_pf_saves) to savesText(summary),
-        ))
-        FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (!p.isActive) XdButton(stringResource(R.string.xd_pf_make_active), onActive, modifier = Modifier.heightIn(min = 48.dp), size = XdButtonSize.SM)
-            XdButton(stringResource(R.string.pf_edit), onEdit, modifier = Modifier.heightIn(min = 48.dp), kind = XdButtonKind.GHOST, size = XdButtonSize.SM)
-            XdButton(stringResource(R.string.xd_pf_saves), onSaves, modifier = Modifier.heightIn(min = 48.dp), kind = XdButtonKind.GHOST, size = XdButtonSize.SM, icon = XdIcons.save,
-                enabled = summary?.gameTitles?.isNotEmpty() == true)
-            XdButton(stringResource(R.string.zephyr_ui2_profile_details), onDetails, modifier = Modifier.heightIn(min = 48.dp),
-                kind = XdButtonKind.GHOST, size = XdButtonSize.SM, icon = XdIcons.info)
+            XdKv(listOf(stringResource(R.string.xd_pf_lang_region) to languageText(p),
+                stringResource(R.string.xd_pf_saves) to if (summary == null)
+                    stringResource(R.string.zephyr_profiles_saves_pending) else savesText(summary)))
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                if (!p.isActive) XdButton(stringResource(R.string.xd_pf_make_active), onActive,
+                    Modifier.heightIn(min = 48.dp).testTag("profile-activate"), kind = XdButtonKind.PRIMARY, icon = XdIcons.user)
+                XdButton(stringResource(R.string.pf_edit), onEdit, Modifier.heightIn(min = 48.dp).testTag("profile-edit"),
+                    kind = if (p.isActive) XdButtonKind.PRIMARY else XdButtonKind.SECONDARY, icon = XdIcons.text)
+                XdButton(stringResource(R.string.xd_pf_saves), onSaves, Modifier.heightIn(min = 48.dp).testTag("profile-saves"),
+                    icon = XdIcons.save, enabled = summary?.gameTitles?.isNotEmpty() == true)
+            }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                XdButton(stringResource(R.string.zephyr_ui2_profile_details), onDetails,
+                    Modifier.heightIn(min = 48.dp).testTag("profile-details"), kind = XdButtonKind.GHOST, icon = XdIcons.info)
+                XdButton(stringResource(R.string.pf_trash), onTrash,
+                    Modifier.heightIn(min = 48.dp).testTag("profile-trash"), kind = XdButtonKind.GHOST, icon = XdIcons.trash)
+            }
         }
     }
 }
@@ -634,7 +601,7 @@ private fun ProfileForm(
         }
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(stringResource(R.string.pf_gamertag), style = XdText.labelSm, color = c.fg2)
-            XdTextInput(gamertag, { if (it.length <= 15) gamertag = it }, Modifier.fillMaxWidth(), placeholder = "XenPlayer", mono = false, width = 640.dp)
+            XdTextInput(gamertag, { if (it.length <= 15) gamertag = it }, Modifier.fillMaxWidth(), placeholder = stringResource(R.string.zephyr_profiles_gamertag_example), mono = false, width = 640.dp)
             if (gamertag.isNotEmpty() && !valid) XdNote(stringResource(R.string.pf_gamertag_rule), tone = NoteTone.ERROR, icon = XdIcons.warn)
         }
         BoxWithConstraints {
