@@ -169,6 +169,7 @@ jobs:
             --tests 'xendroid.compose.ui.settings.SettingsHubRoutingTest' \
             --tests 'xendroid.compose.screens.SettingsHubTest' \
             --tests 'xendroid.compose.screens.ProfilesWorkspaceTest' \
+            --tests 'xendroid.compose.screens.ControlsHubTest' \
             --tests 'xendroid.compose.gamepad.MenuButtonsTest' \
             --tests 'xendroid.compose.screens.BaseShots' \
             --tests 'xendroid.compose.screens.FirstRunReturnTest' \

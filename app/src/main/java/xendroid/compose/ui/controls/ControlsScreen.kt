@@ -107,6 +107,7 @@ class ControlsLinks(
 
 object ControlsSections {
     const val OVERVIEW = "ov"
+    const val STATUS = "input-status"
     const val TOUCH = "touch"
     const val PADS = "pads"
     const val MOTION = "motion"
@@ -135,6 +136,7 @@ fun ControlsScreen(
     val cfg by layouts.config.collectAsStateWithLifecycle(initialValue = null)
     val options by optionsStore.options.collectAsStateWithLifecycle(initialValue = ControlOptions())
     val values by global.values.collectAsStateWithLifecycle()
+    val ready by global.ready.collectAsStateWithLifecycle()
     val km by keymap.state.collectAsStateWithLifecycle()
     val devices = rememberInputDevices()
     val rumble = rememberPadRumble()
@@ -176,7 +178,7 @@ fun ControlsScreen(
     val groupControls = stringResource(R.string.xd_ctl_group_controls)
     val groupTools = stringResource(R.string.xd_ctl_group_tools)
     val pads = devices.pads
-    val sections = listOf(
+    val baseSections = listOf(
         XdSection(ControlsSections.OVERVIEW, stringResource(R.string.xd_ctl_sec_overview), XdIcons.gamepad, group = groupControls,
             heading = stringResource(R.string.xd_ctl_title)) {
             Overview(pads, rumble, options, globals, touchShown, km, cfg?.presets?.size ?: 0, onSection = { section = it }, links)
@@ -209,11 +211,20 @@ fun ControlsScreen(
         XdSection("go-test", stringResource(R.string.xd_ctl_tool_test), XdIcons.gamepad, goTo = links.onTest),
         XdSection("go-phone", stringResource(R.string.xd_ctl_tool_phone), XdIcons.phone, goTo = links.onPhone),
     )
+    // Keep the complete existing overview reachable behind the compact touch landing page.
+    val sections = if (Xd.controller) baseSections else baseSections + XdSection(
+        ControlsSections.STATUS, stringResource(R.string.zephyr_controls_status), XdIcons.info,
+        heading = stringResource(R.string.zephyr_controls_status), content = baseSections.first().content)
     val padsText = if (pads.isEmpty()) stringResource(R.string.xd_ctl_no_pads) else pluralStringResource(R.plurals.xd_ctl_pads, pads.size, pads.size)
     XdSectionedScreen(
-        title = stringResource(R.string.xd_ctl_title), sections = sections, selected = section, onSelect = { section = it },
+        title = stringResource(R.string.xd_ctl_title), sections = sections, selected = if (Xd.controller && sections.none { it.id == section }) ControlsSections.OVERVIEW else section, onSelect = { section = it },
         area = XdArea.CONTROLS, onBack = onBack, headIcon = XdIcons.gamepad,
         subtitle = padsText + " · " + stringResource(if (touchShown) R.string.xd_ctl_touch_on else R.string.xd_ctl_touch_off),
+        touchFrame = { current, history ->
+            val status = if (cfg == null || !ready) stringResource(R.string.xd_game_loading)
+                else padsText + " · " + stringResource(if (touchShown) R.string.xd_ctl_touch_on else R.string.xd_ctl_touch_off)
+            ControlsTouchFrame(sections, current, history, status, { section = it }, onBack)
+        },
     )
 }
 

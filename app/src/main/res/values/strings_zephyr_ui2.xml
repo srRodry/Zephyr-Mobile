@@ -42,5 +42,16 @@
     <string name="zephyr_profiles_identity">Profile details</string>
     <string name="zephyr_profiles_saves_pending">Save information unavailable</string>
     <string name="zephyr_profiles_gamertag_example">ZephyrPlayer</string>
+    <string name="zephyr_controls_intro">Your input tools in one place. Choose what you want to configure.</string>
+    <string name="zephyr_controls_mapping_note">Assign physical keys to console buttons.</string>
+    <string name="zephyr_controls_touch_note">Visibility, opacity and saved touch layouts.</string>
+    <string name="zephyr_controls_editor_note">Position and resize on-screen controls.</string>
+    <string name="zephyr_controls_pads_note">Connected controllers and input options.</string>
+    <string name="zephyr_controls_motion_note">Vibration, gyroscope and input behavior.</string>
+    <string name="zephyr_controls_test_note">Inspect buttons, axes and vibration support.</string>
+    <string name="zephyr_controls_phones_note">Connection information for phone controllers.</string>
+    <string name="zephyr_controls_phone_note">Use this phone as a controller on your network.</string>
+    <string name="zephyr_controls_status">Input status</string>
+    <string name="zephyr_controls_status_note">Player slots, touch state and vibration summary.</string>
 </resources>
 

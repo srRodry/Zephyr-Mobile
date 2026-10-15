@@ -42,5 +42,16 @@
     <string name="zephyr_profiles_identity">Ficha do perfil</string>
     <string name="zephyr_profiles_saves_pending">Informações dos saves indisponíveis</string>
     <string name="zephyr_profiles_gamertag_example">ZephyrPlayer</string>
+    <string name="zephyr_controls_intro">Suas ferramentas de entrada em um só lugar. Escolha o que deseja configurar.</string>
+    <string name="zephyr_controls_mapping_note">Associe teclas físicas aos botões do console.</string>
+    <string name="zephyr_controls_touch_note">Visibilidade, opacidade e layouts de toque salvos.</string>
+    <string name="zephyr_controls_editor_note">Posicione e redimensione os controles na tela.</string>
+    <string name="zephyr_controls_pads_note">Controles conectados e opções de entrada.</string>
+    <string name="zephyr_controls_motion_note">Vibração, giroscópio e comportamento da entrada.</string>
+    <string name="zephyr_controls_test_note">Confira botões, eixos e suporte à vibração.</string>
+    <string name="zephyr_controls_phones_note">Informações de conexão para celulares como controle.</string>
+    <string name="zephyr_controls_phone_note">Use este celular como controle na sua rede.</string>
+    <string name="zephyr_controls_status">Estado da entrada</string>
+    <string name="zephyr_controls_status_note">Jogadores, estado do toque e resumo da vibração.</string>
 </resources>
 
