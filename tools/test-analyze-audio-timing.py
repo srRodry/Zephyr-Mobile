@@ -37,6 +37,9 @@ class AudioTimingTests(unittest.TestCase):
         self.assertEqual(summary["max_queue_lock_us"], 0)
         self.assertEqual(summary["min_queue_avg"], 1.5)
         self.assertEqual(summary["min_playback_rate"], 0.95)
+        self.assertEqual(summary["sink_windows_with_gaps"], 1)
+        self.assertEqual(summary["sink_windows_with_low_queue"], 1)
+        self.assertEqual(summary["sink_windows_with_rate_slowdown"], 1)
 
     def test_xruns_are_cumulative_and_can_reset(self):
         sinks = [{"xruns": 4}, {"xruns": 6}, {"xruns": 1},
