@@ -3195,6 +3195,14 @@ void VulkanPipelineCache::InitializeShaderStorage(
     std::function<void()> completion_callback) {
   ShutdownShaderStorage();
 
+  // Start a new persistence generation for this title. The previous title may
+  // have left the dirty bit set after its final save, and last_save_ms_ being
+  // zero makes MaybeSaveVkPipelineCache serialize immediately on the first
+  // submission. Both add synchronous vkGetPipelineCacheData + file I/O to the
+  // busiest part of startup. A periodic save should wait for its interval.
+  vk_pipeline_cache_dirty_.store(false, std::memory_order_relaxed);
+  vk_pipeline_cache_last_save_ms_ = xe::Clock::QueryHostUptimeMillis();
+
   shader_storage_title_id_ = title_id;
 
   if (!blocking) {
@@ -3618,6 +3626,10 @@ void VulkanPipelineCache::ShutdownShaderStorage() {
   SaveVkPipelineCache();
   vk_pipeline_cache_path_.clear();
   vk_pipeline_cache_store_.reset();
+  // The next title must not inherit this title's dirty generation or save
+  // timestamp. InitializeShaderStorage starts its own interval after this.
+  vk_pipeline_cache_dirty_.store(false, std::memory_order_relaxed);
+  vk_pipeline_cache_last_save_ms_ = 0;
 
   // Shut down the storage writer (closes files, stops write thread).
   storage_writer_.ShutdownShaderStorage();
