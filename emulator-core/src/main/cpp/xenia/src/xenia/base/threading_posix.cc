@@ -23,9 +23,13 @@
 #include <signal.h>
 #include <sys/resource.h>
 #include <sys/syscall.h>
+#if XE_PLATFORM_LINUX
+#include <linux/futex.h>
+#endif
 #include <unistd.h>
 #include <array>
 #include <atomic>
+#include <climits>
 #include <cstddef>
 #include <cstring>
 #include <ctime>
@@ -373,24 +377,42 @@ thread_local uint64_t t_wait_any_calls = 0;
 thread_local uint64_t t_wait_any_iters = 0;
 thread_local uint64_t t_wait_any_park_ns = 0;
 
-static std::mutex g_multi_wait_mutex;
-static std::condition_variable g_multi_wait_cv;
-static std::atomic<uint64_t> g_multi_wait_gen{0};
+static std::atomic<uint32_t> g_multi_wait_gen{0};
 static std::atomic<uint32_t> g_multi_waiters{0};
+
 static void PokeMultiWaiters() {
-  // Bump the generation before reading the waiter count: a waiter that has
-  // just registered re-checks the generation under the mutex before sleeping,
-  // so it cannot miss this.
-  g_multi_wait_gen.fetch_add(1, std::memory_order_release);
-  if (g_multi_waiters.load(std::memory_order_acquire) == 0) {
-    // Skip the process-global mutex: this runs from the realtime audio
-    // callback, where blocking behind a guest thread costs an audio deadline.
+  // Change the generation before checking for parked waiters. A waiter reads
+  // the generation before checking its handles, so a signal racing that check
+  // makes FUTEX_WAIT return immediately instead of being lost.
+  g_multi_wait_gen.fetch_add(1, std::memory_order_seq_cst);
+  if (g_multi_waiters.load(std::memory_order_seq_cst) == 0) {
     return;
   }
-  // Notified without holding the mutex, so a realtime caller never blocks on
-  // it. A wakeup lost to the register/sleep race costs at most the 1ms park
-  // cap the waiter already applies.
-  g_multi_wait_cv.notify_all();
+#if XE_PLATFORM_LINUX
+  // Android/Linux can block all multi-object waiters on the generation word
+  // directly. The signalling path takes no mutex and therefore stays safe for
+  // realtime callers such as the audio callback.
+  syscall(SYS_futex, reinterpret_cast<uint32_t*>(&g_multi_wait_gen),
+          FUTEX_WAKE_PRIVATE, INT_MAX, nullptr, nullptr, 0);
+#endif
+}
+
+static void WaitForMultiObjectSignal(uint32_t expected,
+                                     std::chrono::milliseconds timeout) {
+#if XE_PLATFORM_LINUX
+  timespec ts{};
+  ts.tv_sec = static_cast<time_t>(timeout.count() / 1000);
+  ts.tv_nsec = static_cast<long>((timeout.count() % 1000) * 1000000);
+  syscall(SYS_futex, reinterpret_cast<uint32_t*>(&g_multi_wait_gen),
+          FUTEX_WAIT_PRIVATE, expected, &ts, nullptr, 0);
+#else
+  // Keep non-Linux POSIX behaviour bounded without introducing a process-wide
+  // condition-variable mutex. Android uses the futex path above.
+  if (g_multi_wait_gen.load(std::memory_order_seq_cst) == expected) {
+    std::this_thread::sleep_for(
+        std::min(timeout, std::chrono::milliseconds(1)));
+  }
+#endif
 }
 
 class PosixConditionBase {
@@ -526,7 +548,7 @@ class PosixConditionBase {
       pthread_testcancel();
 #endif
       // Snapshot the gen before checking so a racing signal isn't missed.
-      uint64_t wait_gen = g_multi_wait_gen.load(std::memory_order_acquire);
+      uint32_t wait_gen = g_multi_wait_gen.load(std::memory_order_seq_cst);
 
       // Check all handles to see if any/all are signaled.
       // Use try_lock to avoid deadlocks from lock ordering issues.
@@ -626,20 +648,16 @@ class PosixConditionBase {
         return std::make_pair<WaitResult, size_t>(WaitResult::kTimeout, 0);
       }
 
-      // Park on the shared condvar (any signal wakes us); 1ms cap covers a lost poke.
+      // Park on the generation word. Linux/Android sleeps in the kernel until a
+      // relevant signal changes it; the 50 ms cap is only a backstop.
       auto remaining =
           std::chrono::duration_cast<std::chrono::milliseconds>(end_time - now);
-      auto park = std::min(remaining, std::chrono::milliseconds(1));
+      auto park = std::min(remaining, std::chrono::milliseconds(50));
       ++t_wait_any_iters;
       const auto park_begin = std::chrono::steady_clock::now();
-      g_multi_waiters.fetch_add(1, std::memory_order_release);
-      {
-        std::unique_lock<std::mutex> mw_lock(g_multi_wait_mutex);
-        g_multi_wait_cv.wait_for(mw_lock, park, [&] {
-          return g_multi_wait_gen.load(std::memory_order_acquire) != wait_gen;
-        });
-      }
-      g_multi_waiters.fetch_sub(1, std::memory_order_release);
+      g_multi_waiters.fetch_add(1, std::memory_order_seq_cst);
+      WaitForMultiObjectSignal(wait_gen, park);
+      g_multi_waiters.fetch_sub(1, std::memory_order_seq_cst);
       t_wait_any_park_ns += static_cast<uint64_t>(
           std::chrono::duration_cast<std::chrono::nanoseconds>(
               std::chrono::steady_clock::now() - park_begin)
