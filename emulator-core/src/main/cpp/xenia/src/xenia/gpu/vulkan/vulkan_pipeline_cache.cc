@@ -1171,8 +1171,7 @@ void VulkanPipelineCache::MaybeSaveVkPipelineCache() {
     static constexpr uint64_t kVkPipelineCacheSaveIntervalMs = 20000;
     const uint64_t now = xe::Clock::QueryHostUptimeMillis();
     if (vk_pipeline_cache_last_save_ms_ == 0 ||
-        now - vk_pipeline_cache_last_save_ms_ >=
-            kVkPipelineCacheSaveIntervalMs) {
+        now - vk_pipeline_cache_last_save_ms_ >= kVkPipelineCacheSaveIntervalMs) {
       std::lock_guard<std::mutex> lock(vk_pipeline_cache_save_mutex_);
       if (vk_pipeline_cache_save_thread_.joinable() &&
           !vk_pipeline_cache_save_stopping_ &&
