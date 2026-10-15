@@ -183,7 +183,9 @@ fun XdSheetOption(
 ) {
     val c = Xd.colors
     Row(
-        modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(c.s1).padding(horizontal = 12.dp, vertical = 10.dp),
+        modifier.fillMaxWidth().clip(ZephyrPanelShape).background(c.s1)
+            .border(1.dp, c.line2, ZephyrPanelShape)
+            .padding(horizontal = 12.dp, vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp),
     ) {
         Column(Modifier.weight(1f)) {
@@ -206,7 +208,7 @@ fun XdMenuItem(
     tint: Color? = null,
 ) {
     val c = Xd.colors
-    val shape = RoundedCornerShape(12.dp)
+    val shape = ZephyrActionShape
     Row(
         modifier.fillMaxWidth().focusRing(shape).clip(shape).clickable(enabled = enabled, role = Role.Button, onClick = onClick)
             .padding(horizontal = 12.dp, vertical = 11.dp),
