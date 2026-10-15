@@ -6,8 +6,6 @@ import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.shape.GenericShape
-import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -26,38 +24,29 @@ import androidx.compose.ui.unit.sp
 import xendroid.compose.R
 import xendroid.compose.ui.design.*
 
-/** Static geometry only: no capture, blur, animation or new interaction with the guest. */
-private val guideBlade = GenericShape { size, _ ->
-    val cut = minOf(size.width * 0.12f, size.height * 0.15f)
-    moveTo(0f, 0f)
-    lineTo(size.width - cut, 0f)
-    lineTo(size.width, size.height)
-    lineTo(0f, size.height)
-    close()
-}
-
-/** A touch landing page over the existing game surface; tools and quit confirmation stay separate. */
+/** Landing content for the persistent in-game touch panel shell. */
 @Composable
 internal fun TouchGameGuide(
-    model: InGameMenuModel, portrait: Boolean, modifier: Modifier,
+    model: InGameMenuModel, modifier: Modifier,
     onResume: () -> Unit, onControls: () -> Unit, onSettings: () -> Unit, onQuit: () -> Unit,
 ) {
     val c = Xd.colors
-    val shape = if (portrait) RoundedCornerShape(topStart = 6.dp, topEnd = 6.dp) else guideBlade
-    Column(modifier.testTag("game-guide-root").clip(shape).background(c.solid(c.sheet))
-        .windowInsetsPadding(WindowInsets.safeDrawing.part(top = !portrait, bottom = true, start = true, end = portrait))
-        .verticalScroll(rememberScrollState())
-        .padding(start = 16.dp, end = if (portrait) 16.dp else 44.dp, top = 16.dp, bottom = 16.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    Column(
+        modifier.testTag("game-guide-root").verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(10.dp),
+    ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Image(painterResource(R.drawable.zephyr_launcher_foreground), null, Modifier.size(40.dp))
-            Text(stringResource(R.string.zephyr_game_guide), style = XdText.h2, color = c.fg)
-        }
-        Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(model.gameName ?: stringResource(R.string.app_name), style = XdText.label, color = c.fg,
-                maxLines = 2, overflow = TextOverflow.Ellipsis)
-            Text(stringResource(if (model.paused) R.string.xd_menu_paused else R.string.xd_menu_running),
-                style = XdText.small, color = c.fg2)
+            Image(painterResource(R.drawable.zephyr_launcher_foreground), null, Modifier.size(32.dp))
+            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
+                Text(stringResource(R.string.zephyr_game_guide), style = XdText.h2, color = c.fg)
+                Text(
+                    model.gameName ?: stringResource(R.string.app_name),
+                    style = XdText.small,
+                    color = c.fg2,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis,
+                )
+            }
         }
         GuideEntry(stringResource(R.string.zephyr_guide_resume), XdIcons.play, "game-guide-resume", onResume, primary = true)
         GuideEntry(stringResource(R.string.menu_tab_controls), XdIcons.gamepad, "game-guide-controls", onControls)
@@ -72,7 +61,7 @@ private fun GuideEntry(
     primary: Boolean = false, danger: Boolean = false,
 ) {
     val c = Xd.colors
-    val shape = RoundedCornerShape(4.dp)
+    val shape = ZephyrActionShape
     val fg = if (primary) c.onAction else if (danger) c.dangerText else c.fg
     Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag(tag).focusRing(shape).clip(shape)
         .background(if (primary) c.action else c.s1)
