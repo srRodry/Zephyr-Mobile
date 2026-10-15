@@ -79,7 +79,7 @@ internal fun GameTouchSheet(
                             Modifier.heightIn(min = 48.dp).testTag("game-sheet-return"), kind = XdButtonKind.GHOST, icon = XdIcons.back)
                         // Existing warnings, charts and setting widgets keep their dark semantic tokens.
                         if (current != null) CompositionLocalProvider(LocalXd provides frameColors) {
-                            val contentShape = RoundedCornerShape(6.dp)
+                            val contentShape = ZephyrPanelShape
                             Column(
                                 Modifier.fillMaxWidth().testTag("game-sheet-content:${current.id}")
                                     .clip(contentShape).background(frameColors.s1)
