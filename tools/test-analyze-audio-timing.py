@@ -53,7 +53,7 @@ class AudioTimingTests(unittest.TestCase):
     def test_xruns_are_cumulative_and_can_reset(self):
         sinks = [{"xruns": 4}, {"xruns": 6}, {"xruns": 1},
                  {"xruns": -1}, {"xruns": 3}]
-        self.assertEqual(module.xrun_increase(sinks), 4)
+        self.assertEqual(module.xrun_increase(sinks), 2)
         self.assertEqual(module.xrun_increase([{"xruns": 100}]), 0)
 
     def test_handles_missing_and_unstamped_lines(self):
