@@ -95,7 +95,7 @@ private fun BladeIdentity(modifier: Modifier) {
 @Composable
 private fun BladeProfile(modifier: Modifier) {
     val nav = LocalXdNavigator.current
-    val shape = RoundedCornerShape(4.dp)
+    val shape = ZephyrActionShape
     Row(modifier.heightIn(min = 48.dp).focusRing(shape).clip(shape)
         .clickable(role = Role.Button) { nav.area(XdArea.PROFILES) }.padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
