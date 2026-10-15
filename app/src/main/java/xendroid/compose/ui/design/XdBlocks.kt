@@ -59,6 +59,9 @@ val ZephyrPanelShape: Shape = GenericShape { size, _ ->
 /** Shared interactive geometry: compact and restrained, distinct from structural panels and pills. */
 val ZephyrActionShape: Shape = RoundedCornerShape(4.dp)
 
+/** Grouped tabs and segmented controls use one shared container radius. */
+val ZephyrSegmentShape: Shape = RoundedCornerShape(6.dp)
+
 /** A structural Zephyr surface card with the shared clipped panel silhouette. */
 @Composable
 fun XdCard(
