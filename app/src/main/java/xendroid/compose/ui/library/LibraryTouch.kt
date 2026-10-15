@@ -198,9 +198,21 @@ fun LibraryTouch(
                         if (query.isBlank()) {
                             item(key = "library-showcase", span = { GridItemSpan(maxLineSpan) }) {
                                 Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    if (portrait && featured != null) LibraryFeaturedGame(featured, artOf(featured), data, preparing,
-                                        onPlay = { onSelect(featured); onPlay(featured) },
-                                        onOpen = { openSelected(featured) }, onFavorite = { onFavorite(featured) })
+                                    if (portrait && featured != null) {
+                                        Text(
+                                            stringResource(R.string.zephyr_library_featured),
+                                            color = c.fg,
+                                            style = XdText.h2,
+                                        )
+                                        LibraryFeaturedGame(featured, artOf(featured), data, preparing,
+                                            onPlay = { onSelect(featured); onPlay(featured) },
+                                            onOpen = { openSelected(featured) }, onFavorite = { onFavorite(featured) })
+                                    }
+                                    Text(
+                                        stringResource(R.string.zephyr_library_your_library),
+                                        color = c.fg,
+                                        style = XdText.h2,
+                                    )
                                     LibraryShowcase(shown, selected, data, artOf, onSelect, openSelected, onFavorite)
                                     HorizontalDivider(color = c.line)
                                 }
