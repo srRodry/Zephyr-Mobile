@@ -1133,6 +1133,12 @@ bool VulkanPipelineCache::ConfigurePipeline(
 }
 
 void VulkanPipelineCache::MaybeSaveVkPipelineCache() {
+  // Startup shader/pipeline preloading is already competing for CPU and GPU
+  // resources. Avoid synchronous cache serialization during that phase; the
+  // dirty generation is retained for the next regular save or shutdown.
+  if (startup_loading_) {
+    return;
+  }
   // Periodically persist vk_pipeline_cache_ to disk so it survives Android
   // process kills (upstream only writes it in ShutdownShaderStorage, which
   // Android frequently skips). Throttled, and only when new pipelines were
