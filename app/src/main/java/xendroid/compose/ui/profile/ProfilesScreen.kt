@@ -464,9 +464,10 @@ private fun ControllerProfiles(profiles: List<ProfileEntry>, slots: List<String?
 @Composable
 private fun BigTile(onClick: () -> Unit, on: Boolean, content: @Composable () -> Unit) {
     val c = Xd.colors
-    val shape = RoundedCornerShape(18.dp)
     Column(
-        Modifier.width(160.dp).focusRing(shape).clip(shape).background(if (on) c.acc.copy(alpha = 0.12f) else c.s1)
+        Modifier.width(160.dp).focusRing(ZephyrPanelShape).clip(ZephyrPanelShape)
+            .background(if (on) c.s2 else c.s1)
+            .border(1.dp, if (on) c.acc else c.line2, ZephyrPanelShape)
             .clickable(role = Role.Button, onClick = onClick).padding(vertical = 18.dp, horizontal = 12.dp),
         horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp),
     ) { content() }
@@ -486,9 +487,9 @@ private fun Players(profiles: List<ProfileEntry>, slots: List<String?>, onPick: 
                     Row(horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                         row.forEach { n ->
                             val p = profiles.firstOrNull { it.xuid.equals(slots.getOrNull(n), ignoreCase = true) }
-                            val shape = RoundedCornerShape(14.dp)
                             Column(
-                                Modifier.weight(1f).clip(shape).then(if (p != null) Modifier.background(c.s1) else Modifier.border(1.dp, c.line2, shape))
+                                Modifier.weight(1f).clip(ZephyrPanelShape).background(c.s1)
+                                    .border(1.dp, if (p != null) c.line2 else c.line, ZephyrPanelShape)
                                     .padding(12.dp),
                                 verticalArrangement = Arrangement.spacedBy(8.dp),
                             ) {
