@@ -24,5 +24,18 @@
     <string name="zephyr_game_guide">Guia</string>
     <string name="zephyr_guide_resume">Retomar</string>
     <string name="zephyr_guide_settings">Configurações</string>
+    <string name="zephyr_settings_home">Configurações</string>
+    <string name="zephyr_settings_intro">Escolha uma categoria ou busque em todos os ajustes.</string>
+    <string name="zephyr_settings_graphics">Gráficos</string>
+    <string name="zephyr_settings_graphics_note">Imagem, driver Vulkan e opções de desempenho.</string>
+    <string name="zephyr_settings_audio_note">Volume e reprodução de áudio.</string>
+    <string name="zephyr_settings_input">Entrada</string>
+    <string name="zephyr_settings_input_note">Controle, toque e ajustes de entrada.</string>
+    <string name="zephyr_settings_storage">Armazenamento</string>
+    <string name="zephyr_settings_storage_note">Diretórios do aplicativo e transferência de ajustes.</string>
+    <string name="zephyr_settings_system">Sistema</string>
+    <string name="zephyr_settings_system_note">Interface, idioma, console e atualizações do aplicativo.</string>
+    <string name="zephyr_settings_advanced">Avançado</string>
+    <string name="zephyr_settings_advanced_note">Opções de compatibilidade, diagnóstico e ajustes alterados.</string>
 </resources>
 

@@ -81,7 +81,8 @@ class SettingsLinks(
     val gameArt: (String) -> Any? = { null },
 )
 
-private object Ids {
+internal object SettingsSectionIds {
+    const val HOME = "zephyr:settings"
     const val SUMMARY = "resumo"
     const val UI = "app:ui"
     const val LANGUAGE = "app:lang"
@@ -141,7 +142,8 @@ fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit, links: SettingsLin
     val panel = remember { SettingsPanelState(SettingLevelStore.read(context)) }
     var pinned by remember { mutableStateOf(PinnedSettings.read(context)) }
     val onPinned: (List<String>) -> Unit = { pinned = it; PinnedSettings.write(context, it) }
-    var section by rememberSaveable { mutableStateOf(initialSection ?: Ids.SUMMARY) }
+    val startSection = if (Xd.controller) SettingsSectionIds.SUMMARY else SettingsSectionIds.HOME
+    var section by rememberSaveable { mutableStateOf(initialSection ?: startSection) }
     var overridingOf by remember { mutableStateOf<Setting?>(null) }
     var tomlOpen by remember { mutableStateOf(false) }
 
@@ -154,7 +156,13 @@ fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit, links: SettingsLin
             onOpenDrivers = links.onDrivers, onShowOverriding = { overridingOf = it }, onJump = jump)
     }
     val sections = buildList {
-        add(XdSection(Ids.SUMMARY, stringResource(R.string.xd_set_summary), XdIcons.home, group = groupGeneral,
+        if (!Xd.controller) {
+            add(XdSection(SettingsSectionIds.HOME, stringResource(R.string.zephyr_settings_home), XdIcons.gear) {})
+            SettingsHubCategory.entries.filter { it.sectionIds.size > 1 }.forEach { category ->
+                add(XdSection(category.destination, stringResource(category.titleRes), category.icon()) {})
+            }
+        }
+        add(XdSection(SettingsSectionIds.SUMMARY, stringResource(R.string.xd_set_summary), XdIcons.home, group = groupGeneral,
             heading = if (Xd.controller) stringResource(R.string.xd_set_summary) else null) {
             if (!Xd.controller && panel.query.isBlank()) {
                 XdEditorialHeading(stringResource(R.string.zephyr_ui2_settings_title), stringResource(R.string.xd_set_subtitle))
@@ -172,7 +180,7 @@ fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit, links: SettingsLin
                 panelFor(g)
             })
         }
-        add(XdSection(Ids.UI, stringResource(R.string.xd_set_interface), XdIcons.monitor, group = groupApp,
+        add(XdSection(SettingsSectionIds.UI, stringResource(R.string.xd_set_interface), XdIcons.monitor, group = groupApp,
             lead = stringResource(R.string.xd_set_interface_lead)) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
                 InputModeOption()
@@ -182,24 +190,24 @@ fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit, links: SettingsLin
                 UiScaleOptions()
             }
         })
-        add(XdSection(Ids.LANGUAGE, stringResource(R.string.xd_set_language), XdIcons.globe) {
+        add(XdSection(SettingsSectionIds.LANGUAGE, stringResource(R.string.xd_set_language), XdIcons.globe) {
             AppLanguageOption()
             XdLink(stringResource(R.string.xd_set_language_console), { section = "set:${xendroid.compose.settings.SettingGroup.SYSTEM.name}" })
         })
-        add(XdSection(Ids.DATA, stringResource(R.string.xd_set_data), XdIcons.save) {
+        add(XdSection(SettingsSectionIds.DATA, stringResource(R.string.xd_set_data), XdIcons.save) {
             Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 XdDataBundleCard(beforeImport = vm::flushForTransfer, afterImport = { vm.onResume() })
                 XdUserDataCard()
             }
         })
-        if (xendroid.compose.updater.updateRepository() != null) add(XdSection(Ids.UPDATES, stringResource(R.string.xd_set_updates), XdIcons.download) {
+        if (xendroid.compose.updater.updateRepository() != null) add(XdSection(SettingsSectionIds.UPDATES, stringResource(R.string.xd_set_updates), XdIcons.download) {
             UpdatesBody()
         })
-        add(XdSection(Ids.COMMUNITY, stringResource(R.string.xd_set_community), XdIcons.share) { CommunityBody() })
-        add(XdSection(Ids.DIAGNOSTICS, stringResource(R.string.xd_set_diagnostics), XdIcons.bug) {
+        add(XdSection(SettingsSectionIds.COMMUNITY, stringResource(R.string.xd_set_community), XdIcons.share) { CommunityBody() })
+        add(XdSection(SettingsSectionIds.DIAGNOSTICS, stringResource(R.string.xd_set_diagnostics), XdIcons.bug) {
             DiagnosticsBody(links, onLogLevel = { section = "set:${xendroid.compose.settings.SettingGroup.DEBUG.name}" })
         })
-        add(XdSection(Ids.ABOUT, stringResource(R.string.xd_guide_about), XdIcons.info) {
+        add(XdSection(SettingsSectionIds.ABOUT, stringResource(R.string.xd_guide_about), XdIcons.info) {
             XdCard {
                 XdListRow("${stringResource(R.string.app_name)} ${xendroid.compose.BuildConfig.VERSION_NAME}", icon = XdIcons.info,
                     subtitle = xendroid.compose.core.EmulatorRuntime.gpuDeviceName ?: "", divider = false) {
@@ -212,12 +220,19 @@ fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit, links: SettingsLin
     XdSectionedScreen(
         title = stringResource(R.string.xd_set_title),
         sections = sections,
-        selected = section,
+        selected = if (Xd.controller && sections.none { it.id == section }) SettingsSectionIds.SUMMARY else section,
         onSelect = { section = it },
         area = XdArea.SETTINGS,
         subtitle = stringResource(R.string.xd_set_subtitle),
         onBack = onBack,
         headIcon = XdIcons.gear,
+        touchFrame = { current, history ->
+            SettingsTouchFrame(sections, current, history, panel.query, { panel.query = it },
+                onNavigate = { section = it }, onBack = onBack) {
+                XdSettingsPanel(editing, panel, pinned, onPinned, onOpenDrivers = links.onDrivers,
+                    onShowOverriding = { overridingOf = it }, onJump = jump, header = false)
+            }
+        },
     )
 
     overridingOf?.let { s -> OverridingSheet(s, gameValues, links) { overridingOf = null } }
@@ -249,11 +264,11 @@ private fun Summary(
         Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
             if (!c.controller) XdSilverPanel {
                 XdListRow(stringResource(R.string.xd_set_interface), icon = XdIcons.monitor,
-                    onClick = { onSection(Ids.UI) })
+                    onClick = { onSection(SettingsSectionIds.UI) })
                 XdListRow(stringResource(R.string.xd_set_data), icon = XdIcons.save,
-                    onClick = { onSection(Ids.DATA) })
+                    onClick = { onSection(SettingsSectionIds.DATA) })
                 XdListRow(stringResource(R.string.xd_set_diagnostics), icon = XdIcons.bug, divider = false,
-                    onClick = { onSection(Ids.DIAGNOSTICS) })
+                    onClick = { onSection(SettingsSectionIds.DIAGNOSTICS) })
             }
             XdCard(title = stringResource(R.string.xd_set_summary_changed), icon = XdIcons.sliders, trailing = changed.size.toString()) {
                 if (changed.isEmpty()) Text(stringResource(R.string.xd_set_summary_all_default), style = XdText.note, color = c.fg3)

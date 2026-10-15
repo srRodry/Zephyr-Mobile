@@ -166,6 +166,8 @@ jobs:
             --tests 'xendroid.compose.ui.ingame.TouchGameGuideTest' \
             --tests 'xendroid.compose.ui.library.*' \
             --tests 'xendroid.compose.ui.design.ZephyrPaletteTest' \
+            --tests 'xendroid.compose.ui.settings.SettingsHubRoutingTest' \
+            --tests 'xendroid.compose.screens.SettingsHubTest' \
             --tests 'xendroid.compose.gamepad.MenuButtonsTest' \
             --tests 'xendroid.compose.screens.BaseShots' \
             --tests 'xendroid.compose.screens.FirstRunReturnTest' \
