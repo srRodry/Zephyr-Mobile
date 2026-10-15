@@ -41,6 +41,15 @@ class AudioTimingTests(unittest.TestCase):
         self.assertEqual(summary["sink_windows_with_low_queue"], 1)
         self.assertEqual(summary["sink_windows_with_rate_slowdown"], 1)
 
+    def test_unrecognized_diagnostics_are_reported(self):
+        events, unmatched = module.parse_diagnostics([
+            "10-15 12:00:00.000 I xenia: AudioPump: truncated",
+            "10-15 12:00:01.000 I xenia: AAudio: missing fields",
+            "unrelated log message",
+        ])
+        self.assertEqual(events, [])
+        self.assertEqual(len(unmatched), 2)
+
     def test_xruns_are_cumulative_and_can_reset(self):
         sinks = [{"xruns": 4}, {"xruns": 6}, {"xruns": 1},
                  {"xruns": -1}, {"xruns": 3}]
