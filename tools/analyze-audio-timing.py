@@ -54,6 +54,19 @@ def parse(lines):
     return events
 
 
+def parse_diagnostics(lines):
+    """Return parsed events and diagnostic lines the parser could not read."""
+    events = []
+    unmatched = []
+    for line in lines:
+        parsed = parse([line])
+        if parsed:
+            events.extend(parsed)
+        elif "AudioPump:" in line or "AAudio: " in line:
+            unmatched.append(line.strip())
+    return events, unmatched
+
+
 def xrun_increase(sinks):
     """XRunCount is cumulative per stream, not a per-second measurement.
 
@@ -109,14 +122,19 @@ def main():
     parser.add_argument("log", type=Path)
     parser.add_argument("--json", action="store_true")
     args = parser.parse_args()
-    events = parse(args.log.read_text(errors="replace").splitlines())
+    events, unmatched = parse_diagnostics(
+        args.log.read_text(errors="replace").splitlines())
     summary = summarize(events)
+    summary["unparsed_diagnostic_lines"] = len(unmatched)
     if args.json:
-        print(json.dumps({"summary": summary, "events": events}, indent=2))
+        print(json.dumps({"summary": summary, "events": events, "unparsed": unmatched}, indent=2))
     else:
         print("Audio timing diagnostics")
         for key, value in summary.items():
             print(f"  {key}: {value}")
+        if unmatched:
+            print("Warning: diagnostic lines not recognized by the parser; "
+                  "review the log before interpreting the summary.")
         if not events:
             print("No matching AudioPump/AAudio diagnostics found. "
                   "Enable apu_aaudio_log_stats for the next test.")
