@@ -61,7 +61,7 @@ class VulkanPipelineCacheSaveThrottleTests(unittest.TestCase):
         worker_start = self.text.index("void VulkanPipelineCache::VkPipelineCacheSaveThread()")
         worker = self.text[worker_start:maybe_start]
         self.assertIn("MaybeSaveVkPipelineCache();", submission)
-        self.assertNotRegex(submission, r"(?m)^\\s*SaveVkPipelineCache\\(\\);")
+        self.assertNotRegex(submission, r"(?m)^\s*SaveVkPipelineCache\(\);")
         self.assertNotIn("SaveVkPipelineCache();", maybe)
         self.assertIn("vk_pipeline_cache_save_cv_.notify_one();", maybe)
         self.assertIn("SaveVkPipelineCache()", worker)
