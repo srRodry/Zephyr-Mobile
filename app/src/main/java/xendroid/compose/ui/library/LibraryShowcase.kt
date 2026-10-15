@@ -51,14 +51,15 @@ internal fun LibraryArtwork(game: Game, art: CoverArt, modifier: Modifier = Modi
     val c = Xd.colors
     val shape = RoundedCornerShape(4.dp)
     BoxWithConstraints(modifier.aspectRatio(3f / 4f).clip(shape).background(c.s2).border(1.dp, c.line, shape)) {
-        if (art.smart) {
-            // Embedded title icons are much smaller than cover art. Scale them confidently inside
-            // the existing cover frame so they read as artwork instead of floating thumbnails.
-            val iconSize = (maxWidth * 0.78f).coerceAtMost(112.dp)
-            AsyncImage(art.model, null, Modifier.size(iconSize).align(Alignment.Center), contentScale = ContentScale.Fit)
-        } else {
-            AsyncImage(art.model, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-        }
+        // The library card is a cover slot. Even when the game only exposes its embedded
+        // title image, let the artwork own the complete slot instead of floating as a tiny icon.
+        // Crop preserves the source aspect ratio; it never stretches the image to fit.
+        AsyncImage(
+            art.model,
+            null,
+            Modifier.fillMaxSize(),
+            contentScale = ContentScale.Crop,
+        )
         if (favorite) Icon(XdIcons.starFilled, null,
             Modifier.align(Alignment.TopEnd).padding(4.dp).size(18.dp)
                 .background(Color(0xFF15191F), RoundedCornerShape(3.dp)).padding(2.dp), tint = Color(0xFFF3CF55))
@@ -69,7 +70,7 @@ internal fun LibraryArtwork(game: Game, art: CoverArt, modifier: Modifier = Modi
     }
 }
 
-/** Real cover artwork can lead the page; embedded icons stay small and contained. */
+/** Real cover artwork leads the page; embedded title art uses the same full-slot treatment. */
 @Composable
 internal fun LibraryFeatureIdentity(
     game: Game, art: CoverArt, data: LibraryData, prominent: Boolean = true,
