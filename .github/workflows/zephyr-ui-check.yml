@@ -215,6 +215,8 @@ jobs:
         run: python3 tools/test-native-regression-selection.py
       - name: Test Linux multi-object wait wake path
         run: python3 tools/test-posix-multiwait-futex.py
+      - name: Test Vulkan placeholder pipeline layout reuse
+        run: python3 tools/test-vulkan-placeholder-layout.py
       - name: Test Vulkan pipeline-cache persistence throttle
         run: python3 tools/test-vulkan-pipeline-cache-save-throttle.py
       - name: Install shader compiler tools
