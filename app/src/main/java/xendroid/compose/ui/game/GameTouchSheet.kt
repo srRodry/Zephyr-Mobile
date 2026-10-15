@@ -173,7 +173,7 @@ private fun MainTabs(selected: String, onSelect: (String) -> Unit) {
     val c = Xd.colors
     val choices = listOf(GameSections.OVERVIEW to R.string.xd_game_sec_overview,
         GameSections.SETTINGS to R.string.zephyr_game_adjustments, GameSections.DATA to R.string.zephyr_game_data)
-    val railShape = RoundedCornerShape(6.dp)
+    val railShape = ZephyrSegmentShape
     Row(
         Modifier.fillMaxWidth().clip(railShape).background(c.s1).border(1.dp, c.line2, railShape)
             .padding(4.dp).testTag("game-sheet-main-tabs"),
@@ -181,7 +181,7 @@ private fun MainTabs(selected: String, onSelect: (String) -> Unit) {
     ) {
         choices.forEach { (id, label) ->
             val picked = selected == id
-            val shape = RoundedCornerShape(4.dp)
+            val shape = ZephyrActionShape
             Column(
                 Modifier.weight(1f).heightIn(min = 52.dp)
                     .focusRing(shape, color = if (picked) c.fg else c.acc)
@@ -238,7 +238,7 @@ private fun SectionChoice(sections: List<XdSection>, current: XdSection?, onSele
 @Composable
 internal fun GameSheetLink(title: String, id: String, icon: androidx.compose.ui.graphics.vector.ImageVector, onSelect: (String) -> Unit) {
     val c = Xd.colors
-    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("game-sheet-link:$id").focusRing(RoundedCornerShape(4.dp))
+    Row(Modifier.fillMaxWidth().heightIn(min = 56.dp).testTag("game-sheet-link:$id").focusRing(ZephyrActionShape)
         .clickable(role = Role.Button) { onSelect(id) }.padding(vertical = 10.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
         Icon(icon, null, Modifier.size(22.dp), tint = c.fg2)
