@@ -11,7 +11,6 @@ exists, otherwise only aggregate summaries are emitted.
 import argparse
 import json
 import re
-from datetime import datetime
 from pathlib import Path
 
 PUMP = re.compile(
@@ -34,11 +33,8 @@ def timestamp(line):
     match = LOGCAT.search(line)
     if not match:
         return None
-    try:
-        return datetime.strptime("2026-" + match.group("date") + " " +
-                                 match.group("time"), "%Y-%m-%d %H:%M:%S.%f").timestamp()
-    except ValueError:
-        return None
+    # Keep the source-local logcat timestamp without assuming a year or zone.
+    return match.group("date") + " " + match.group("time")
 
 
 def parse(lines):
@@ -71,7 +67,6 @@ def summarize(events):
         "topups": sum(e["topups"] for e in pumps),
         "max_pump_late_us": max((e["max_late_us"] for e in pumps), default=None),
         "max_dispatch_us": max((e["max_dispatch_us"] for e in pumps), default=None),
-        "max_callback_us": None,
         "last_xruns": next((e["xruns"] for e in reversed(sinks)
                             if e["xruns"] >= 0), None),
     }
