@@ -207,17 +207,6 @@ fun InGameMenu(
     ) {
         val portrait = maxHeight > maxWidth
         val dialog = state.confirmingQuit || state.logPicker
-        if (!controller && !toolsOpen && !dialog) {
-            val landing = if (portrait) Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.86f)
-                else Modifier.align(Alignment.CenterStart)
-                    .width(minOf(maxWidth, maxOf(240.dp, minOf(maxWidth * 0.48f, 320.dp)))).fillMaxHeight()
-            TouchGameGuide(model, portrait, landing,
-                onResume = { onAction(InGameAction.RESUME) },
-                onControls = { toolsOpen = true; onPage(InGamePage.CONTROLS) },
-                onSettings = { toolsOpen = true; onPage(InGamePage.GRAPHICS) },
-                onQuit = { onAction(InGameAction.QUIT) })
-            return@BoxWithConstraints
-        }
         val short = maxHeight < 400.dp
         // The status line only where the rows keep room for several of them.
         val roomy = maxHeight >= 460.dp
@@ -230,7 +219,7 @@ fun InGameMenu(
             withFrameNanos { }
             selectedRow.bringIntoView()
         }
-        val shape = if (!controller) RoundedCornerShape(4.dp) else if (portrait) RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp) else RoundedCornerShape(topEnd = 22.dp, bottomEnd = 22.dp)
+        val shape = if (!controller) ZephyrPanelShape else if (portrait) RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp) else RoundedCornerShape(topEnd = 22.dp, bottomEnd = 22.dp)
         val panel = if (portrait) Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.86f)
         else Modifier.align(Alignment.CenterStart).width(minOf(maxWidth * (if (controller) 0.74f else 0.78f), if (controller) 660.dp else 720.dp)).fillMaxHeight()
         Column(
@@ -242,8 +231,12 @@ fun InGameMenu(
             // Controller mode keeps its existing head; touch actions stay outside the scrolling rows.
             if (controller) Head(model, controller, compactActions = !portrait && !dialog, onClose = { onAction(InGameAction.RESUME) },
                 onQuit = { onAction(InGameAction.QUIT) }, onChanges = { onPage(InGamePage.SESSION) })
-            else TouchHead(model, short, onClose = { onAction(InGameAction.RESUME) },
-                onGuide = if (dialog) null else ({ toolsOpen = false }))
+            else TouchHead(
+                model,
+                short,
+                onClose = { onAction(InGameAction.RESUME) },
+                onGuide = if (!dialog && toolsOpen) ({ toolsOpen = false }) else null,
+            )
             if (model.status.isNotEmpty() && !dialog && roomy) StatusLine(model.status)
             val body = Modifier.weight(1f).fillMaxWidth()
             when {
@@ -251,6 +244,14 @@ fun InGameMenu(
                     if (state.confirmingQuit) QuitConfirm(state, selectedRow, onQuitChoice)
                     else LogPicker(state, model, selectedRow, onLogChoice)
                 }
+                !controller && !toolsOpen -> TouchGameGuide(
+                    model = model,
+                    modifier = body,
+                    onResume = { onAction(InGameAction.RESUME) },
+                    onControls = { toolsOpen = true; onPage(InGamePage.CONTROLS) },
+                    onSettings = { toolsOpen = true; onPage(InGamePage.GRAPHICS) },
+                    onQuit = { onAction(InGameAction.QUIT) },
+                )
                 portrait -> Column(body, verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     PageTabs(state, controller, onPage)
                     Rows(state, model, scrollState, selectedRow, Modifier.weight(1f).fillMaxWidth(), onSelect, onAction, onAdjust, onChoose, onSet, onSetDone)
@@ -268,7 +269,7 @@ fun InGameMenu(
                     XdHint("LB/RB", stringResource(R.string.menu_hint_categories)),
                     XdHint(if (swap) "A" else "B", stringResource(R.string.xd_close)) { onAction(InGameAction.RESUME) }),
                     Modifier.clip(RoundedCornerShape(12.dp)), scrim = false)
-            } else if (!dialog) {
+            } else if (!dialog && toolsOpen) {
                 FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp),
                     verticalArrangement = Arrangement.spacedBy(8.dp)) {
                     XdButton(stringResource(R.string.menu_continue), { onAction(InGameAction.RESUME) }, kind = XdButtonKind.PRIMARY,
