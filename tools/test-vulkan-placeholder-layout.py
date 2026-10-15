@@ -14,7 +14,7 @@ class VulkanPlaceholderLayoutTests(unittest.TestCase):
     def setUpClass(cls):
         cls.text = SOURCE.read_text()
         start = cls.text.index("bool VulkanPipelineCache::EnsurePipelineCreated(")
-        end = cls.text.index("bool VulkanPipelineCache::Initialize", start)
+        end = cls.text.index("void VulkanPipelineCache::ProcessDeferredDestructions", start)
         cls.ensure = cls.text[start:end]
 
     def test_real_pipeline_keeps_cached_real_layout(self):
