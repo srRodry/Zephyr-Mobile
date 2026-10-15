@@ -27,6 +27,8 @@ LIGHT_TIMING = {
 
 
 def render(mode):
+    if mode not in ("reference", "light-timing"):
+        raise ValueError(f"Unknown graphics A/B mode: {mode}")
     settings = REFERENCE if mode == "reference" else LIGHT_TIMING
     lines = [
         "# Zephyr graphics A/B: " + mode,
