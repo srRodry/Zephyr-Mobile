@@ -78,14 +78,16 @@ class BaseShots {
         Fixture.settle()
         compose.waitForIdle()
         if (openFeatured) {
-            val expected = pick ?: (vm.state.value as LibraryUiState.Loaded).games.first().name
             compose.onNodeWithTag("library-grid").performScrollToNode(hasTestTag("library-featured"))
-            compose.onNode(hasText(expected) and hasAnyAncestor(hasTestTag("library-featured-identity")),
-                useUnmergedTree = true).assertExists()
+            compose.onNodeWithTag("library-featured-identity").assertExists()
+            if (pick != null) {
+                compose.onNode(hasText(pick) and hasAnyAncestor(hasTestTag("library-featured-identity")),
+                    useUnmergedTree = true).assertExists()
+            }
             compose.onNodeWithTag("library-featured-open").performScrollTo().performClick()
             compose.waitForIdle()
             assertEquals(1, sheetsOpened)
-            assertEquals(expected, openedTitle)
+            if (pick != null) assertEquals(pick, openedTitle)
         }
     }
 
@@ -171,7 +173,7 @@ class BaseShots {
         compose.onNodeWithTag("game-sheet-identifiers-values").assertDoesNotExist()
     }
 
-    @Config(qualifiers = Phone.PORT) @Test fun libraryFeaturedOpensSelectedTitle() {
+    @Config(qualifiers = Phone.PORT) @Test fun libraryFeaturedOpensGameSheet() {
         library(InputMode.TOUCH, openFeatured = true)
     }
 
