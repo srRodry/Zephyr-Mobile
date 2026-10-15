@@ -79,8 +79,14 @@ internal fun GameTouchSheet(
                             Modifier.heightIn(min = 48.dp).testTag("game-sheet-return"), kind = XdButtonKind.GHOST, icon = XdIcons.back)
                         // Existing warnings, charts and setting widgets keep their dark semantic tokens.
                         if (current != null) CompositionLocalProvider(LocalXd provides frameColors) {
-                            Column(Modifier.fillMaxWidth().testTag("game-sheet-content:${current.id}").background(frameColors.bg, RoundedCornerShape(4.dp))
-                                .padding(12.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                            val contentShape = RoundedCornerShape(6.dp)
+                            Column(
+                                Modifier.fillMaxWidth().testTag("game-sheet-content:${current.id}")
+                                    .clip(contentShape).background(frameColors.s1)
+                                    .border(1.dp, frameColors.line, contentShape)
+                                    .padding(14.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp),
+                            ) {
                                 current.heading?.let { Text(it, style = XdText.h2, color = frameColors.fg) }
                                 current.lead?.let { Text(it, style = XdText.bodySm, color = frameColors.fg2) }
                                 current.content?.invoke(this)
@@ -167,18 +173,33 @@ private fun MainTabs(selected: String, onSelect: (String) -> Unit) {
     val c = Xd.colors
     val choices = listOf(GameSections.OVERVIEW to R.string.xd_game_sec_overview,
         GameSections.SETTINGS to R.string.zephyr_game_adjustments, GameSections.DATA to R.string.zephyr_game_data)
-    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+    val railShape = RoundedCornerShape(6.dp)
+    Row(
+        Modifier.fillMaxWidth().clip(railShape).background(c.s1).border(1.dp, c.line2, railShape)
+            .padding(4.dp).testTag("game-sheet-main-tabs"),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
+    ) {
         choices.forEach { (id, label) ->
             val picked = selected == id
             val shape = RoundedCornerShape(4.dp)
-            Column(Modifier.weight(1f).heightIn(min = 56.dp).focusRing(shape, color = if (picked) c.fg else c.acc).clip(shape)
-                .background(if (picked) c.acc else c.s2)
-                .clickable(role = Role.Tab) { if (!picked) onSelect(id) }
-                .semantics { this.selected = picked }.testTag("game-sheet-tab:$id").padding(10.dp),
-                verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                Text(stringResource(label), style = XdText.label.copy(fontWeight = if (picked) FontWeight.Bold else FontWeight.Medium),
-                    color = if (picked) c.onAcc else c.fg2)
-                Box(Modifier.width(20.dp).height(2.dp).background(if (picked) c.onAcc else Color.Transparent))
+            Column(
+                Modifier.weight(1f).heightIn(min = 52.dp)
+                    .focusRing(shape, color = if (picked) c.fg else c.acc)
+                    .clip(shape)
+                    .background(if (picked) c.action else Color.Transparent)
+                    .clickable(role = Role.Tab) { if (!picked) onSelect(id) }
+                    .semantics { this.selected = picked }
+                    .testTag("game-sheet-tab:$id")
+                    .padding(horizontal = 10.dp, vertical = 9.dp),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                Text(
+                    stringResource(label),
+                    style = XdText.label.copy(fontWeight = if (picked) FontWeight.Bold else FontWeight.Medium),
+                    color = if (picked) c.onAction else c.fg2,
+                    maxLines = 1,
+                )
             }
         }
     }
