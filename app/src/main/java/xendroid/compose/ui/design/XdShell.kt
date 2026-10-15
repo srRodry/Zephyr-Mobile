@@ -337,12 +337,13 @@ fun XdSectionedScreen(
 @Composable
 private fun SecNavItem(s: XdSection, selected: Boolean, onSelect: (String) -> Unit, compact: Boolean) {
     val c = Xd.colors
-    val shape = RoundedCornerShape(9.dp)
+    val shape = ZephyrActionShape
     // Round 2: a section chosen by a link scrolls the list (a row in portrait) to it.
     val inView = remember { BringIntoViewRequester() }
     LaunchedEffect(selected) { if (selected) { withFrameNanos { }; inView.bringIntoView() } }
     Row(
-        Modifier.bringIntoViewRequester(inView).then(if (compact) Modifier else Modifier.fillMaxWidth()).focusRing(shape).heightIn(min = 33.dp).clip(shape)
+        Modifier.bringIntoViewRequester(inView).then(if (compact) Modifier else Modifier.fillMaxWidth()).focusRing(shape)
+            .heightIn(min = if (compact) 48.dp else 44.dp).clip(shape)
             .background(if (selected) c.s3 else Color.Transparent)
             .clickable(role = Role.Tab) { s.goTo?.invoke() ?: onSelect(s.id) }
             .semantics { this.selected = selected }
