@@ -52,6 +52,7 @@ class TouchGameGuideTest {
     @Config(qualifiers = Phone.LAND) @Test fun controlsReturnToGuideAndResumeUsesExistingAction() {
         val host = menu()
         compose.onNodeWithTag("game-guide-root").assertExists()
+        compose.onNodeWithTag("game-guide-tools").assertExists()
         compose.onNodeWithTag("game-guide-controls").performScrollTo().performClick()
         compose.waitForIdle()
         assertEquals(InGamePage.CONTROLS, host.state.page)
@@ -65,21 +66,26 @@ class TouchGameGuideTest {
 
     @Config(qualifiers = Phone.PORT) @Test fun settingsOpenGraphicsAndReturnToPortraitGuide() {
         val host = menu()
+        val shellBefore = compose.onNodeWithTag("game-guide-tools").fetchSemanticsNode().boundsInRoot
         compose.onNodeWithTag("game-guide-settings").performScrollTo().performClick()
         compose.waitForIdle()
         assertEquals(InGamePage.GRAPHICS, host.state.page)
+        assertEquals(shellBefore, compose.onNodeWithTag("game-guide-tools").fetchSemanticsNode().boundsInRoot)
         compose.onNodeWithTag("game-guide-back").performClick()
         compose.waitForIdle()
         compose.onNodeWithTag("game-guide-root").assertExists()
+        assertEquals(shellBefore, compose.onNodeWithTag("game-guide-tools").fetchSemanticsNode().boundsInRoot)
     }
 
     @Config(qualifiers = "pt-rBR-w640dp-h320dp-land-night-hdpi")
     @Test fun shortLandscapeQuitStillRequiresConfirmationAndCanBeCancelled() {
         val host = menu()
+        compose.onNodeWithTag("game-guide-tools").assertExists()
         compose.onNodeWithTag("game-guide-quit").performScrollTo().performClick()
         compose.waitForIdle()
         assertTrue(host.state.confirmingQuit)
         compose.onNodeWithTag("game-guide-dialog").assertExists()
+        compose.onNodeWithTag("game-guide-tools").assertExists()
         compose.onNodeWithTag("game-guide-root").assertDoesNotExist()
         compose.onNodeWithTag("game-guide-quit-cancel").performScrollTo().performClick()
         compose.waitForIdle()
