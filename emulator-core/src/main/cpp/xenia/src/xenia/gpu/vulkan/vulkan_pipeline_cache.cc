@@ -1150,9 +1150,13 @@ void VulkanPipelineCache::MaybeSaveVkPipelineCache() {
     const uint64_t now = xe::Clock::QueryHostUptimeMillis();
     if (vk_pipeline_cache_last_save_ms_ == 0 ||
         now - vk_pipeline_cache_last_save_ms_ >= kVkPipelineCacheSaveIntervalMs) {
-      // Do not clear dirty before serialization: a failed save must retry.
+      // Exchange before saving so pipelines created concurrently mark a new
+      // dirty generation. Restore the flag if serialization fails.
+      vk_pipeline_cache_dirty_.exchange(false, std::memory_order_acq_rel);
       vk_pipeline_cache_last_save_ms_ = now;
-      SaveVkPipelineCache();
+      if (!SaveVkPipelineCache()) {
+        vk_pipeline_cache_dirty_.store(true, std::memory_order_release);
+      }
     }
   }
 }
@@ -3609,10 +3613,10 @@ void VulkanPipelineCache::InitializeShaderStorage(
   }
 }
 
-void VulkanPipelineCache::SaveVkPipelineCache() {
+bool VulkanPipelineCache::SaveVkPipelineCache() {
   if (vk_pipeline_cache_ == VK_NULL_HANDLE || vk_pipeline_cache_path_.empty() ||
       !vk_pipeline_cache_store_) {
-    return;
+    return false;
   }
   const ui::vulkan::VulkanDevice* const vulkan_device =
       command_processor_.GetVulkanDevice();
@@ -3633,6 +3637,7 @@ void VulkanPipelineCache::SaveVkPipelineCache() {
                                          description)) {
         XELOGI("Saved {} bytes of VkPipelineCache data: {}", cache_size,
                description);
+        return true;
       } else {
         XELOGE("VkPipelineCache {}: {}",
                xe::path_to_utf8(vk_pipeline_cache_path_), description);
@@ -3642,6 +3647,7 @@ void VulkanPipelineCache::SaveVkPipelineCache() {
     XELOGW("VkPipelineCache data unavailable for saving (size {})",
            cache_size);
   }
+  return false;
 }
 
 void VulkanPipelineCache::ShutdownShaderStorage() {
