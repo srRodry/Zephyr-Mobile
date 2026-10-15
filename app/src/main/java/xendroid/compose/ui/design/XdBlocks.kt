@@ -56,7 +56,7 @@ val ZephyrPanelShape: Shape = GenericShape { size, _ ->
     close()
 }
 
-/** A surface card (s1, 16 dp corners) with an optional uppercase header: icon, title, right text. */
+/** A structural Zephyr surface card with the shared clipped panel silhouette. */
 @Composable
 fun XdCard(
     modifier: Modifier = Modifier,
@@ -64,7 +64,7 @@ fun XdCard(
     icon: ImageVector? = null,
     trailing: String? = null,
     tight: Boolean = false,
-    shape: Shape = RoundedCornerShape(16.dp),
+    shape: Shape = ZephyrPanelShape,
     outlined: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
