@@ -51,6 +51,18 @@ class VulkanPipelineCacheSaveThrottleTests(unittest.TestCase):
         self.assertLess(dirty, save)
         self.assertIn("return;", maybe[guard:dirty])
 
+    def test_cache_serialization_is_currently_on_submission_path(self):
+        """Document the synchronous hot-path dependency before moving saves."""
+        start = self.text.index("void VulkanPipelineCache::EndSubmission()")
+        end = self.text.index("bool VulkanPipelineCache::IsCreatingPipelines()", start)
+        submission = self.text[start:end]
+        self.assertIn("MaybeSaveVkPipelineCache();", submission)
+        save_start = self.text.index("void VulkanPipelineCache::SaveVkPipelineCache()")
+        save_end = self.text.index("void VulkanPipelineCache::ShutdownShaderStorage()", save_start)
+        save = self.text[save_start:save_end]
+        self.assertIn("vkGetPipelineCacheData(", save)
+        self.assertIn("vk_pipeline_cache_store_->Save(", save)
+
     def test_shutdown_clears_generation_for_next_title(self):
         start = self.text.index("void VulkanPipelineCache::ShutdownShaderStorage()")
         shutdown = self.text[start:]
