@@ -5,7 +5,6 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.Icon
@@ -24,12 +23,6 @@ import xendroid.compose.R
 import xendroid.compose.ui.design.*
 
 /** Navigation presentation only. Tool destinations invoke the original callbacks directly. */
-private val controlsCut = GenericShape { size, _ ->
-    val cut = minOf(size.width * 0.06f, size.height * 0.18f)
-    moveTo(0f, 0f); lineTo(size.width - cut, 0f); lineTo(size.width, cut)
-    lineTo(size.width, size.height); lineTo(0f, size.height); close()
-}
-
 private val controlDestinations = listOf(
     "go-keymap" to R.string.zephyr_controls_mapping_note,
     ControlsSections.TOUCH to R.string.zephyr_controls_touch_note,
@@ -111,7 +104,7 @@ private fun ControlsHubRows(sections: List<XdSection>, open: (XdSection) -> Unit
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     row.forEach { (section, note) ->
                         Row(Modifier.weight(1f).heightIn(min = 88.dp).testTag("controls-hub-destination:${section.id}")
-                            .focusRing(controlsCut).clip(controlsCut).background(c.s1).border(1.dp, c.line2, controlsCut)
+                            .focusRing(ZephyrPanelShape).clip(ZephyrPanelShape).background(c.s1).border(1.dp, c.line2, ZephyrPanelShape)
                             .clickable(role = Role.Button, onClick = { open(section) }).padding(14.dp),
                             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                             Icon(section.icon, null, Modifier.size(24.dp), tint = c.fg2)
