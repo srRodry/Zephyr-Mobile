@@ -27,6 +27,8 @@ on:
       - 'tools/test-pipeline-wait-stats.py'
       - 'tools/test-gpu-completion-timeline.py'
       - 'tools/test-aaudio-hotpath.py'
+      - 'tools/test-audio-pump-diagnostics.py'
+      - 'emulator-core/src/main/cpp/xenia/src/xenia/apu/audio_system.cc'
       - 'emulator-core/src/main/cpp/xe_aaudio_audio_driver.*'
       - 'emulator-core/src/test/cpp/gpu_completion_timeline_test.cc'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/ui/gpu_completion_timeline.h'
@@ -225,6 +227,8 @@ jobs:
         run: python3 tools/test-vulkan-placeholder-layout.py
       - name: Test Vulkan pipeline-cache persistence throttle
         run: python3 tools/test-vulkan-pipeline-cache-save-throttle.py
+      - name: Test audio pump deadline diagnostics
+        run: python3 tools/test-audio-pump-diagnostics.py
       - name: Install shader compiler tools
         run: |
           sudo apt-get update -qq
