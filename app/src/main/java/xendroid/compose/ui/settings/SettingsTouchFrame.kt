@@ -138,8 +138,9 @@ internal fun SettingsTouchFrame(
 private fun SettingsHubCards(sections: List<XdSection>, onNavigate: (String) -> Unit) {
     val categories = SettingsHubCategory.entries.filter { settingsHubSections(it, sections).isNotEmpty() }
     BoxWithConstraints(Modifier.fillMaxWidth().testTag("settings-hub-home")) {
+        val columns = if (maxWidth >= 640.dp) 2 else 1
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-            categories.chunked(if (maxWidth >= 640.dp) 2 else 1).forEach { row ->
+            categories.chunked(columns).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     row.forEach { category ->
                         Box(Modifier.weight(1f)) {
@@ -147,7 +148,7 @@ private fun SettingsHubCards(sections: List<XdSection>, onNavigate: (String) -> 
                                 "settings-hub-category:${category.key}") { onNavigate(category.destination) }
                         }
                     }
-                    if (maxWidth >= 640.dp && row.size == 1) Spacer(Modifier.weight(1f))
+                    if (columns == 2 && row.size == 1) Spacer(Modifier.weight(1f))
                 }
             }
         }
