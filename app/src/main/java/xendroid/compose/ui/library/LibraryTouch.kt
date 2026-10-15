@@ -270,7 +270,7 @@ private fun LibraryCard(
 ) {
     val c = Xd.colors
     var focused by remember { mutableStateOf(false) }
-    val cardShape = RoundedCornerShape(4.dp)
+    val cardShape = ZephyrActionShape
     Column(
         Modifier
             .clip(cardShape)
