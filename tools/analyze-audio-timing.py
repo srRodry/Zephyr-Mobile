@@ -25,6 +25,10 @@ AAUDIO = re.compile(
     r"\((?P<gap_pct>[\d.]+)%\), queue avg (?P<queue_avg>[\d.]+) "
     r"max (?P<queue_max>\d+), rate (?P<rate>[\d.]+), "
     r"xruns (?P<xruns>-?\d+), clipped (?P<clipped>\d+) "
+    r"\([\d.]+%\), callback (?P<callback_avg_us>[\d.]+) us avg "
+    r"(?P<callback_max_us>\d+) max, queue lock "
+    r"(?P<queue_lock_avg_us>[\d.]+) us avg "
+    r"(?P<queue_lock_max_us>\d+) max"
 )
 LOGCAT = re.compile(r"(?P<date>\d\d-\d\d)\s+(?P<time>\d\d:\d\d:\d\d\.\d+)")
 
@@ -85,6 +89,12 @@ def summarize(events):
         "topups": sum(e["topups"] for e in pumps),
         "max_pump_late_us": max((e["max_late_us"] for e in pumps), default=None),
         "max_dispatch_us": max((e["max_dispatch_us"] for e in pumps), default=None),
+        "max_callback_us": max((e["callback_max_us"] for e in sinks),
+                               default=None),
+        "max_queue_lock_us": max((e["queue_lock_max_us"] for e in sinks),
+                                default=None),
+        "min_queue_avg": min((e["queue_avg"] for e in sinks), default=None),
+        "min_playback_rate": min((e["rate"] for e in sinks), default=None),
         "last_xruns": next((e["xruns"] for e in reversed(sinks)
                             if e["xruns"] >= 0), None),
         "observed_xrun_increase": xrun_increase(sinks),
