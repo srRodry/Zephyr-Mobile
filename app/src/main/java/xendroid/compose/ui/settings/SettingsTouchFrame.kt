@@ -77,7 +77,7 @@ internal fun SettingsTouchFrame(
     BoxWithConstraints(Modifier.fillMaxSize().background(c.bg).testTag("settings-touch-frame")) {
         val compact = maxHeight > maxWidth || maxWidth < 840.dp
         val body: @Composable (Modifier) -> Unit = { modifier ->
-            CompositionLocalProvider(LocalXdButtonShape provides RoundedCornerShape(4.dp)) {
+            CompositionLocalProvider(LocalXdButtonShape provides ZephyrActionShape) {
                 Column(modifier.fillMaxHeight().windowInsetsPadding(WindowInsets.safeDrawing.part(
                     top = !compact, bottom = true, start = compact, end = true))) {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
