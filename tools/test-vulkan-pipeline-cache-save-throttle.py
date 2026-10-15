@@ -74,6 +74,25 @@ class VulkanPipelineCacheSaveThrottleTests(unittest.TestCase):
             "Clearing dirty before SaveVkPipelineCache can lose failed writes",
         )
 
+    def test_failed_save_retries_and_concurrent_dirty_is_preserved(self):
+        start = self.text.index("void VulkanPipelineCache::MaybeSaveVkPipelineCache()")
+        end = self.text.index("void VulkanPipelineCache::EndSubmission()", start)
+        maybe = self.text[start:end]
+        self.assertIn(
+            "vk_pipeline_cache_dirty_.exchange(false, std::memory_order_acq_rel)",
+            maybe,
+        )
+        self.assertIn("if (!SaveVkPipelineCache())", maybe)
+        self.assertIn(
+            "vk_pipeline_cache_dirty_.store(true, std::memory_order_release)",
+            maybe,
+        )
+        save_start = self.text.index("bool VulkanPipelineCache::SaveVkPipelineCache()")
+        save_end = self.text.index("void VulkanPipelineCache::ShutdownShaderStorage()", save_start)
+        save = self.text[save_start:save_end]
+        self.assertIn("return true;", save)
+        self.assertIn("return false;", save)
+
     def test_shutdown_clears_generation_for_next_title(self):
         start = self.text.index("void VulkanPipelineCache::ShutdownShaderStorage()")
         shutdown = self.text[start:]
