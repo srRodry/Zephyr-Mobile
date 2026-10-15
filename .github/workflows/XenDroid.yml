@@ -1,6 +1,8 @@
 name: Zephyr Android APK
 
 # Android APK build (arm64-v8a).
+# Diagnostic test build: APU/AAudio timing instrumentation is opt-in;
+# enable apu_aaudio_log_stats in the runtime configuration for measurements.
 # Interface 2.0 cover candidate 2026-10-15: package the CI-verified full-slot library artwork with the geometry, density and hierarchy refinements.
 # - Pull requests into main (including the claude/* branches of cloud
 #   sessions) and manual runs build the test package xendroid.compose.fork.opt:
