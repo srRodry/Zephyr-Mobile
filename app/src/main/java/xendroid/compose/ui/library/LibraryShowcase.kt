@@ -101,7 +101,7 @@ internal fun LibraryFeaturedGame(
     onPlay: () -> Unit, onOpen: () -> Unit, onFavorite: () -> Unit,
 ) {
     val c = Xd.colors
-    val shape = RoundedCornerShape(6.dp)
+    val shape = ZephyrPanelShape
     Row(
         Modifier.fillMaxWidth().testTag("library-featured")
             .clip(shape).background(c.s1).border(1.dp, c.line2, shape).padding(12.dp),
