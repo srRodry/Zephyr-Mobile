@@ -79,8 +79,8 @@ fun Modifier.focusRing(shape: Shape, color: Color? = null, width: Dp = 2.dp): Mo
 enum class XdButtonKind { PRIMARY, SECONDARY, GHOST, DANGER }
 enum class XdButtonSize { SM, MD, LG }
 
-/** New content planes can opt into square controls; legacy screens keep the same default. */
-internal val LocalXdButtonShape = staticCompositionLocalOf<Shape> { RoundedCornerShape(50) }
+/** Zephyr 2.0 actions use a restrained rectangular radius; chips remain deliberately pill-shaped. */
+internal val LocalXdButtonShape = staticCompositionLocalOf<Shape> { RoundedCornerShape(4.dp) }
 
 @Composable
 fun XdButton(
@@ -212,7 +212,7 @@ fun <T> XdSegmented(
     val c = Xd.colors
     Row(
         modifier
-            .clip(RoundedCornerShape(11.dp))
+            .clip(RoundedCornerShape(6.dp))
             .background(c.s2)
             .padding(3.dp)
             .alpha(if (enabled) 1f else 0.4f),
@@ -220,7 +220,7 @@ fun <T> XdSegmented(
     ) {
         options.forEachIndexed { i, (value, label) ->
             val on = value == selected
-            val shape = RoundedCornerShape(8.dp)
+            val shape = RoundedCornerShape(4.dp)
             Box(
                 Modifier
                     .focusRing(shape)
