@@ -298,6 +298,9 @@ void AudioSystem::WorkerThreadMain() {
   uint64_t pump_late_max_us = 0;
   uint64_t pump_exec_sum_us = 0;
   uint64_t pump_exec_max_us = 0;
+  uint64_t pump_no_credit = 0;
+  uint64_t pump_no_submit = 0;
+  uint64_t pump_topups = 0;
   auto pump_stats_start = std::chrono::steady_clock::now();
 #endif
 
@@ -407,6 +410,11 @@ void AudioSystem::WorkerThreadMain() {
     if (xe::threading::Wait(client_semaphores_[client_index].get(), false,
                             std::chrono::milliseconds(0)) !=
         xe::threading::WaitResult::kSuccess) {
+#if XE_PLATFORM_xendroid
+      if (cvars::apu_aaudio_log_stats) {
+        ++pump_no_credit;
+      }
+#endif
       continue;
     }
 
@@ -435,6 +443,11 @@ void AudioSystem::WorkerThreadMain() {
                           xe::countof(args));
       bool submitted =
           clients_[client_index].frames_submitted.load() != submitted_before;
+#if XE_PLATFORM_xendroid
+      if (cvars::apu_aaudio_log_stats && !submitted) {
+        ++pump_no_submit;
+      }
+#endif
 
       // Deadline pacing alone submits one block per interval, matching the
       // drain rate, so the sink cannot refill after an underrun. Add at most
@@ -461,6 +474,11 @@ void AudioSystem::WorkerThreadMain() {
               xe::threading::WaitResult::kSuccess) {
         processor_->Execute(worker_thread_->thread_state(), client_callback,
                             args, xe::countof(args));
+#if XE_PLATFORM_xendroid
+        if (cvars::apu_aaudio_log_stats) {
+          ++pump_topups;
+        }
+#endif
       }
 #if XE_PLATFORM_xendroid
       // Include recovery/top-up work in this cycle's duration. Reporting
@@ -479,13 +497,16 @@ void AudioSystem::WorkerThreadMain() {
         pump_exec_max_us = std::max(pump_exec_max_us, pump_exec_us);
         if (pump_exec_end - pump_stats_start >= std::chrono::seconds(5)) {
           XELOGI("AudioPump: {} samples, {} late ({:.1f}%), max late {} us, "
-                 "guest dispatch avg {} us, max {} us",
+                 "guest dispatch avg {} us, max {} us, no-credit {}, "
+                 "no-submit {}, topups {}",
                  pump_samples, pump_late,
                  100.0 * double(pump_late) / double(pump_samples),
                  pump_late_max_us, pump_exec_sum_us / pump_samples,
-                 pump_exec_max_us);
+                 pump_exec_max_us, pump_no_credit, pump_no_submit,
+                 pump_topups);
           pump_samples = pump_late = pump_late_max_us = 0;
           pump_exec_sum_us = pump_exec_max_us = 0;
+          pump_no_credit = pump_no_submit = pump_topups = 0;
           pump_stats_start = pump_exec_end;
         }
       }
