@@ -123,7 +123,7 @@ class AAudioAudioDriver : public AudioDriver {
   std::atomic<bool> rate_reset_{false};
 
   // The next queued guest block, or nullptr; and one given back once played.
-  // Callback thread only (they take frames_mutex_ for the queues).
+  // Callback thread only; each direction takes only its own short queue lock.
   const float* NextGuestBlock();
   void ReturnGuestBlock(const float* block);
 
