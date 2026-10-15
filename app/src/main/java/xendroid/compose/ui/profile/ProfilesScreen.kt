@@ -28,7 +28,6 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.selection.selectable
 import androidx.compose.foundation.selection.selectableGroup
-import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Icon
@@ -374,8 +373,8 @@ internal fun TouchProfiles(
                     val p = profiles[i]
                     val selected = p.xuid == chosen.xuid
                     Column(Modifier.width(132.dp).heightIn(min = 164.dp).testTag("profile-select:${p.xuid}")
-                        .focusRing(profileCut).clip(profileCut).background(if (selected) c.s2 else c.s1)
-                        .border(1.dp, if (selected) c.acc else c.line2, profileCut)
+                        .focusRing(ZephyrPanelShape).clip(ZephyrPanelShape).background(if (selected) c.s2 else c.s1)
+                        .border(1.dp, if (selected) c.acc else c.line2, ZephyrPanelShape)
                         .selectable(selected = selected, role = Role.RadioButton, onClick = { inspected = p.xuid })
                         .padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -394,12 +393,6 @@ internal fun TouchProfiles(
     }
 }
 
-private val profileCut = GenericShape { size, _ ->
-    val cut = minOf(16f, size.width * 0.08f)
-    moveTo(0f, 0f); lineTo(size.width - cut, 0f); lineTo(size.width, cut)
-    lineTo(size.width, size.height); lineTo(0f, size.height); close()
-}
-
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun ProfileIdentityCard(
@@ -408,8 +401,8 @@ private fun ProfileIdentityCard(
 ) {
     val c = Xd.colors
     CompositionLocalProvider(LocalXdButtonShape provides RoundedCornerShape(4.dp)) {
-        Column(Modifier.fillMaxWidth().testTag("profile-inspected:${p.xuid}").clip(profileCut)
-            .background(c.s1).border(1.dp, c.line2, profileCut).padding(16.dp),
+        Column(Modifier.fillMaxWidth().testTag("profile-inspected:${p.xuid}").clip(ZephyrPanelShape)
+            .background(c.s1).border(1.dp, c.line2, ZephyrPanelShape).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 ProfileAvatar(p.xuid, p.gamertag, p.hasAvatar, 72.dp)
