@@ -16,7 +16,7 @@ class VulkanPipelineCacheSaveThrottleTests(unittest.TestCase):
 
     def test_new_title_resets_dirty_generation_and_starts_interval(self):
         start = self.text.index("void VulkanPipelineCache::InitializeShaderStorage(")
-        end = self.text.index("void VulkanPipelineCache::SaveVkPipelineCache()")
+        end = self.text.index("bool VulkanPipelineCache::SaveVkPipelineCache()")
         init = self.text[start:end]
         self.assertIn("ShutdownShaderStorage();", init)
         dirty = init.index(
