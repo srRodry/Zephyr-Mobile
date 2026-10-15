@@ -27,10 +27,13 @@
 #include <cstring>
 #endif
 
-DEFINE_bool(a64_perf_map, true,
+DEFINE_bool(a64_perf_map, false,
             "Write a simpleperf/perf 'generic JIT symbols' map file "
             "(perf-<pid>.map) mapping generated code to guest function "
-            "names, so profilers can attribute JIT samples.",
+            "names, so profilers can attribute JIT samples. Off by default: "
+            "each compiled guest function otherwise takes the map mutex, "
+            "formats a line, writes it and fflushes the file on the JIT path. "
+            "Enable only for profiling captures.",
             "CPU");
 
 namespace xe {
