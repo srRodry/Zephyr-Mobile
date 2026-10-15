@@ -52,7 +52,9 @@ internal fun LibraryArtwork(game: Game, art: CoverArt, modifier: Modifier = Modi
     val shape = RoundedCornerShape(4.dp)
     BoxWithConstraints(modifier.aspectRatio(3f / 4f).clip(shape).background(c.s2).border(1.dp, c.line, shape)) {
         if (art.smart) {
-            val iconSize = (maxWidth * 0.55f).coerceAtMost(64.dp)
+            // Embedded title icons are much smaller than cover art. Scale them confidently inside
+            // the existing cover frame so they read as artwork instead of floating thumbnails.
+            val iconSize = (maxWidth * 0.78f).coerceAtMost(112.dp)
             AsyncImage(art.model, null, Modifier.size(iconSize).align(Alignment.Center), contentScale = ContentScale.Fit)
         } else {
             AsyncImage(art.model, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
