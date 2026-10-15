@@ -58,17 +58,14 @@ class BaseShots {
                 gameSettings = { id -> remember(id) { container.gameSettingsViewModelFactory(id).create(GameSettingsViewModel::class.java) } })
         }
         if (pick != null) {
-            // The new toolbar and shelf share a scrollable viewport: do not assume a cover is already composed.
-            compose.onNodeWithTag("library-grid").performScrollToNode(hasTestTag("library-showcase"))
-            compose.onNodeWithTag("library-showcase").performScrollToNode(hasContentDescription(pick))
-            val cover = compose.onNode(
-                hasContentDescription(pick) and hasAnyAncestor(hasTestTag("library-showcase")),
-                useUnmergedTree = true,
-            )
+            // Portrait no longer duplicates the library in a shelf; select whichever visible library
+            // representation owns the game's accessibility label.
+            compose.onNodeWithTag("library-grid").performScrollToNode(hasContentDescription(pick))
+            val cover = compose.onAllNodesWithContentDescription(pick).onFirst()
             cover.performClick()
             compose.waitForIdle()
             cover.assertIsSelected()
-            assertEquals("A shelf tap selects; it must not open the game sheet", 0, sheetsOpened)
+            assertEquals("Selecting a library item must not open the game sheet", 0, sheetsOpened)
             val wanted = (vm.state.value as LibraryUiState.Loaded).games.first { it.name == pick }.identityKey
             Fixture.settleUntil {
                 vm.details.value?.let { it.identityKey == wanted && it.lastRun != null } == true
@@ -173,11 +170,17 @@ class BaseShots {
         library(InputMode.TOUCH, pick = "Forza Horizon", openFeatured = true)
     }
 
-    @Config(qualifiers = Phone.PORT) @Test fun libraryPrimarySearchAndShowcaseAreReachable() {
+    @Config(qualifiers = Phone.PORT) @Test fun libraryPhoneAvoidsDuplicateShelf() {
         library(InputMode.TOUCH)
         compose.onNodeWithTag("library-search").assertExists()
         compose.onNodeWithTag("library-grid").performScrollToNode(hasTestTag("library-featured"))
         compose.onNodeWithTag("library-featured").assertExists()
+        compose.onNodeWithTag("library-showcase").assertDoesNotExist()
+    }
+
+    @Config(qualifiers = Phone.LAND) @Test fun libraryWideKeepsSelectorShelf() {
+        library(InputMode.TOUCH)
+        compose.onNodeWithTag("library-grid").performScrollToNode(hasTestTag("library-showcase"))
         compose.onNodeWithTag("library-showcase").assertExists()
     }
 
