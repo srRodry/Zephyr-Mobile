@@ -729,7 +729,7 @@ class VulkanPipelineCache : public GuestSpirvShaderCache::Host {
   // Saves vk_pipeline_cache_ to vk_pipeline_cache_path_ (no-op if either is
   // unset). Safe to call from the GPU thread concurrently with pipeline
   // creation (the pipeline cache is internally synchronized by the driver).
-  void SaveVkPipelineCache();
+  bool SaveVkPipelineCache();
   // Periodically persist vk_pipeline_cache_ on the GPU thread so the cache
   // survives Android process kills (upstream only saves at clean shutdown,
   // which Android frequently skips when terminating the process).
