@@ -99,6 +99,38 @@ fun XdCardHeader(title: String, icon: ImageVector? = null, trailing: String? = n
     }
 }
 
+/** Shared destination row for touch hubs such as Settings and Controls. */
+@Composable
+fun XdHubRow(
+    title: String,
+    subtitle: String?,
+    icon: ImageVector,
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier,
+    badge: String? = null,
+) {
+    val c = Xd.colors
+    Row(
+        modifier.fillMaxWidth().heightIn(min = 84.dp)
+            .focusRing(ZephyrPanelShape)
+            .clip(ZephyrPanelShape)
+            .background(c.s1)
+            .border(1.dp, c.line2, ZephyrPanelShape)
+            .clickable(role = Role.Button, onClick = onClick)
+            .padding(start = 14.dp, end = 18.dp, top = 13.dp, bottom = 13.dp),
+        verticalAlignment = Alignment.CenterVertically,
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+    ) {
+        Icon(icon, null, Modifier.size(24.dp), tint = c.fg2)
+        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            Text(title, style = XdText.label, color = c.fg)
+            if (subtitle != null) Text(subtitle, style = XdText.bodySm, color = c.fg2)
+        }
+        if (badge != null) Text(badge, style = XdText.monoNum, color = c.acc)
+        Icon(XdIcons.chevR, null, Modifier.size(16.dp), tint = c.fg2)
+    }
+}
+
 /** Group header inside a list ("IMAGEM 12"). */
 @Composable
 fun XdGroupHeader(title: String, count: Int? = null, modifier: Modifier = Modifier) {
