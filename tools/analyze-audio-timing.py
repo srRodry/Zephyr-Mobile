@@ -98,6 +98,9 @@ def summarize(events):
         "last_xruns": next((e["xruns"] for e in reversed(sinks)
                             if e["xruns"] >= 0), None),
         "observed_xrun_increase": xrun_increase(sinks),
+        "sink_windows_with_gaps": sum(e["gaps"] > 0 for e in sinks),
+        "sink_windows_with_low_queue": sum(e["queue_avg"] < 2.0 for e in sinks),
+        "sink_windows_with_rate_slowdown": sum(e["rate"] < 0.999 for e in sinks),
     }
 
 
