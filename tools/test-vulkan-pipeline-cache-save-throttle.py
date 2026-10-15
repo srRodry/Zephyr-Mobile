@@ -38,7 +38,7 @@ class VulkanPipelineCacheSaveThrottleTests(unittest.TestCase):
             "now - vk_pipeline_cache_last_save_ms_ >= kVkPipelineCacheSaveIntervalMs",
             maybe,
         )
-        self.assertIn("SaveVkPipelineCache()", maybe)
+        self.assertIn("vk_pipeline_cache_save_requested_ = true;", maybe)
 
     def test_async_preload_defers_synchronous_cache_serialization(self):
         start = self.text.index("void VulkanPipelineCache::MaybeSaveVkPipelineCache()")
@@ -48,20 +48,25 @@ class VulkanPipelineCacheSaveThrottleTests(unittest.TestCase):
         dirty = maybe.index("vk_pipeline_cache_dirty_.load")
         save = maybe.index("SaveVkPipelineCache()", dirty)
         self.assertLess(guard, dirty)
-        self.assertLess(dirty, save)
+        self.assertLess(dirty, enqueue)
         self.assertIn("return;", maybe[guard:dirty])
 
-    def test_cache_serialization_is_currently_on_submission_path(self):
-        """Document the synchronous hot-path dependency before moving saves."""
+    def test_periodic_serialization_is_off_submission_path(self):
+        """Cache extraction and disk writes must never block submissions."""
         start = self.text.index("void VulkanPipelineCache::EndSubmission()")
         end = self.text.index("bool VulkanPipelineCache::IsCreatingPipelines()", start)
         submission = self.text[start:end]
+        maybe_start = self.text.index("void VulkanPipelineCache::MaybeSaveVkPipelineCache()")
+        maybe = self.text[maybe_start:start]
+        worker_start = self.text.index("void VulkanPipelineCache::VkPipelineCacheSaveThread()")
+        worker = self.text[worker_start:maybe_start]
         self.assertIn("MaybeSaveVkPipelineCache();", submission)
-        save_start = self.text.index("bool VulkanPipelineCache::SaveVkPipelineCache()")
-        save_end = self.text.index("void VulkanPipelineCache::ShutdownShaderStorage()", save_start)
-        save = self.text[save_start:save_end]
-        self.assertIn("vkGetPipelineCacheData(", save)
-        self.assertIn("vk_pipeline_cache_store_->Save(", save)
+        self.assertNotIn("SaveVkPipelineCache();", submission)
+        self.assertNotIn("SaveVkPipelineCache()", maybe)
+        self.assertIn("vk_pipeline_cache_save_cv_.notify_one();", maybe)
+        self.assertIn("SaveVkPipelineCache()", worker)
+        self.assertIn("vkGetPipelineCacheData(", self.text)
+        self.assertIn("vk_pipeline_cache_store_->Save(", self.text)
 
     def test_cache_save_dirty_bit_is_only_cleared_after_success(self):
         """A failed Vulkan cache serialization must remain eligible for retry."""
@@ -75,17 +80,17 @@ class VulkanPipelineCacheSaveThrottleTests(unittest.TestCase):
         )
 
     def test_failed_save_retries_and_concurrent_dirty_is_preserved(self):
-        start = self.text.index("void VulkanPipelineCache::MaybeSaveVkPipelineCache()")
-        end = self.text.index("void VulkanPipelineCache::EndSubmission()", start)
-        maybe = self.text[start:end]
+        worker_start = self.text.index("void VulkanPipelineCache::VkPipelineCacheSaveThread()")
+        maybe_start = self.text.index("void VulkanPipelineCache::MaybeSaveVkPipelineCache()")
+        worker = self.text[worker_start:maybe_start]
         self.assertIn(
             "vk_pipeline_cache_dirty_.exchange(false, std::memory_order_acq_rel)",
-            maybe,
+            worker,
         )
-        self.assertIn("if (!SaveVkPipelineCache())", maybe)
+        self.assertIn("if (!SaveVkPipelineCache())", worker)
         self.assertIn(
             "vk_pipeline_cache_dirty_.store(true, std::memory_order_release)",
-            maybe,
+            worker,
         )
         save_start = self.text.index("bool VulkanPipelineCache::SaveVkPipelineCache()")
         save_end = self.text.index("void VulkanPipelineCache::ShutdownShaderStorage()", save_start)
@@ -93,15 +98,34 @@ class VulkanPipelineCacheSaveThrottleTests(unittest.TestCase):
         self.assertIn("return true;", save)
         self.assertIn("return false;", save)
 
+    def test_worker_initialization_after_cache_loading(self):
+        start = self.text.index("void VulkanPipelineCache::InitializeShaderStorage(")
+        end = self.text.index("bool VulkanPipelineCache::SaveVkPipelineCache()", start)
+        init = self.text[start:end]
+        self.assertLess(
+            init.index("vk_pipeline_cache_store_ = std::make_unique"),
+            init.index("std::thread([this]() { VkPipelineCacheSaveThread(); });"),
+        )
+        self.assertLess(
+            init.index("std::thread([this]() { VkPipelineCacheSaveThread(); });"),
+            init.index("if (completion_callback) {", init.index(
+                "// Invoke completion callback if no async work was queued."
+            )),
+        )
+
     def test_shutdown_clears_generation_for_next_title(self):
         start = self.text.index("void VulkanPipelineCache::ShutdownShaderStorage()")
         shutdown = self.text[start:]
+        join = shutdown.index("vk_pipeline_cache_save_thread_.join();")
         save = shutdown.index("SaveVkPipelineCache();")
+        clear_path = shutdown.index("vk_pipeline_cache_path_.clear();")
         clear_dirty = shutdown.index(
             "vk_pipeline_cache_dirty_.store(false, std::memory_order_relaxed);"
         )
         clear_timer = shutdown.index("vk_pipeline_cache_last_save_ms_ = 0;")
-        self.assertLess(save, clear_dirty)
+        self.assertLess(join, save)
+        self.assertLess(save, clear_path)
+        self.assertLess(clear_path, clear_dirty)
         self.assertLess(clear_dirty, clear_timer)
 
 
