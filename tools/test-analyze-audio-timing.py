@@ -33,6 +33,10 @@ class AudioTimingTests(unittest.TestCase):
         self.assertEqual(summary["no_submit"], 4)
         self.assertEqual(summary["topups"], 10)
         self.assertEqual(summary["last_xruns"], 7)
+        self.assertEqual(summary["max_callback_us"], 200)
+        self.assertEqual(summary["max_queue_lock_us"], 0)
+        self.assertEqual(summary["min_queue_avg"], 1.5)
+        self.assertEqual(summary["min_playback_rate"], 0.95)
 
     def test_xruns_are_cumulative_and_can_reset(self):
         sinks = [{"xruns": 4}, {"xruns": 6}, {"xruns": 1},
@@ -43,7 +47,9 @@ class AudioTimingTests(unittest.TestCase):
     def test_handles_missing_and_unstamped_lines(self):
         self.assertIsNone(module.summarize([])["pump_late_pct"])
         events = module.parse(["AAudio: 10 cb, 0 gaps (0.0%), queue avg 3.00 "
-                               "max 5, rate 1.000, xruns -1, clipped 0 (0.0%)"])
+                               "max 5, rate 1.000, xruns -1, clipped 0 (0.0%), "
+                               "callback 120 us avg 240 max, queue lock "
+                               "1.0 us avg 3 max"])
         self.assertEqual(events[0]["timestamp"], None)
         self.assertEqual(module.summarize(events)["last_xruns"], None)
 
