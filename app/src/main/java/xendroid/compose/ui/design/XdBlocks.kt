@@ -1,6 +1,7 @@
 package xendroid.compose.ui.design
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -20,6 +21,7 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.GenericShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.material3.HorizontalDivider
@@ -30,6 +32,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.SpanStyle
@@ -42,6 +45,17 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 
+/** Shared structural panel shape for Zephyr 2.0: one restrained top-right cut. */
+val ZephyrPanelShape: Shape = GenericShape { size, _ ->
+    val cut = minOf(size.width * 0.06f, size.height * 0.18f)
+    moveTo(0f, 0f)
+    lineTo(size.width - cut, 0f)
+    lineTo(size.width, cut)
+    lineTo(size.width, size.height)
+    lineTo(0f, size.height)
+    close()
+}
+
 /** A surface card (s1, 16 dp corners) with an optional uppercase header: icon, title, right text. */
 @Composable
 fun XdCard(
@@ -50,13 +64,16 @@ fun XdCard(
     icon: ImageVector? = null,
     trailing: String? = null,
     tight: Boolean = false,
+    shape: Shape = RoundedCornerShape(16.dp),
+    outlined: Boolean = false,
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val c = Xd.colors
     Column(
         modifier
-            .clip(RoundedCornerShape(16.dp))
+            .clip(shape)
             .background(c.s1)
+            .then(if (outlined) Modifier.border(1.dp, c.line2, shape) else Modifier)
             .padding(horizontal = if (tight) 12.dp else 16.dp, vertical = if (tight) 10.dp else 14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
