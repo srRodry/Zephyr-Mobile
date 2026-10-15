@@ -22,3 +22,10 @@ The existing native-vector Z geometry and adaptive safe area are unchanged; its 
 `ZephyrPaletteTest` checks 4.5:1 text contrast against every opaque touch surface, action/selection labels, and base controller primary labels/highlights against composited surfaces. White on #107C10 is approximately 5.37:1. Muted touch text was lifted to #A0B9A2 so it also passes on the brightest token surface. CI additionally runs the existing library/game-sheet portrait/landscape/controller navigation and launch regressions, Kotlin/resources compilation and selected native integration checks. CI status is authoritative in the workflow associated with the commit.
 
 The generated board is a visual proposal, not an APK capture: artwork, guide layout and descriptions in it are illustrative. This commit establishes palette consistency; it does not implement the board's entire hero layout or diagonal in-game guide. Embedded small game icons retain their contain behavior; the app does not obtain replacement cover assets from the mockup. Compatibility remains locally recorded and is not inferred from pictured games. Device visual validation and APK packaging remain pending. No emulator/audio/performance/default/signing changes or APK trigger are part of this increment.
+
+
+## Geometry contract
+
+Zephyr 2.0 uses shape by role rather than screen-specific styling. Structural cards and grouped content surfaces use `ZephyrPanelShape`, the shared restrained diagonal cut. Primary and secondary touch actions, selectable rows and menu interactions use `ZephyrActionShape` (4 dp). Grouped tabs and segmented controls use `ZephyrSegmentShape` (6 dp) with action-shaped children. Filter chips, status pills, circular avatars, transient toasts, platform sheets and media-cover rounding remain intentionally distinct because their geometry communicates a different interaction or content role.
+
+This contract applies across Library, Game Sheet, Content, Profiles, Controls and Settings. New screens should reuse these tokens instead of introducing ad-hoc card radii. Media artwork may retain its cover radius and must not be forced into the structural diagonal cut.
