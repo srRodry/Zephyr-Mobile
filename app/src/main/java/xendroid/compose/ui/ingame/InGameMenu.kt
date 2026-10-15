@@ -84,6 +84,7 @@ import xendroid.compose.ui.design.XdIconButton
 import xendroid.compose.ui.design.XdIcons
 import xendroid.compose.ui.design.XdStepper
 import xendroid.compose.ui.design.XdSwitch
+import xendroid.compose.ui.design.ZephyrPanelShape
 import xendroid.compose.ui.design.XdText
 import xendroid.compose.ui.design.part
 import xendroid.compose.ui.panel.GuestPanelOption
