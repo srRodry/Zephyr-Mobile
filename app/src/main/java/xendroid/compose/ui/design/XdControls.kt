@@ -80,7 +80,7 @@ enum class XdButtonKind { PRIMARY, SECONDARY, GHOST, DANGER }
 enum class XdButtonSize { SM, MD, LG }
 
 /** Zephyr 2.0 actions use a restrained rectangular radius; chips remain deliberately pill-shaped. */
-internal val LocalXdButtonShape = staticCompositionLocalOf<Shape> { RoundedCornerShape(4.dp) }
+internal val LocalXdButtonShape = staticCompositionLocalOf<Shape> { ZephyrActionShape }
 
 @Composable
 fun XdButton(
@@ -220,7 +220,7 @@ fun <T> XdSegmented(
     ) {
         options.forEachIndexed { i, (value, label) ->
             val on = value == selected
-            val shape = RoundedCornerShape(4.dp)
+            val shape = ZephyrActionShape
             Box(
                 Modifier
                     .focusRing(shape)
