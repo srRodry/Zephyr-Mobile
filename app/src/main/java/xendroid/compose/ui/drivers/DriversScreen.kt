@@ -70,6 +70,7 @@ import xendroid.compose.ui.design.XdSheet
 import xendroid.compose.ui.design.XdSwitch
 import xendroid.compose.ui.design.XdText
 import xendroid.compose.ui.design.XdTextInput
+import xendroid.compose.ui.design.ZephyrPanelShape
 import xendroid.compose.ui.library.formatSize
 import xendroid.compose.ui.settings.driverName
 
@@ -291,7 +292,7 @@ private fun NowBody(
     val last = state.lastRun
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
         if (!xendroid.compose.driver.CustomDrivers.supported) XdNote(stringResource(R.string.xd_drv_unsupported), tone = NoteTone.WARN)
-        XdCard(title = stringResource(R.string.xd_drv_chosen_all), icon = XdIcons.chip) {
+        XdCard(shape = ZephyrPanelShape, outlined = true, title = stringResource(R.string.xd_drv_chosen_all), icon = XdIcons.chip) {
             FlowRow(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
                 Text(driverName(context, current), style = XdText.h2, color = c.fg, modifier = Modifier.align(Alignment.CenterVertically))
                 when {
@@ -331,7 +332,7 @@ private fun NowBody(
         }
         val suggested = state.available?.let { DriverSuggestion.suggest(it, state.gpu) }
         val model = DriverSuggestion.adrenoModel(state.gpu)
-        if (suggested != null && model != null) XdCard(title = stringResource(R.string.drv_suggested, model), icon = XdIcons.spark) {
+        if (suggested != null && model != null) XdCard(shape = ZephyrPanelShape, outlined = true, title = stringResource(R.string.drv_suggested, model), icon = XdIcons.spark) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
                 Text(suggested.name, style = XdText.label, color = c.fg)
                 if (suggested.sha256.isNotBlank()) XdBadge(stringResource(R.string.xd_drv_badge_sha), tone = BadgeTone.OK)
@@ -339,11 +340,11 @@ private fun NowBody(
             Text(stringResource(R.string.drv_suggested_note), style = XdText.note, color = c.fg3)
             XdButton(stringResource(R.string.drv_download_install), { state.download(suggested, current) }, size = XdButtonSize.SM, icon = XdIcons.download,
                 enabled = state.downloading == null)
-        } else if (state.available == null) XdCard(title = stringResource(R.string.xd_drv_suggestion), icon = XdIcons.spark) {
+        } else if (state.available == null) XdCard(shape = ZephyrPanelShape, outlined = true, title = stringResource(R.string.xd_drv_suggestion), icon = XdIcons.spark) {
             Text(stringResource(R.string.xd_drv_suggestion_note), style = XdText.note, color = c.fg3)
             XdButton(stringResource(R.string.xd_drv_look), { onSection("drv:avail") }, size = XdButtonSize.SM, kind = XdButtonKind.GHOST)
         }
-        XdCard(title = stringResource(R.string.xd_drv_games), icon = XdIcons.gamepad, trailing = games.size.toString()) {
+        XdCard(shape = ZephyrPanelShape, outlined = true, title = stringResource(R.string.xd_drv_games), icon = XdIcons.gamepad, trailing = games.size.toString()) {
             if (games.isEmpty()) Text(stringResource(R.string.xd_drv_games_none), style = XdText.note, color = c.fg3)
             games.entries.forEachIndexed { i, (title, own) ->
                 XdListRow(gameName(title) ?: title, divider = i < games.size - 1, subtitle = driverName(context, own.getValue(KEY)),
