@@ -25,6 +25,10 @@ class GraphicsABTests(unittest.TestCase):
         self.assertIn("vulkan_shading_rate = 0", text)
         self.assertIn("log_gpu_frame_time_breakdown = false", text)
 
+    def test_unknown_mode_is_rejected(self):
+        with self.assertRaises(ValueError):
+            mod.render("unexpected")
+
     def test_light_timing_does_not_enable_pass_timestamps(self):
         text = mod.render("light-timing")
         self.assertIn("log_gpu_frame_time_breakdown = true", text)
