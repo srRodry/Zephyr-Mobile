@@ -103,18 +103,14 @@ private fun ControlsHubRows(sections: List<XdSection>, open: (XdSection) -> Unit
             available.chunked(columns).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                     row.forEach { (section, note) ->
-                        Row(Modifier.weight(1f).heightIn(min = 88.dp).testTag("controls-hub-destination:${section.id}")
-                            .focusRing(ZephyrPanelShape).clip(ZephyrPanelShape).background(c.s1).border(1.dp, c.line2, ZephyrPanelShape)
-                            .clickable(role = Role.Button, onClick = { open(section) }).padding(14.dp),
-                            verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                            Icon(section.icon, null, Modifier.size(24.dp), tint = c.fg2)
-                            Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                Text(section.title, style = XdText.label, color = c.fg)
-                                Text(stringResource(note), style = XdText.bodySm, color = c.fg2)
-                            }
-                            section.badge?.let { Text(it, style = XdText.monoNum, color = c.acc) }
-                            Icon(XdIcons.chevR, null, Modifier.size(16.dp), tint = c.fg2)
-                        }
+                        XdHubRow(
+                            section.title,
+                            stringResource(note),
+                            section.icon,
+                            { open(section) },
+                            Modifier.weight(1f).testTag("controls-hub-destination:${section.id}"),
+                            section.badge,
+                        )
                     }
                     if (columns == 2 && row.size == 1) Spacer(Modifier.weight(1f))
                 }
