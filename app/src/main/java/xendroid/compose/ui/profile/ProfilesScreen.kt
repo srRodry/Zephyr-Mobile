@@ -92,6 +92,7 @@ import xendroid.compose.ui.design.XdSheetOption
 import xendroid.compose.ui.design.XdSwitch
 import xendroid.compose.ui.design.XdText
 import xendroid.compose.ui.design.XdTextInput
+import xendroid.compose.ui.design.ZephyrActionShape
 import xendroid.compose.ui.design.ZephyrPanelShape
 import xendroid.compose.ui.design.focusRing
 import xendroid.compose.ui.profile.ProfileManagerViewModel.ListState
@@ -401,7 +402,7 @@ private fun ProfileIdentityCard(
     onActive: () -> Unit, onEdit: () -> Unit, onSaves: () -> Unit, onTrash: () -> Unit, onDetails: () -> Unit,
 ) {
     val c = Xd.colors
-    CompositionLocalProvider(LocalXdButtonShape provides RoundedCornerShape(4.dp)) {
+    CompositionLocalProvider(LocalXdButtonShape provides ZephyrActionShape) {
         Column(Modifier.fillMaxWidth().testTag("profile-inspected:${p.xuid}").clip(ZephyrPanelShape)
             .background(c.s1).border(1.dp, c.line2, ZephyrPanelShape).padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)) {
@@ -548,7 +549,7 @@ private fun Trash(trash: List<TrashedProfile>, onRestore: (TrashedProfile) -> Un
 @Composable
 internal fun ProfileChoice(p: ProfileEntry, line: String, selected: Boolean, onClick: () -> Unit) {
     val c = Xd.colors
-    val shape = RoundedCornerShape(12.dp)
+    val shape = ZephyrActionShape
     Row(
         Modifier.fillMaxWidth().focusRing(shape).clip(shape).clickable(role = Role.Button, onClick = onClick).padding(horizontal = 10.dp, vertical = 9.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp),
