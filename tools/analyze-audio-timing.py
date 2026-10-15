@@ -78,6 +78,8 @@ def xrun_increase(sinks):
     for sink in sinks:
         current = sink["xruns"]
         if current < 0:
+            # Unknown stream state: do not bridge this gap.
+            previous = None
             continue
         if previous is not None and current >= previous:
             increase += current - previous
