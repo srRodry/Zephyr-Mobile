@@ -2,6 +2,7 @@ package xendroid.compose.ui.game
 
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
@@ -98,13 +99,59 @@ internal fun GameTouchSheet(
 @Composable
 private fun SheetIdentity(game: Game, art: CoverArt, data: LibraryData, preparing: Boolean, onPlay: () -> Unit, onLaunch: () -> Unit, prominent: Boolean) {
     var identifiers by rememberSaveable(game.identityKey) { mutableStateOf(false) }
+    val c = Xd.colors
+    val heroShape = RoundedCornerShape(6.dp)
     Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        LibraryFeatureIdentity(game, art, data, prominent, Modifier.testTag("game-sheet-identity"))
-        Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            XdButton(stringResource(R.string.lib_play), onPlay, Modifier.fillMaxWidth().heightIn(min = 48.dp),
-                kind = XdButtonKind.PRIMARY, icon = XdIcons.play, enabled = !preparing)
-            XdButton(stringResource(R.string.xd_game_sec_launch), onLaunch,
-                Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("game-sheet-launch"), enabled = !preparing)
+        Column(
+            Modifier.fillMaxWidth().clip(heroShape).background(c.s1).border(1.dp, c.line2, heroShape)
+                .padding(12.dp).testTag("game-sheet-hero"),
+            verticalArrangement = Arrangement.spacedBy(12.dp),
+        ) {
+            LibraryFeatureIdentity(game, art, data, prominent, Modifier.testTag("game-sheet-identity"))
+            BoxWithConstraints(Modifier.fillMaxWidth()) {
+                val sideBySide = maxWidth >= 520.dp
+                if (sideBySide) {
+                    Row(
+                        Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically,
+                    ) {
+                        XdButton(
+                            stringResource(R.string.lib_play),
+                            onPlay,
+                            Modifier.weight(1f).heightIn(min = 48.dp).testTag("game-sheet-play"),
+                            kind = XdButtonKind.PRIMARY,
+                            icon = XdIcons.play,
+                            enabled = !preparing,
+                        )
+                        XdButton(
+                            stringResource(R.string.xd_game_sec_launch),
+                            onLaunch,
+                            Modifier.weight(1f).heightIn(min = 48.dp).testTag("game-sheet-launch"),
+                            kind = XdButtonKind.GHOST,
+                            enabled = !preparing,
+                        )
+                    }
+                } else {
+                    Column(Modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                        XdButton(
+                            stringResource(R.string.lib_play),
+                            onPlay,
+                            Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("game-sheet-play"),
+                            kind = XdButtonKind.PRIMARY,
+                            icon = XdIcons.play,
+                            enabled = !preparing,
+                        )
+                        XdButton(
+                            stringResource(R.string.xd_game_sec_launch),
+                            onLaunch,
+                            Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("game-sheet-launch"),
+                            kind = XdButtonKind.GHOST,
+                            enabled = !preparing,
+                        )
+                    }
+                }
+            }
         }
         XdButton(stringResource(R.string.zephyr_game_identifiers), { identifiers = !identifiers },
             Modifier.heightIn(min = 48.dp).testTag("game-sheet-identifiers"), kind = XdButtonKind.GHOST, icon = XdIcons.info)
