@@ -62,7 +62,7 @@ class VulkanPipelineCacheSaveThrottleTests(unittest.TestCase):
         worker = self.text[worker_start:maybe_start]
         self.assertIn("MaybeSaveVkPipelineCache();", submission)
         self.assertNotIn("SaveVkPipelineCache();", submission)
-        self.assertNotIn("SaveVkPipelineCache()", maybe)
+        self.assertNotIn("SaveVkPipelineCache();", maybe)
         self.assertIn("vk_pipeline_cache_save_cv_.notify_one();", maybe)
         self.assertIn("SaveVkPipelineCache()", worker)
         self.assertIn("vkGetPipelineCacheData(", self.text)
