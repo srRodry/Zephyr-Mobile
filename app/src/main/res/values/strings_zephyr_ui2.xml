@@ -21,6 +21,8 @@
     <string name="zephyr_game_title_id">Title ID</string>
     <string name="zephyr_game_media_id">Media ID</string>
     <string name="zephyr_library_recent">Recent</string>
+    <string name="zephyr_library_featured">Featured</string>
+    <string name="zephyr_library_your_library">Your library</string>
     <string name="zephyr_game_guide">Guide</string>
     <string name="zephyr_guide_resume">Resume</string>
     <string name="zephyr_guide_settings">Settings</string>
