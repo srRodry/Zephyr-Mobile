@@ -58,14 +58,18 @@ class BaseShots {
                 gameSettings = { id -> remember(id) { container.gameSettingsViewModelFactory(id).create(GameSettingsViewModel::class.java) } })
         }
         if (pick != null) {
-            // Portrait no longer duplicates the library in a shelf; select whichever visible library
-            // representation owns the game's accessibility label.
-            compose.onNodeWithTag("library-grid").performScrollToNode(hasContentDescription(pick))
-            val cover = compose.onAllNodesWithContentDescription(pick).onFirst()
+            // Non-opening selection is a wide-layout interaction now: the horizontal shelf drives
+            // the persistent detail panel. Phone list taps intentionally open the game sheet.
+            compose.onNodeWithTag("library-grid").performScrollToNode(hasTestTag("library-showcase"))
+            compose.onNodeWithTag("library-showcase").performScrollToNode(hasContentDescription(pick))
+            val cover = compose.onNode(
+                hasContentDescription(pick) and hasAnyAncestor(hasTestTag("library-showcase")),
+                useUnmergedTree = true,
+            )
             cover.performClick()
             compose.waitForIdle()
             cover.assertIsSelected()
-            assertEquals("Selecting a library item must not open the game sheet", 0, sheetsOpened)
+            assertEquals("A shelf tap selects; it must not open the game sheet", 0, sheetsOpened)
             val wanted = (vm.state.value as LibraryUiState.Loaded).games.first { it.name == pick }.identityKey
             Fixture.settleUntil {
                 vm.details.value?.let { it.identityKey == wanted && it.lastRun != null } == true
@@ -74,13 +78,14 @@ class BaseShots {
         Fixture.settle()
         compose.waitForIdle()
         if (openFeatured) {
+            val expected = pick ?: (vm.state.value as LibraryUiState.Loaded).games.first().name
             compose.onNodeWithTag("library-grid").performScrollToNode(hasTestTag("library-featured"))
-            compose.onNode(hasText(requireNotNull(pick)) and hasAnyAncestor(hasTestTag("library-featured-identity")),
+            compose.onNode(hasText(expected) and hasAnyAncestor(hasTestTag("library-featured-identity")),
                 useUnmergedTree = true).assertExists()
             compose.onNodeWithTag("library-featured-open").performScrollTo().performClick()
             compose.waitForIdle()
             assertEquals(1, sheetsOpened)
-            assertEquals(pick, openedTitle)
+            assertEquals(expected, openedTitle)
         }
     }
 
@@ -107,7 +112,7 @@ class BaseShots {
     }
 
     @Config(qualifiers = Phone.LAND) @Test fun libraryLand() { library(InputMode.TOUCH, pick = "Forza Horizon"); compose.shot("base/depois-biblioteca-paisagem") }
-    @Config(qualifiers = Phone.PORT) @Test fun libraryPortSelect() { library(InputMode.TOUCH, pick = "Forza Horizon"); compose.shot("base/depois-biblioteca-retrato-selecao") }
+    @Config(qualifiers = Phone.PORT) @Test fun libraryPortSelect() { library(InputMode.TOUCH); compose.shot("base/depois-biblioteca-retrato-selecao") }
     @Config(qualifiers = Phone.PORT) @Test fun libraryPort() { library(InputMode.TOUCH); compose.shot("base/depois-biblioteca-retrato") }
     @Config(qualifiers = Phone.LAND) @Test fun libraryController() { library(InputMode.CONTROLLER); compose.shot("base/depois-biblioteca-controle") }
     @Config(qualifiers = Phone.PORT) @Test fun libraryControllerPort() { library(InputMode.CONTROLLER); compose.shot("base/depois-biblioteca-controle-retrato") }
@@ -167,7 +172,7 @@ class BaseShots {
     }
 
     @Config(qualifiers = Phone.PORT) @Test fun libraryFeaturedOpensSelectedTitle() {
-        library(InputMode.TOUCH, pick = "Forza Horizon", openFeatured = true)
+        library(InputMode.TOUCH, openFeatured = true)
     }
 
     @Config(qualifiers = Phone.PORT) @Test fun libraryPhoneAvoidsDuplicateShelf() {
@@ -218,8 +223,8 @@ class BaseShots {
         compose.onNodeWithTag("library-filter-recent").performClick()
         compose.waitForIdle()
         compose.onNodeWithTag("library-filter-recent").assertIsSelected()
-        compose.onNodeWithTag("library-grid").performScrollToNode(hasTestTag("library-featured"))
-        compose.onNodeWithTag("library-featured-identity").assertExists()
+        compose.onNodeWithTag("library-showcase").assertDoesNotExist()
+        compose.onNodeWithTag("library-featured").assertDoesNotExist()
     }
 
     @Config(qualifiers = Phone.PORT) @Test fun sheetEmbeddedIconStaysCompact() {
