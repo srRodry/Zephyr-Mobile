@@ -46,7 +46,7 @@ class VulkanPipelineCacheSaveThrottleTests(unittest.TestCase):
         maybe = self.text[start:end]
         guard = maybe.index("if (startup_loading_)")
         dirty = maybe.index("vk_pipeline_cache_dirty_.load")
-        save = maybe.index("SaveVkPipelineCache()", dirty)
+        enqueue = maybe.index("vk_pipeline_cache_save_requested_ = true;", dirty)
         self.assertLess(guard, dirty)
         self.assertLess(dirty, enqueue)
         self.assertIn("return;", maybe[guard:dirty])
