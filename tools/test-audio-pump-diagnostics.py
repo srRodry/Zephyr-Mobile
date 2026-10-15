@@ -24,6 +24,14 @@ class AudioPumpDiagnosticsTests(unittest.TestCase):
         self.assertIn("std::chrono::seconds(5)", worker)
         self.assertIn("audio_perf_hint.ReportPump(pump_exec_us);", worker)
 
+    def test_backpressure_and_topup_are_counted_separately(self):
+        self.assertIn("++pump_no_credit;", SOURCE)
+        self.assertIn("++pump_no_submit;", SOURCE)
+        self.assertIn("++pump_topups;", SOURCE)
+        self.assertIn("no-credit {},", SOURCE)
+        self.assertIn("no-submit {}, topups {}", SOURCE)
+        self.assertIn("pump_no_credit = pump_no_submit = pump_topups = 0;", SOURCE)
+
     def test_existing_pacing_is_unchanged(self):
         self.assertIn("xe::threading::NanoSleepPrecise", SOURCE)
         self.assertIn("std::chrono::milliseconds(0)) !=", SOURCE)
