@@ -34,6 +34,12 @@ class AudioTimingTests(unittest.TestCase):
         self.assertEqual(summary["topups"], 10)
         self.assertEqual(summary["last_xruns"], 7)
 
+    def test_xruns_are_cumulative_and_can_reset(self):
+        sinks = [{"xruns": 4}, {"xruns": 6}, {"xruns": 1},
+                 {"xruns": -1}, {"xruns": 3}]
+        self.assertEqual(module.xrun_increase(sinks), 4)
+        self.assertEqual(module.xrun_increase([{"xruns": 100}]), 0)
+
     def test_handles_missing_and_unstamped_lines(self):
         self.assertIsNone(module.summarize([])["pump_late_pct"])
         events = module.parse(["AAudio: 10 cb, 0 gaps (0.0%), queue avg 3.00 "
