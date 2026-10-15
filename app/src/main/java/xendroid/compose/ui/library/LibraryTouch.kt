@@ -118,7 +118,6 @@ fun LibraryTouch(
     val frameColors = Xd.colors
     val shown = remember(data, filter, query) { data.shown(filter, query) }
     val featured = shown.firstOrNull { it.stableId == selected?.stableId } ?: shown.firstOrNull()
-    var searchExpanded by rememberSaveable { mutableStateOf(false) }
     val focus = LocalFocusManager.current
     val openSelected: (Game) -> Unit = { game -> onSelect(game); onOpen(game) }
     BoxWithConstraints(Modifier.fillMaxSize().background(frameColors.bg)) {
@@ -138,25 +137,21 @@ fun LibraryTouch(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(stringResource(R.string.lib_title), Modifier.weight(1f), color = c.fg,
                                     style = XdText.h1.copy(fontSize = 26.sp, lineHeight = 30.sp))
-                                XdIconButton(XdIcons.search, stringResource(R.string.lib_search), {
-                                    searchExpanded = if (query.isBlank()) !searchExpanded else true
-                                    if (!searchExpanded) focus.clearFocus()
-                                })
                                 XdIconButton(XdIcons.more, stringResource(R.string.lib_more), onMenu)
                             }
-                            if (searchExpanded || query.isNotBlank()) Row(verticalAlignment = Alignment.CenterVertically) {
-                                XdSearchField(query, onQuery, stringResource(R.string.lib_search), Modifier.weight(1f), height = 48.dp)
-                                XdIconButton(XdIcons.xCircle, stringResource(R.string.lib_clear_search), {
-                                    onQuery(""); searchExpanded = false; focus.clearFocus()
-                                })
-                            }
-                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                                val views = listOf(CoverDensity.SMALL to stringResource(R.string.zephyr_library_small_covers),
-                                    CoverDensity.MEDIUM to stringResource(if (portrait) R.string.zephyr_ui2_list else R.string.zephyr_library_medium_covers),
-                                    CoverDensity.LARGE to stringResource(R.string.zephyr_library_large_covers))
-                                LibraryChoice(stringResource(R.string.zephyr_library_view, views.first { it.first == density }.second),
-                                    views, density, onDensity)
-                                LibraryChoice(sortText(data.sort), LibrarySort.entries.map { it to sortText(it) }, data.sort, onSort)
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                XdSearchField(
+                                    query,
+                                    onQuery,
+                                    stringResource(R.string.lib_search),
+                                    Modifier.weight(1f).testTag("library-search"),
+                                    height = 48.dp,
+                                )
+                                if (query.isNotBlank()) {
+                                    XdIconButton(XdIcons.xCircle, stringResource(R.string.lib_clear_search), {
+                                        onQuery(""); focus.clearFocus()
+                                    })
+                                }
                             }
                             XdChipRow(contentPadding = PaddingValues(vertical = 2.dp)) {
                                 XdChip(stringResource(R.string.xd_lib_all), filter == LibraryFilter.All, { onFilter(LibraryFilter.All) },
@@ -177,6 +172,14 @@ fun LibraryTouch(
                                         XdChip(formatLabel(fmt), filter == f, { onFilter(f) }, modifier = Modifier.heightIn(min = 48.dp), count = data.count(f))
                                     }
                                 }
+                            }
+                            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+                                val views = listOf(CoverDensity.SMALL to stringResource(R.string.zephyr_library_small_covers),
+                                    CoverDensity.MEDIUM to stringResource(if (portrait) R.string.zephyr_ui2_list else R.string.zephyr_library_medium_covers),
+                                    CoverDensity.LARGE to stringResource(R.string.zephyr_library_large_covers))
+                                LibraryChoice(stringResource(R.string.zephyr_library_view, views.first { it.first == density }.second),
+                                    views, density, onDensity)
+                                LibraryChoice(sortText(data.sort), LibrarySort.entries.map { it to sortText(it) }, data.sort, onSort)
                             }
                             // Existing notices use dark semantic warning colors; preserve their readable surface.
                             CompositionLocalProvider(LocalXd provides frameColors) {
