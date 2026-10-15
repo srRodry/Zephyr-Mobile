@@ -149,17 +149,5 @@ private fun SettingsHubCards(sections: List<XdSection>, onNavigate: (String) -> 
 
 @Composable
 private fun SettingsHubRow(title: String, subtitle: String?, icon: ImageVector, tag: String, badge: String? = null, onClick: () -> Unit) {
-    val c = Xd.colors
-    Row(Modifier.fillMaxWidth().heightIn(min = 80.dp).testTag(tag).focusRing(ZephyrPanelShape).clip(ZephyrPanelShape)
-        .background(c.s1).border(1.dp, c.line2, ZephyrPanelShape).clickable(role = Role.Button, onClick = onClick)
-        .padding(start = 14.dp, end = 22.dp, top = 14.dp, bottom = 14.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-        Icon(icon, null, Modifier.size(24.dp), tint = c.fg2)
-        Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-            Text(title, style = XdText.label, color = c.fg)
-            subtitle?.let { Text(it, style = XdText.bodySm, color = c.fg2) }
-        }
-        badge?.let { Text(it, style = XdText.monoNum, color = c.acc) }
-        Icon(XdIcons.chevR, null, Modifier.size(16.dp), tint = c.fg2)
-    }
+    XdHubRow(title, subtitle, icon, onClick, Modifier.testTag(tag), badge)
 }
