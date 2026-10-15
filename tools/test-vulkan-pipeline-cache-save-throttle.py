@@ -63,6 +63,17 @@ class VulkanPipelineCacheSaveThrottleTests(unittest.TestCase):
         self.assertIn("vkGetPipelineCacheData(", save)
         self.assertIn("vk_pipeline_cache_store_->Save(", save)
 
+    def test_cache_save_dirty_bit_is_only_cleared_after_success(self):
+        """A failed Vulkan cache serialization must remain eligible for retry."""
+        start = self.text.index("void VulkanPipelineCache::MaybeSaveVkPipelineCache()")
+        end = self.text.index("void VulkanPipelineCache::EndSubmission()", start)
+        maybe = self.text[start:end]
+        self.assertNotIn(
+            "vk_pipeline_cache_dirty_.store(false, std::memory_order_relaxed);",
+            maybe,
+            "Clearing dirty before SaveVkPipelineCache can lose failed writes",
+        )
+
     def test_shutdown_clears_generation_for_next_title(self):
         start = self.text.index("void VulkanPipelineCache::ShutdownShaderStorage()")
         shutdown = self.text[start:]
