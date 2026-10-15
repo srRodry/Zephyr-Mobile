@@ -92,6 +92,7 @@ import xendroid.compose.ui.design.XdSheetOption
 import xendroid.compose.ui.design.XdSwitch
 import xendroid.compose.ui.design.XdText
 import xendroid.compose.ui.design.XdTextInput
+import xendroid.compose.ui.design.ZephyrPanelShape
 import xendroid.compose.ui.design.focusRing
 import xendroid.compose.ui.profile.ProfileManagerViewModel.ListState
 import xendroid.compose.ui.profile.ProfileManagerViewModel.OpState
