@@ -362,7 +362,7 @@ internal fun TouchProfiles(
     var inspected by rememberSaveable { mutableStateOf<String?>(null) }
     val chosen = profiles.firstOrNull { it.xuid == inspected }
         ?: profiles.firstOrNull { it.isActive } ?: profiles.firstOrNull()
-    Column(Modifier.testTag("profiles-workspace"), verticalArrangement = Arrangement.spacedBy(16.dp)) {
+    Column(Modifier.testTag("profiles-workspace"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(R.string.zephyr_profiles_local), style = XdText.h2, color = c.fg)
         Text(stringResource(R.string.zephyr_profiles_inspect_hint), style = XdText.bodySm, color = c.fg2)
         if (chosen == null) XdEmpty(stringResource(R.string.zephyr_ui2_profiles_empty))
@@ -404,8 +404,8 @@ private fun ProfileIdentityCard(
     val c = Xd.colors
     CompositionLocalProvider(LocalXdButtonShape provides ZephyrActionShape) {
         Column(Modifier.fillMaxWidth().testTag("profile-inspected:${p.xuid}").clip(ZephyrPanelShape)
-            .background(c.s1).border(1.dp, c.line2, ZephyrPanelShape).padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(16.dp)) {
+            .background(c.s1).border(1.dp, c.line2, ZephyrPanelShape).padding(14.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 ProfileAvatar(p.xuid, p.gamertag, p.hasAvatar, 72.dp)
                 Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(5.dp)) {
