@@ -1,7 +1,7 @@
 name: Zephyr Android APK
 
 # Android APK build (arm64-v8a).
-# Green UI batch 3 candidate 2026-10-14: package the CI-verified Library 2.0 and game sheet refinements.
+# Interface 2.0 geometry candidate 2026-10-15: package the CI-verified library, shape, density and hierarchy refinements.
 # - Pull requests into main (including the claude/* branches of cloud
 #   sessions) and manual runs build the test package xendroid.compose.fork.opt:
 #   debuggable and installed alongside the regular app, the package the A/B
