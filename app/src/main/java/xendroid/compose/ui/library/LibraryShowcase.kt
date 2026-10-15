@@ -100,20 +100,50 @@ internal fun LibraryFeaturedGame(
 ) {
     val c = Xd.colors
     val shape = RoundedCornerShape(6.dp)
-    Column(Modifier.fillMaxWidth().testTag("library-featured")
-        .clip(shape).background(c.s1).border(1.dp, c.line2, shape).padding(12.dp),
-        verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        LibraryFeatureIdentity(game, art, data, modifier = Modifier.testTag("library-featured-identity"))
-        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-            XdButton(stringResource(R.string.lib_play), onPlay,
-                Modifier.weight(1f).heightIn(min = 48.dp).testTag("library-featured-play"),
-                kind = XdButtonKind.PRIMARY, icon = XdIcons.play, enabled = !preparing)
-            XdIconButton(if (data.favorite(game)) XdIcons.starFilled else XdIcons.star,
-                stringResource(R.string.lib_favorites), onFavorite, on = data.favorite(game))
+    Row(
+        Modifier.fillMaxWidth().testTag("library-featured")
+            .clip(shape).background(c.s1).border(1.dp, c.line2, shape).padding(12.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalAlignment = Alignment.Top,
+    ) {
+        LibraryArtwork(game, art, Modifier.width(112.dp), data.favorite(game))
+        Column(
+            Modifier.weight(1f).testTag("library-featured-identity"),
+            verticalArrangement = Arrangement.spacedBy(8.dp),
+        ) {
+            Text(
+                game.name,
+                style = XdText.h1.copy(fontSize = 22.sp, lineHeight = 26.sp),
+                color = c.fg,
+                maxLines = 2,
+                overflow = TextOverflow.Ellipsis,
+            )
+            Text(formatLabel(game.format), style = XdText.small, color = c.fg2)
+            LibraryStatusLine(game, data)
+            XdButton(
+                stringResource(R.string.lib_play),
+                onPlay,
+                Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("library-featured-play"),
+                kind = XdButtonKind.PRIMARY,
+                icon = XdIcons.play,
+                enabled = !preparing,
+            )
+            Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+                XdButton(
+                    stringResource(R.string.xd_lib_sheet),
+                    onOpen,
+                    Modifier.weight(1f).heightIn(min = 48.dp).testTag("library-featured-open"),
+                    kind = XdButtonKind.GHOST,
+                    icon = XdIcons.chevR,
+                )
+                XdIconButton(
+                    if (data.favorite(game)) XdIcons.starFilled else XdIcons.star,
+                    stringResource(R.string.lib_favorites),
+                    onFavorite,
+                    on = data.favorite(game),
+                )
+            }
         }
-        XdButton(stringResource(R.string.xd_lib_sheet), onOpen,
-            Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("library-featured-open"),
-            kind = XdButtonKind.GHOST, icon = XdIcons.chevR)
     }
 }
 
