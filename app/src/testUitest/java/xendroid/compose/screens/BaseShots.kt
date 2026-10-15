@@ -173,6 +173,14 @@ class BaseShots {
         library(InputMode.TOUCH, pick = "Forza Horizon", openFeatured = true)
     }
 
+    @Config(qualifiers = Phone.PORT) @Test fun libraryPrimarySearchAndShowcaseAreReachable() {
+        library(InputMode.TOUCH)
+        compose.onNodeWithTag("library-search").assertExists()
+        compose.onNodeWithTag("library-grid").performScrollToNode(hasTestTag("library-featured"))
+        compose.onNodeWithTag("library-featured").assertExists()
+        compose.onNodeWithTag("library-showcase").assertExists()
+    }
+
     @Config(qualifiers = Phone.PORT) @Test fun sheetCoverOnlyLeadsOverview() {
         game(InputMode.TOUCH)
         compose.onNodeWithTag("game-feature-cover").assertExists()
