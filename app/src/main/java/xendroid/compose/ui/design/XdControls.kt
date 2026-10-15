@@ -212,7 +212,7 @@ fun <T> XdSegmented(
     val c = Xd.colors
     Row(
         modifier
-            .clip(RoundedCornerShape(6.dp))
+            .clip(ZephyrSegmentShape)
             .background(c.s2)
             .padding(3.dp)
             .alpha(if (enabled) 1f else 0.4f),
