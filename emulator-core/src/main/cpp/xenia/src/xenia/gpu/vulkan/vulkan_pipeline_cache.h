@@ -22,6 +22,7 @@
 #include <mutex>
 #include <queue>
 #include <set>
+#include <thread>
 #include <unordered_map>
 #include <utility>
 #include <vector>
@@ -730,10 +731,19 @@ class VulkanPipelineCache : public GuestSpirvShaderCache::Host {
   // unset). Safe to call from the GPU thread concurrently with pipeline
   // creation (the pipeline cache is internally synchronized by the driver).
   bool SaveVkPipelineCache();
-  // Periodically persist vk_pipeline_cache_ on the GPU thread so the cache
-  // survives Android process kills (upstream only saves at clean shutdown,
-  // which Android frequently skips when terminating the process).
+  // A per-title worker performs driver cache extraction and file I/O.
+  // ShutdownShaderStorage joins it before invalidating the cache or store.
+  void VkPipelineCacheSaveThread();
+  std::thread vk_pipeline_cache_save_thread_;
+  std::mutex vk_pipeline_cache_save_mutex_;
+  std::condition_variable vk_pipeline_cache_save_cv_;
+  bool vk_pipeline_cache_save_requested_ = false;
+  bool vk_pipeline_cache_save_stopping_ = false;
+
+  // Dirty is atomic because pipeline creation workers update it concurrently
+  // with persistence. Failed writes restore it for a later retry.
   std::atomic<bool> vk_pipeline_cache_dirty_{false};
+  // Only accessed by the GPU submission / title lifecycle thread.
   uint64_t vk_pipeline_cache_last_save_ms_ = 0;
 };
 
