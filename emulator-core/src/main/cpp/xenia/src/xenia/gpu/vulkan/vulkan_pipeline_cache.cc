@@ -1150,7 +1150,7 @@ void VulkanPipelineCache::MaybeSaveVkPipelineCache() {
     const uint64_t now = xe::Clock::QueryHostUptimeMillis();
     if (vk_pipeline_cache_last_save_ms_ == 0 ||
         now - vk_pipeline_cache_last_save_ms_ >= kVkPipelineCacheSaveIntervalMs) {
-      vk_pipeline_cache_dirty_.store(false, std::memory_order_relaxed);
+      // Do not clear dirty before serialization: a failed save must retry.
       vk_pipeline_cache_last_save_ms_ = now;
       SaveVkPipelineCache();
     }
