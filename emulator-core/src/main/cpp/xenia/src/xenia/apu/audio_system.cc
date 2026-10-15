@@ -292,6 +292,13 @@ void AudioSystem::WorkerThreadMain() {
 #endif
 #if XE_PLATFORM_xendroid
   AudioPerformanceHint audio_perf_hint;
+  // Opt-in, worker-local counters. No atomics or logging on the AAudio callback.
+  uint64_t pump_samples = 0;
+  uint64_t pump_late = 0;
+  uint64_t pump_late_max_us = 0;
+  uint64_t pump_exec_sum_us = 0;
+  uint64_t pump_exec_max_us = 0;
+  auto pump_stats_start = std::chrono::steady_clock::now();
 #endif
 
   // The host mixer releases a client's semaphore on its own coarse cadence,
@@ -382,6 +389,19 @@ void AudioSystem::WorkerThreadMain() {
       }
     }
 
+#if XE_PLATFORM_xendroid
+    // Measure deadline misses after sleeping, not before. Skip when disabled:
+    // this clock read and the statistics are diagnostic-only.
+    uint64_t pump_lateness_us = 0;
+    if (cvars::apu_aaudio_log_stats) {
+      const uint64_t wake_actual_us = static_cast<uint64_t>(
+          std::chrono::duration_cast<std::chrono::microseconds>(
+              std::chrono::steady_clock::now().time_since_epoch()).count());
+      if (wake_actual_us > earliest_pump_us) {
+        pump_lateness_us = wake_actual_us - earliest_pump_us;
+      }
+    }
+#endif
     // Submit only if the host has a free output slot; otherwise drop (the host
     // queue is full, so it is already well buffered).
     if (xe::threading::Wait(client_semaphores_[client_index].get(), false,
@@ -446,10 +466,29 @@ void AudioSystem::WorkerThreadMain() {
       // Include recovery/top-up work in this cycle's duration. Reporting
       // before the second callback understates demand precisely when the
       // output queue is low. Deadline waits above remain outside the sample.
-      audio_perf_hint.ReportPump(static_cast<uint64_t>(
+      const auto pump_exec_end = std::chrono::steady_clock::now();
+      const uint64_t pump_exec_us = static_cast<uint64_t>(
           std::chrono::duration_cast<std::chrono::microseconds>(
-              std::chrono::steady_clock::now() - exec_begin)
-              .count()));
+              pump_exec_end - exec_begin).count());
+      audio_perf_hint.ReportPump(pump_exec_us);
+      if (cvars::apu_aaudio_log_stats) {
+        ++pump_samples;
+        pump_late += pump_lateness_us > 0 ? 1 : 0;
+        pump_late_max_us = std::max(pump_late_max_us, pump_lateness_us);
+        pump_exec_sum_us += pump_exec_us;
+        pump_exec_max_us = std::max(pump_exec_max_us, pump_exec_us);
+        if (pump_exec_end - pump_stats_start >= std::chrono::seconds(5)) {
+          XELOGI("AudioPump: {} samples, {} late ({:.1f}%), max late {} us, "
+                 "guest dispatch avg {} us, max {} us",
+                 pump_samples, pump_late,
+                 100.0 * double(pump_late) / double(pump_samples),
+                 pump_late_max_us, pump_exec_sum_us / pump_samples,
+                 pump_exec_max_us);
+          pump_samples = pump_late = pump_late_max_us = 0;
+          pump_exec_sum_us = pump_exec_max_us = 0;
+          pump_stats_start = pump_exec_end;
+        }
+      }
 #endif
     }
   }
