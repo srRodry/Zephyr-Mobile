@@ -192,6 +192,13 @@ class BaseShots {
         compose.onNodeWithTag("game-feature-cover").assertExists()
     }
 
+    @Config(qualifiers = Phone.PORT) @Test fun sheetHeroKeepsPrimaryLaunchActionsVisible() {
+        game(InputMode.TOUCH)
+        compose.onNodeWithTag("game-sheet-hero").assertExists()
+        compose.onNodeWithTag("game-sheet-play").assertExists()
+        compose.onNodeWithTag("game-sheet-launch").assertExists()
+    }
+
     @Config(qualifiers = Phone.PORT) @Test fun libraryRecentFilterIsReachableByTouch() {
         library(InputMode.TOUCH)
         compose.onNodeWithTag("library-grid").performScrollToNode(hasTestTag("library-filter-recent"))
