@@ -3034,10 +3034,27 @@ bool VulkanPipelineCache::EnsurePipelineCreated(
   pipeline_create_info.pDepthStencilState = &depth_stencil_state;
   pipeline_create_info.pColorBlendState = &color_blend_state;
   pipeline_create_info.pDynamicState = &dynamic_state;
-  pipeline_create_info.layout =
-      creation_arguments.pipeline->second.pipeline_layout
-          .load(std::memory_order_acquire)
-          ->GetPipelineLayout();
+  // Placeholder shaders don't use the real pixel shader's descriptor sets.
+  // Giving a placeholder the real pipeline's layout makes otherwise identical
+  // stand-ins differ by the guest PS bindings and forces redundant driver
+  // compiles. Keep the interpreter placeholder completely texture-free; the
+  // real-VS placeholder needs only the translated vertex shader's sets.
+  const PipelineLayoutProvider* creation_pipeline_layout = nullptr;
+  if (!creating_placeholder) {
+    creation_pipeline_layout =
+        creation_arguments.pipeline->second.pipeline_layout.load(
+            std::memory_order_acquire);
+  } else if (vertex_shader_override != VK_NULL_HANDLE) {
+    creation_pipeline_layout =
+        command_processor_.GetPipelineLayout(0, 0, 0, 0);
+  } else {
+    creation_pipeline_layout = GetGuestGraphicsPipelineLayout(
+        creation_arguments.vertex_shader, nullptr);
+  }
+  if (!creation_pipeline_layout) {
+    return false;
+  }
+  pipeline_create_info.layout = creation_pipeline_layout->GetPipelineLayout();
   pipeline_create_info.renderPass =
       use_dynamic_rendering ? VK_NULL_HANDLE : creation_arguments.render_pass;
   pipeline_create_info.subpass = 0;
