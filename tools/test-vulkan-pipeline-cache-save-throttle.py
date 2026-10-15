@@ -38,7 +38,7 @@ class VulkanPipelineCacheSaveThrottleTests(unittest.TestCase):
             "now - vk_pipeline_cache_last_save_ms_ >= kVkPipelineCacheSaveIntervalMs",
             maybe,
         )
-        self.assertIn("SaveVkPipelineCache();", maybe)
+        self.assertIn("SaveVkPipelineCache()", maybe)
 
     def test_async_preload_defers_synchronous_cache_serialization(self):
         start = self.text.index("void VulkanPipelineCache::MaybeSaveVkPipelineCache()")
@@ -46,7 +46,7 @@ class VulkanPipelineCacheSaveThrottleTests(unittest.TestCase):
         maybe = self.text[start:end]
         guard = maybe.index("if (startup_loading_)")
         dirty = maybe.index("vk_pipeline_cache_dirty_.load")
-        save = maybe.index("SaveVkPipelineCache();")
+        save = maybe.index("SaveVkPipelineCache()")
         self.assertLess(guard, dirty)
         self.assertLess(dirty, save)
         self.assertIn("return;", maybe[guard:dirty])
@@ -57,7 +57,7 @@ class VulkanPipelineCacheSaveThrottleTests(unittest.TestCase):
         end = self.text.index("bool VulkanPipelineCache::IsCreatingPipelines()", start)
         submission = self.text[start:end]
         self.assertIn("MaybeSaveVkPipelineCache();", submission)
-        save_start = self.text.index("void VulkanPipelineCache::SaveVkPipelineCache()")
+        save_start = self.text.index("bool VulkanPipelineCache::SaveVkPipelineCache()")
         save_end = self.text.index("void VulkanPipelineCache::ShutdownShaderStorage()", save_start)
         save = self.text[save_start:save_end]
         self.assertIn("vkGetPipelineCacheData(", save)
