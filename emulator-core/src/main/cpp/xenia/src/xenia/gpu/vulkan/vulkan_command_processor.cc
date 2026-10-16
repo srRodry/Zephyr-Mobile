@@ -64,11 +64,8 @@ DECLARE_int32(adrenotools_turbo_reassert_seconds);
 DECLARE_bool(clear_memory_page_state);
 DECLARE_bool(vulkan_in_pass_resolve_debug_read_usage);
 DECLARE_bool(vulkan_subnative_360p);
-// Separate performance experiment: coarse fragment shading is NOT 360p.
-DEFINE_bool(vulkan_zephyr_coarse_shading, false,
-            "Experimental 2x2 Vulkan fragment shading where supported. "
-            "Does not change internal render target resolution.",
-            "Vulkan");
+// Defined by the Vulkan device so its extension is requested before startup.
+DECLARE_bool(vulkan_zephyr_coarse_shading);
 DECLARE_bool(log_gpu_frame_time_breakdown);
 DECLARE_bool(vulkan_resolve_clear_in_guest_pass);
 DECLARE_bool(spirv_specialize_no_alpha);
