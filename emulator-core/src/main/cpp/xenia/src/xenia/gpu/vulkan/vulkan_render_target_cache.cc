@@ -84,6 +84,18 @@ DEFINE_bool(
     "upload that would re-read the same bytes from guest memory.",
     "Vulkan");
 
+// Experimental subnative rendering request. This flag is deliberately a
+// no-op until the host rasterization and EDRAM resolve paths both support
+// fractional scales. Keeping the request separate from draw_resolution_scale
+// prevents silently reporting a 360p mode while still rasterizing at 720p.
+DEFINE_bool(
+    vulkan_subnative_360p, false,
+    "Request experimental 640x360 internal rendering for 1280x720 guest "
+    "surfaces. NOT IMPLEMENTED: this flag currently has no effect on image "
+    "dimensions or GPU workload. Never enable as a performance feature until "
+    "host render targets, depth/MSAA and EDRAM resolves support it.",
+    "Vulkan");
+
 DEFINE_bool(
     vulkan_log_render_target_dimensions, true,
     "Log the first 64 created Vulkan render-target guest and host dimensions, "
