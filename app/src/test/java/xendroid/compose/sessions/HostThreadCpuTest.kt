@@ -123,6 +123,9 @@ class HostThreadCpuTest {
         val perf = acc.snapshot()
         assertEquals(perf, json.decodeFromString(RunPerformance.serializer(), json.encodeToString(RunPerformance.serializer(), perf)))
         assertNull(json.decodeFromString(RunPerformance.serializer(), "{\"version\":1}").hostThreadCpu)
+        val oldUsage = json.decodeFromString(HostThreadCpuUsage.serializer(),
+            """{"tid":42,"startTicks":900,"name":"Guest CPU 0","windows":1,"meanPercentOneCore":50.0,"peakPercentOneCore":50.0,"observedProcessors":[7]}""")
+        assertTrue(oldUsage.processorObservations.isEmpty())
         assertNull(HostThreadCpuProfiler().snapshot())
     }
 }
