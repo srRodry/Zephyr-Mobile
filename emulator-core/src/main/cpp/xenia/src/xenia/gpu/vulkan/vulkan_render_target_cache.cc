@@ -10,6 +10,7 @@
 #include "xenia/gpu/vulkan/vulkan_render_target_cache.h"
 
 #include <algorithm>
+#include <atomic>
 #include <set>
 #include <chrono>
 #include <cstddef>
@@ -81,6 +82,13 @@ DEFINE_bool(
     "Have the in-pass resolve also store its result straight into the promoted "
     "destination texture, so vulkan_resolve_to_texture_serve can skip the "
     "upload that would re-read the same bytes from guest memory.",
+    "Vulkan");
+
+DEFINE_bool(
+    vulkan_log_render_target_dimensions, false,
+    "Log the first 64 created Vulkan render-target guest and host dimensions, "
+    "scales, sample counts, depth flag and format. Diagnostic only; does not "
+    "enable subnative rendering.",
     "Vulkan");
 
 DEFINE_bool(
@@ -5715,6 +5723,23 @@ RenderTargetCache::RenderTarget* VulkanRenderTargetCache::CreateRenderTarget(
     XELOGE("VulkanRenderTargetCache: Unknown {} render target format {}",
            key.is_depth ? "depth" : "color", key.resource_format);
     return nullptr;
+  }
+  // Diagnostic only: report actual Vulkan attachment dimensions without
+  // changing guest rendering, EDRAM mapping, or the resolve path.
+  // Cap output to avoid excessive logging during gameplay.
+  if (cvars::vulkan_log_render_target_dimensions) {
+    static std::atomic<uint32_t> logged_targets{0};
+    if (logged_targets.fetch_add(1, std::memory_order_relaxed) < 64) {
+      XELOGI(
+          "Vulkan RT dimensions: guest={}x{}, host={}x{}, scale={}x{}, "
+          "samples={}, depth={}, format={}",
+          key.GetWidth(),
+          GetRenderTargetHeight(key.pitch_tiles_at_32bpp, key.msaa_samples),
+          image_create_info.extent.width, image_create_info.extent.height,
+          GetKeyScaleX(key), GetKeyScaleY(key),
+          uint32_t(image_create_info.samples), key.is_depth,
+          uint32_t(image_create_info.format));
+    }
   }
   // Declare the full set of view formats for mutable-format images (the
   // UNORM/SFLOAT attachment format is aliased with a UINT view for ownership
