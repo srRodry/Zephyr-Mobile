@@ -64,6 +64,10 @@ DECLARE_int32(adrenotools_turbo_reassert_seconds);
 DECLARE_bool(clear_memory_page_state);
 DECLARE_bool(vulkan_in_pass_resolve_debug_read_usage);
 DECLARE_bool(vulkan_subnative_360p);
+// Separate performance experiment: coarse fragment shading is NOT 360p.
+DEFINE_bool(vulkan_zephyr_coarse_shading, false,
+            "Experimental 2x2 Vulkan fragment shading where supported. "
+            "Does not change internal render target resolution.");
 DECLARE_bool(log_gpu_frame_time_breakdown);
 DECLARE_bool(vulkan_resolve_clear_in_guest_pass);
 DECLARE_bool(spirv_specialize_no_alpha);
@@ -6761,8 +6765,8 @@ bool VulkanCommandProcessor::IssueDraw(xenos::PrimitiveType prim_type,
   // vulkan_shading_rate: coarse shading of the multisampled scene's draws,
   // where the rate is allowed with what the pixel shader writes.
   draw_shading_rate_ = 0;
-  if (cvars::vulkan_shading_rate && pixel_shader &&
-      device_properties.pipelineFragmentShadingRate) {
+  if ((cvars::vulkan_shading_rate || cvars::vulkan_zephyr_coarse_shading) &&
+      pixel_shader && device_properties.pipelineFragmentShadingRate) {
     const xenos::MsaaSamples guest_msaa_samples =
         regs.Get<reg::RB_SURFACE_INFO>().msaa_samples;
     if (guest_msaa_samples != xenos::MsaaSamples::k1X &&
@@ -6777,7 +6781,9 @@ bool VulkanCommandProcessor::IssueDraw(xenos::PrimitiveType prim_type,
         (!regs.Get<reg::RB_COLORCONTROL>().alpha_to_mask_enable ||
          device_properties.fragmentShadingRateWithShaderSampleMask ||
          (cvars::host_alpha_to_coverage && (normalized_color_mask & 0xF)))) {
-      draw_shading_rate_ = uint32_t(cvars::vulkan_shading_rate) & 3;
+      draw_shading_rate_ = cvars::vulkan_zephyr_coarse_shading
+                               ? 3u  // 2x2 shading rate, subject to GPU support.
+                               : (uint32_t(cvars::vulkan_shading_rate) & 3u);
     }
   }
   // Update dynamic graphics pipeline state.
