@@ -10,7 +10,8 @@ namespace xe::gpu::subnative {
 
 // Half-resolution host coordinates. Use floor for the beginning and ceil for
 // the end of a half-open rectangle, preserving coverage of odd guest pixels.
-// All arithmetic is widened to avoid overflow in caller-provided uint32 values.
+// Rectangle endpoints are computed only after TryHalfCoverage validates
+// that the guest rectangle fits within its attachment.
 constexpr uint32_t FloorHalf(uint32_t coordinate) {
   return coordinate / 2;
 }
@@ -27,8 +28,8 @@ struct Rectangle {
 
 // For valid guest rectangles, the result covers all touched host pixels.
 // Coordinates and extents are intentionally separate to avoid truncating
-// odd-sized scissor and resolve regions. Callers must ensure no overflow in
-// guest x + width and y + height before invoking this function.
+// odd-sized scissor and resolve regions. Use TryHalfCoverage for untrusted
+// rectangles: this low-level helper assumes the endpoints do not overflow.
 constexpr Rectangle HalfCoverage(Rectangle guest) {
   const uint32_t x0 = FloorHalf(guest.x);
   const uint32_t y0 = FloorHalf(guest.y);
