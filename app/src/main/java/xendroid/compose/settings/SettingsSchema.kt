@@ -28,6 +28,7 @@ object SettingsSchema {
             // A slider, not a dropdown: 0 = synchronous, 1..5 = explicit. The native cvar also
             // accepts -1 (auto), but a 0..5 slider is the intended UX.
             i("Vulkan", "vulkan_pipeline_creation_threads", "Pipeline creation threads", 4, 0, 5),
+            b("Vulkan", "vulkan_zephyr_coarse_shading", "VRS 2x2 (experimental)", false),
             Action("Vulkan", "vulkan_lib_path", "Custom Vulkan driver", "", desc("vulkan_lib_path")),
             b("Vulkan", "adrenotools_force_max_clocks", "Force max GPU clocks (adrenotools)", false),
             // Redesign: the core's own cvars the app now shows (vulkan_instance.cc, the Vulkan backend).
