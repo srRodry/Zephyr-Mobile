@@ -47,7 +47,8 @@ DEFINE_uint32(internal_display_resolution, 8,
               "   14=1680x1050\n"
               "   15=1920x540\n"
               "   16=1920x1080\n"
-              "   17=internal_display_resolution_x/y",
+              "   17=internal_display_resolution_x/y\n"
+              "   18=640x360 experimental (game must support it)",
               "Console");
 DEFINE_uint32(internal_display_resolution_x, 1280,
               "Custom width. See internal_display_resolution. Range 1-1920.",
@@ -553,6 +554,12 @@ bool GraphicsSystem::Restore(ByteStream* stream) {
 }
 
 std::pair<uint16_t, uint16_t> GraphicsSystem::GetInternalDisplayResolution() {
+  // Game-reported display mode, NOT forced Vulkan raster resolution.
+  // Option 17 retains the existing custom-width/height behavior.
+  // Experimental option 18 asks compatible games to draw at 640x360.
+  if (cvars::internal_display_resolution == 18) {
+    return {640, 360};
+  }
   if (cvars::internal_display_resolution >=
       internal_display_resolution_entries.size()) {
     return {cvars::internal_display_resolution_x,
