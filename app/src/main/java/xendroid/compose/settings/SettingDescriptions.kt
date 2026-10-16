@@ -5,8 +5,8 @@ package xendroid.compose.settings
 object SettingDescriptions {
     val byName: Map<String, String> = mapOf(
         // Redesign: the core's own cvars the app now shows; texts follow the core's descriptions.
-        "internal_display_resolution_x" to "Width reported to the game when the display mode is Custom. The core accepts 1 to 1920",
-        "internal_display_resolution_y" to "Height reported to the game when the display mode is Custom. The core accepts 1 to 1080",
+        "internal_display_resolution_x" to "Width reported to the game in Custom display mode (e.g. 960 for 540p, 848 for 480p). This does not force lower internal rendering resolution; the game may ignore it. Core accepts 1 to 1920",
+        "internal_display_resolution_y" to "Height reported to the game in Custom display mode (540 for 540p, 480 for 480p). Restart the title after changing it. Core accepts 1 to 1080",
         "draw_resolution_scale_threshold" to "With the resolution scale above 1x, surfaces up to this width stay at native size. Bloom and depth of field often break when upscaled; use the smallest value that fixes the effect",
         "postprocess_ffx_fsr_max_upsampling_passes" to "How many times FSR may upscale in a row when the screen is much larger than the game. More passes cost GPU time",
         "kernel_display_gamma_power" to "Gamma exponent used when the gamma type is power (custom). The core's default is 2.22",
