@@ -5696,6 +5696,20 @@ RenderTargetCache::RenderTarget* VulkanRenderTargetCache::CreateRenderTarget(
   image_create_info.extent.height =
       GetRenderTargetHeight(key.pitch_tiles_at_32bpp, key.msaa_samples) *
       GetKeyScaleY(key);
+  // Guardrail for the experimental subnative request: do not resize only
+  // this attachment. Viewports, depth/MSAA, transfer rectangles and EDRAM
+  // resolves still use the guest-coordinate extents above. A partial 360p
+  // implementation here would cause out-of-bounds rendering or bad resolves.
+  // This warning is emitted once so a requested mode is never mistaken for
+  // an active performance optimization.
+  if (cvars::vulkan_subnative_360p) {
+    static std::atomic<bool> warned_subnative_not_implemented{false};
+    if (!warned_subnative_not_implemented.exchange(true)) {
+      XELOGW("Vulkan 360p requested but not implemented; preserving native "
+             "render target dimensions until viewport, depth/MSAA and "
+             "EDRAM resolve coordinate conversion are implemented");
+    }
+  }
   image_create_info.extent.depth = 1;
   image_create_info.mipLevels = 1;
   image_create_info.arrayLayers = 1;
