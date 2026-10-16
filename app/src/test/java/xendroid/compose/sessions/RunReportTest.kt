@@ -35,6 +35,22 @@ class RunReportTest {
         assertTrue(lines.none { it.contains("me@example.com") })
     }
 
+    @Test fun cpuZeroHostProcessorSnapshotsAreIncludedWithoutClaimingResidency() {
+        val cpu = HostThreadCpuReport(attempts = 4, threads = listOf(
+            HostThreadCpuUsage(7, 99, "Guest CPU 0", 3, 96.0, 99.0,
+                observedProcessors = listOf(4, 7),
+                processorObservations = listOf(
+                    HostThreadProcessorObservation(4, 1),
+                    HostThreadProcessorObservation(7, 2)))
+        ))
+        val report = RunReports.build(run.copy(performance = RunPerformance(hostThreadCpu = cpu)),
+            null, emptyList(), device, 0)
+        val lines = RunReports.preview(report)
+        assertTrue(lines.any { it.contains("Host CPUs sampled (not residency): 4 × 1, 7 × 2") })
+        assertEquals(cpu.threads.single().processorObservations,
+            report.run.performance!!.hostThreadCpu!!.threads.single().processorObservations)
+    }
+
     @get:Rule val folder = TemporaryFolder()
 
     private val device = ReportDevice("Xiaomi", "POCO F7", "QTI SM8735", "15", 35, "77011a0c+local.abc-debug")
