@@ -87,6 +87,7 @@ object SettingDescriptions {
         "gpu_allow_invalid_fetch_constants" to "Tolerate invalid texture/vertex fetch constants instead of failing; works around errors in some games",
         "guest_display_refresh_cap" to "Cap vblanks at the console's 50/60Hz rate; off lets the game run as fast as possible",
         "guest_scheduler" to "Run guest threads as cooperative fibers on a few host threads instead of one thread each; takes effect next launch",
+        "guest_scheduler_prefer_fast_cores" to "Android experiment: restrict only the Guest CPU 0 dispatcher to a detected group of faster cores. May reduce slow-core migrations under heavy CPU load but could increase heat. Does not overclock, force clocks or affect other threads. If frequency topology cannot be read, it does nothing. Requires restarting the game.",
         "guest_scheduler_stats" to "Log scheduler counters once a second; use to check re-poll rate and I/O queueing when diagnosing stalls",
         "guest_scheduler_quantum_us" to "How long a guest thread runs before yielding to another; lower is fairer but switches more often",
         "half_pixel_offset" to "Emulate the console's half-pixel offset; correct for most games, off may fix slight UI blur in a few",
