@@ -13,6 +13,15 @@
 #include <string>
 #include <vector>
 
+#if XE_PLATFORM_ANDROID || XE_PLATFORM_xendroid
+#include <array>
+#include <cerrno>
+#include <cstdint>
+#include <fstream>
+#include <limits>
+#include <sched.h>
+#endif
+
 #include "xenia/base/assert.h"
 #include "xenia/base/clock.h"
 #include "xenia/base/logging.h"
@@ -26,6 +35,15 @@
 #include "xenia/kernel/kernel_state.h"
 #include "xenia/kernel/xobject.h"
 #include "xenia/kernel/xthread.h"
+
+DEFINE_bool(
+    guest_scheduler_prefer_fast_cores, false,
+    "Android experiment: prefer faster CPU cores for the heavily loaded "
+    "Guest CPU 0 dispatch thread based on readable CPU maximum frequencies. "
+    "Never force clocks; skip affinity entirely when the topology is "
+    "ambiguous, inaccessible or the OS denies the request. The setting "
+    "requires a title restart and may increase heat.",
+    "Kernel");
 
 DEFINE_bool(
     guest_scheduler_stats, true,
@@ -52,6 +70,80 @@ DEFINE_uint32(
 
 namespace xe {
 namespace kernel {
+
+#if XE_PLATFORM_ANDROID || XE_PLATFORM_xendroid
+// Optional scheduling experiment for ARM big.LITTLE devices. This runs once
+// on the actual guest CPU 0 dispatch thread, not from the game/UI thread.
+// Read capacities instead of assuming that CPU 4-7 are the fast cluster.
+// If Android's cpuset or sysfs is restricted, keep the OS's original mask.
+static void MaybePreferFastCoresForCpu0() {
+  if (!cvars::guest_scheduler_prefer_fast_cores) {
+    return;
+  }
+  cpu_set_t original;
+  CPU_ZERO(&original);
+  if (sched_getaffinity(0, sizeof(original), &original) != 0) {
+    XELOGW("GuestScheduler: could not read CPU 0 worker affinity (errno {}); "
+           "keeping Android scheduling", errno);
+    return;
+  }
+  constexpr int kMaxTrackedCpus = 64;
+  std::array<uint32_t, kMaxTrackedCpus> max_frequencies_khz{};
+  uint32_t slowest_khz = std::numeric_limits<uint32_t>::max();
+  uint32_t fastest_khz = 0;
+  int eligible_count = 0;
+  for (int i = 0; i < kMaxTrackedCpus && i < CPU_SETSIZE; ++i) {
+    if (!CPU_ISSET(i, &original)) {
+      continue;
+    }
+    ++eligible_count;
+    std::ifstream freq("/sys/devices/system/cpu/cpu" +
+                       std::to_string(i) + "/cpufreq/cpuinfo_max_freq");
+    uint32_t max_khz = 0;
+    if (!(freq >> max_khz) || max_khz < 100000) {
+      XELOGI("GuestScheduler: fast-core experiment skipped: CPU {} max "
+             "frequency unavailable; keeping Android scheduling", i);
+      return;
+    }
+    max_frequencies_khz[i] = max_khz;
+    slowest_khz = std::min(slowest_khz, max_khz);
+    fastest_khz = std::max(fastest_khz, max_khz);
+  }
+  if (eligible_count < 4 || slowest_khz >= fastest_khz) {
+    XELOGI("GuestScheduler: fast-core experiment skipped: no distinguishable "
+           "performance cluster");
+    return;
+  }
+  // Midpoint between the lowest and highest advertised maximum frequency.
+  // This includes the medium/high-performance cluster of heterogeneous
+  // mobile SoCs instead of pinning to the hottest single prime core.
+  const uint32_t threshold_khz =
+      slowest_khz + (fastest_khz - slowest_khz) / 2;
+  cpu_set_t preferred;
+  CPU_ZERO(&preferred);
+  int preferred_count = 0;
+  for (int i = 0; i < kMaxTrackedCpus && i < CPU_SETSIZE; ++i) {
+    if (CPU_ISSET(i, &original) &&
+        max_frequencies_khz[i] >= threshold_khz) {
+      CPU_SET(i, &preferred);
+      ++preferred_count;
+    }
+  }
+  if (preferred_count < 2 || preferred_count == eligible_count) {
+    XELOGI("GuestScheduler: fast-core experiment skipped: no useful multi-"
+           "core preference");
+    return;
+  }
+  if (sched_setaffinity(0, sizeof(preferred), &preferred) != 0) {
+    XELOGW("GuestScheduler: Android refused Guest CPU 0 fast-core affinity "
+           "(errno {}); original CPU selection remains", errno);
+    return;
+  }
+  XELOGI("GuestScheduler: Guest CPU 0 preferred {} of {} allowed cores "
+         "(maximum frequency >= {} kHz); clocks are not forced",
+         preferred_count, eligible_count, threshold_khz);
+}
+#endif
 
 // Logical CPU index of the host thread currently executing, or -1 on any
 // non-dispatch thread. Set by each CPU's RunLoop.
@@ -1394,6 +1486,11 @@ void GuestScheduler::RereadyBlocked(int cpu_index, bool poked) {
 
 void GuestScheduler::RunLoop(int cpu_index) {
   t_current_cpu = cpu_index;
+#if XE_PLATFORM_ANDROID || XE_PLATFORM_xendroid
+  if (cpu_index == 0) {
+    MaybePreferFastCoresForCpu0();
+  }
+#endif
   Cpu& cpu = cpus_[cpu_index];
   // Adopt this host thread's stack as this CPU's idle fiber.
   cpu.idle_fiber = xe::threading::Fiber::CreateFromThread();
