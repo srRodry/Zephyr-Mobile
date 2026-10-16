@@ -5784,6 +5784,14 @@ RenderTargetCache::RenderTarget* VulkanRenderTargetCache::CreateRenderTarget(
                image_create_info.extent.height, half_extent.width,
                half_extent.height, uint32_t(image_create_info.samples),
                key.is_depth);
+        const bool simple_candidate =
+            subnative::SupportsHalfResolutionCandidate(
+                uint32_t(image_create_info.samples), key.is_depth,
+                {image_create_info.extent.width,
+                 image_create_info.extent.height});
+        XELOGI("Vulkan RT 360p preview (NOT ACTIVE): simple_candidate={}, "
+               "MSAA/depth/resolve compatibility still unverified",
+               simple_candidate);
         const uint64_t candidate_pixels =
             uint64_t(half_extent.width) * uint64_t(half_extent.height);
         XELOGI("Vulkan RT 360p preview (NOT ACTIVE): pixels actual={}, "
