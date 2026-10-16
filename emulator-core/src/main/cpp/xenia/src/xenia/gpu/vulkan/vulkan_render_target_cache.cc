@@ -160,7 +160,7 @@ DEFINE_bool(
     "Vulkan");
 
 DEFINE_bool(
-    vulkan_direct_host_resolve_to_texture, true,
+    vulkan_direct_host_resolve_to_texture, false,
     "Have the direct host (compute) resolves also store their result straight "
     "into the promoted destination texture, like vulkan_resolve_to_texture "
     "does for in-pass resolves, so vulkan_resolve_to_texture_serve can skip "
