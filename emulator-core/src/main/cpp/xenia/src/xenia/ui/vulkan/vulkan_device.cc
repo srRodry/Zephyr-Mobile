@@ -593,6 +593,12 @@ std::unique_ptr<VulkanDevice> VulkanDevice::CreateIfSupported(
         const VkPhysicalDeviceFragmentShadingRatePropertiesKHR& fsr =
             properties_KHR_fragment_shading_rate;
         device->properties_.pipelineFragmentShadingRate = true;
+        // VK_KHR_fragment_shading_rate does not guarantee that a driver can
+        // shade a 2x2 area. Guard the Zephyr experiment using advertised
+        // fragment-size limits in addition to the feature bit.
+        device->properties_.fragmentShadingRate2x2 =
+            fsr.maxFragmentSize.width >= 2 &&
+            fsr.maxFragmentSize.height >= 2;
         device->properties_.fragmentShadingRateWithShaderDepthStencilWrites =
             fsr.fragmentShadingRateWithShaderDepthStencilWrites != VK_FALSE;
         device->properties_.fragmentShadingRateWithSampleMask =
