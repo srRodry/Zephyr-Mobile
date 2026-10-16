@@ -26,6 +26,7 @@
 #include "xenia/gpu/draw_util.h"
 #include "xenia/gpu/gpu_flags.h"
 #include "xenia/gpu/registers.h"
+#include "xenia/gpu/subnative_coordinates.h"
 #include "xenia/gpu/spirv_builder.h"
 #include "xenia/gpu/spirv_compatibility.h"
 #include "xenia/gpu/spirv_shader_translator.h"
@@ -5765,6 +5766,18 @@ RenderTargetCache::RenderTarget* VulkanRenderTargetCache::CreateRenderTarget(
           GetKeyScaleX(key), GetKeyScaleY(key),
           uint32_t(image_create_info.samples), key.is_depth,
           uint32_t(image_create_info.format));
+      // Preview the prospective 1/2x attachment extent. This only logs a
+      // calculation and must not be interpreted as actual 360p rendering.
+      if (cvars::vulkan_subnative_360p) {
+        const auto half_extent = subnative::HalfExtent(
+            {image_create_info.extent.width, image_create_info.extent.height});
+        XELOGI("Vulkan RT 360p preview (NOT ACTIVE): actual={}x{}, "
+               "half-candidate={}x{}, samples={}, depth={}",
+               image_create_info.extent.width,
+               image_create_info.extent.height, half_extent.width,
+               half_extent.height, uint32_t(image_create_info.samples),
+               key.is_depth);
+      }
     }
   }
   // Declare the full set of view formats for mutable-format images (the
