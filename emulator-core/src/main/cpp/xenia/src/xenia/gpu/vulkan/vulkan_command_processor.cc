@@ -6739,15 +6739,23 @@ bool VulkanCommandProcessor::IssueDraw(xenos::PrimitiveType prim_type,
   if (cvars::vulkan_subnative_360p) {
     static std::atomic<uint32_t> logged_viewports{0};
     if (logged_viewports.fetch_add(1, std::memory_order_relaxed) < 32) {
-      const auto half_viewport = subnative::HalfCoverage(
-          {viewport_info.xy_offset[0], viewport_info.xy_offset[1],
-           viewport_info.xy_extent[0], viewport_info.xy_extent[1]});
+      // Viewport offsets and extents are independently bounded by the
+      // guest draw path; use saturating 64-bit endpoints for this diagnostic
+      // rather than assuming their sum fits in uint32_t.
+      const uint64_t x_end =
+          uint64_t(viewport_info.xy_offset[0]) + viewport_info.xy_extent[0];
+      const uint64_t y_end =
+          uint64_t(viewport_info.xy_offset[1]) + viewport_info.xy_extent[1];
+      const uint64_t half_x0 = viewport_info.xy_offset[0] / 2;
+      const uint64_t half_y0 = viewport_info.xy_offset[1] / 2;
+      const uint64_t half_x1 = (x_end + 1) / 2;
+      const uint64_t half_y1 = (y_end + 1) / 2;
       XELOGI("Vulkan 360p viewport preview (NOT ACTIVE): "
              "host=({}, {}) {}x{}, candidate=({}, {}) {}x{}",
              viewport_info.xy_offset[0], viewport_info.xy_offset[1],
              viewport_info.xy_extent[0], viewport_info.xy_extent[1],
-             half_viewport.x, half_viewport.y, half_viewport.width,
-             half_viewport.height);
+             half_x0, half_y0, half_x1 - half_x0,
+             half_y1 - half_y0);
     }
   }
   // vulkan_shading_rate: coarse shading of the multisampled scene's draws,
