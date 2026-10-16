@@ -85,6 +85,7 @@ object SettingCatalog {
             e("Vulkan|adrenotools_turbo_reassert_seconds", A, isNew = true, dependsOn = "Vulkan|adrenotools_force_max_clocks" to "true",
                 warning = Warning.NEEDS_MAX_CLOCKS),
             e("Vulkan|vulkan_pipeline_creation_threads", A),
+            e("Vulkan|vulkan_zephyr_coarse_shading", A, isNew = true),
             e("GPU|vulkan_mid_frame_submission_draws", X),
             e("Kernel|guest_scheduler", X),
             e("Kernel|guest_scheduler_quantum_us", X, dependsOn = "Kernel|guest_scheduler" to "true"),
