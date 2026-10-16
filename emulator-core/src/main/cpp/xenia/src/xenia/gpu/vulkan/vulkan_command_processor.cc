@@ -6763,23 +6763,27 @@ bool VulkanCommandProcessor::IssueDraw(xenos::PrimitiveType prim_type,
   // vulkan_shading_rate: coarse shading of the multisampled scene's draws,
   // where the rate is allowed with what the pixel shader writes.
   draw_shading_rate_ = 0;
+  const xenos::MsaaSamples guest_msaa_samples =
+      regs.Get<reg::RB_SURFACE_INFO>().msaa_samples;
+  const uint32_t host_msaa_samples_bit =
+      uint32_t(1) << uint32_t(
+          render_target_cache_->GetHostMsaaSamples(guest_msaa_samples));
   const bool zephyr_2x2_available =
       cvars::vulkan_zephyr_coarse_shading &&
       device_properties.pipelineFragmentShadingRate &&
-      device_properties.fragmentShadingRate2x2;
+      (device_properties.fragmentShadingRate2x2Samples &
+       host_msaa_samples_bit) != 0;
   if (cvars::vulkan_zephyr_coarse_shading && !zephyr_2x2_available) {
     static std::atomic<bool> logged_unsupported_zephyr_rate{false};
     if (!logged_unsupported_zephyr_rate.exchange(
             true, std::memory_order_relaxed)) {
       XELOGW("Zephyr VRS 2x2 requested but Vulkan device does not support "
-             "the required pipeline shading feature or fragment size; "
-             "keeping normal shading");
+             "the required pipeline shading feature or 2x2 rate "
+             "for the draw's MSAA sample count; keeping normal shading");
     }
   }
   if ((cvars::vulkan_shading_rate || zephyr_2x2_available) &&
       pixel_shader && device_properties.pipelineFragmentShadingRate) {
-    const xenos::MsaaSamples guest_msaa_samples =
-        regs.Get<reg::RB_SURFACE_INFO>().msaa_samples;
     // The upstream shading-rate option remains limited to multisampled
     // draws. Zephyr's separate opt-in experiment may also shade 1x surfaces
     // at 2x2: fullscreen and non-MSAA draws would otherwise never benefit.
@@ -6787,8 +6791,7 @@ bool VulkanCommandProcessor::IssueDraw(xenos::PrimitiveType prim_type,
     // apply. This changes fragment shader frequency, NOT attachment size.
     if ((guest_msaa_samples != xenos::MsaaSamples::k1X ||
          zephyr_2x2_available) &&
-        (uint32_t(1) << uint32_t(render_target_cache_->GetHostMsaaSamples(
-             guest_msaa_samples))) <=
+        host_msaa_samples_bit <=
             uint32_t(
                 device_properties.maxFragmentShadingRateRasterizationSamples) &&
         (!pixel_shader->writes_depth() ||
