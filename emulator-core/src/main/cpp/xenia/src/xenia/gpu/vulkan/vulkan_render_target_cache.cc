@@ -5754,7 +5754,8 @@ RenderTargetCache::RenderTarget* VulkanRenderTargetCache::CreateRenderTarget(
   // Diagnostic only: report actual Vulkan attachment dimensions without
   // changing guest rendering, EDRAM mapping, or the resolve path.
   // Cap output to avoid excessive logging during gameplay.
-  if (cvars::vulkan_log_render_target_dimensions) {
+  if (cvars::vulkan_log_render_target_dimensions ||
+      cvars::vulkan_subnative_360p) {
     static std::atomic<uint32_t> logged_targets{0};
     if (logged_targets.fetch_add(1, std::memory_order_relaxed) < 64) {
       XELOGI(
