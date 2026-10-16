@@ -593,12 +593,43 @@ std::unique_ptr<VulkanDevice> VulkanDevice::CreateIfSupported(
         const VkPhysicalDeviceFragmentShadingRatePropertiesKHR& fsr =
             properties_KHR_fragment_shading_rate;
         device->properties_.pipelineFragmentShadingRate = true;
-        // VK_KHR_fragment_shading_rate does not guarantee that a driver can
-        // shade a 2x2 area. Guard the Zephyr experiment using advertised
-        // fragment-size limits in addition to the feature bit.
-        device->properties_.fragmentShadingRate2x2 =
-            fsr.maxFragmentSize.width >= 2 &&
-            fsr.maxFragmentSize.height >= 2;
+        // Request the actual fragment sizes AND sample counts supported by
+        // this physical device. maxFragmentSize alone isn't sufficient:
+        // some drivers do not provide a 2x2 rate for all MSAA modes.
+        if (fsr.maxFragmentSize.width >= 2 &&
+            fsr.maxFragmentSize.height >= 2) {
+          const auto get_fragment_rates =
+              PFN_vkGetPhysicalDeviceFragmentShadingRatesKHR(
+                  ifn.vkGetInstanceProcAddr(
+                      vulkan_instance->instance(),
+                      "vkGetPhysicalDeviceFragmentShadingRatesKHR"));
+          if (get_fragment_rates) {
+            uint32_t rate_count = 0;
+            if (get_fragment_rates(physical_device, &rate_count, nullptr) ==
+                    VK_SUCCESS &&
+                rate_count) {
+              std::vector<VkPhysicalDeviceFragmentShadingRateKHR> rates(
+                  rate_count);
+              for (auto& rate : rates) {
+                rate.sType =
+                    VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FRAGMENT_SHADING_RATE_KHR;
+                rate.pNext = nullptr;
+              }
+              if (get_fragment_rates(physical_device, &rate_count,
+                                     rates.data()) == VK_SUCCESS) {
+                for (uint32_t i = 0; i < rate_count; ++i) {
+                  if (rates[i].fragmentSize.width == 2 &&
+                      rates[i].fragmentSize.height == 2) {
+                    device->properties_.fragmentShadingRate2x2Samples |=
+                        rates[i].sampleCounts;
+                  }
+                }
+              }
+            }
+          }
+        }
+        XELOGI("Zephyr Vulkan VRS 2x2 supported host MSAA sample mask: {}",
+               uint32_t(device->properties_.fragmentShadingRate2x2Samples));
         device->properties_.fragmentShadingRateWithShaderDepthStencilWrites =
             fsr.fragmentShadingRateWithShaderDepthStencilWrites != VK_FALSE;
         device->properties_.fragmentShadingRateWithSampleMask =
