@@ -243,6 +243,9 @@ class VulkanDevice {
     // vulkan_fragment_shading_rate: the rate of the pipeline (set dynamically),
     // and what may be used with a rate coarser than 1x1.
     bool pipelineFragmentShadingRate = false;
+    // Zephyr's requested 2x2 rate also requires a fragment-size limit
+    // of at least 2x2. Do not infer this from extension availability alone.
+    bool fragmentShadingRate2x2 = false;
     bool fragmentShadingRateWithShaderDepthStencilWrites = false;
     bool fragmentShadingRateWithSampleMask = false;
     bool fragmentShadingRateWithShaderSampleMask = false;
