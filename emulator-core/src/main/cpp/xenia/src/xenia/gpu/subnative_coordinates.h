@@ -109,6 +109,21 @@ constexpr bool TestHalfCoverageBoundary() {
 }
 static_assert(TestHalfCoverageBoundary());
 
+// A viewport can have a fractional guest-pixel origin. Preserve the
+// fractional offset in floating-point host coordinates instead of rounding
+// it away when scaling to half resolution. The integer scissor uses
+// HalfCoverage independently, so fractional origins do not lose coverage.
+constexpr float HalfViewportCoordinate(float guest_coordinate) {
+  return guest_coordinate * 0.5f;
+}
+constexpr float HalfViewportExtent(float guest_extent) {
+  return guest_extent * 0.5f;
+}
+static_assert(HalfViewportCoordinate(0.5f) == 0.25f);
+static_assert(HalfViewportCoordinate(-1.0f) == -0.5f);
+static_assert(HalfViewportExtent(1280.0f) == 640.0f);
+static_assert(HalfViewportExtent(720.0f) == 360.0f);
+
 static_assert(FloorHalf(1280) == 640);
 static_assert(CeilHalf(720) == 360);
 static_assert(CeilHalf(3) == 2);
