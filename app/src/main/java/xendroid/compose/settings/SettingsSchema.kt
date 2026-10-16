@@ -94,6 +94,7 @@ object SettingsSchema {
             b("Kernel", "staging_mode", "Staging mode", false),
             // Takes effect on the next game launch.
             b("Kernel", "guest_scheduler", "Guest scheduler (cooperative fibers)", true),
+            b("Kernel", "guest_scheduler_prefer_fast_cores", "Prefer fast cores for Guest CPU 0 (Android experimental)", false),
             // Only meaningful with the guest scheduler on.
             i("Kernel", "guest_scheduler_quantum_us", "Guest scheduler quantum (us)", 1000, 250, 8000),
             b("Kernel", "guest_scheduler_stats", "Guest scheduler stats logging", false),
