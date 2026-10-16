@@ -5770,8 +5770,9 @@ RenderTargetCache::RenderTarget* VulkanRenderTargetCache::CreateRenderTarget(
       // Preview the prospective 1/2x attachment extent. This only logs a
       // calculation and must not be interpreted as actual 360p rendering.
       if (cvars::vulkan_subnative_360p) {
-        // A 2D attachment cannot be represented by a zero-sized VkImage.
-        // Also report candidate byte-area savings, not measured GPU gains.
+        // Diagnostic only: estimate pixel-count reduction, not bytes,
+        // bandwidth, GPU work or measured performance. The candidate is
+        // not allocated or used for rasterization.
         const uint64_t actual_pixels =
             uint64_t(image_create_info.extent.width) *
             uint64_t(image_create_info.extent.height);
