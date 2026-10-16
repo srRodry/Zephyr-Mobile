@@ -56,7 +56,7 @@ object SettingCatalog {
             e("Display|postprocess_dither", E),
             e("Display|present_letterbox", E),
             e("Console|widescreen", E),
-            e("Console|internal_display_resolution", E, newOptions = setOf("17")),
+            e("Console|internal_display_resolution", E, newOptions = setOf("17", "18")),
             e("Video|internal_display_resolution_x", A, isNew = true, dependsOn = "Console|internal_display_resolution" to "17"),
             e("Video|internal_display_resolution_y", A, isNew = true, dependsOn = "Console|internal_display_resolution" to "17"),
             e("GPU|draw_resolution_scale_threshold", A, isNew = true),
