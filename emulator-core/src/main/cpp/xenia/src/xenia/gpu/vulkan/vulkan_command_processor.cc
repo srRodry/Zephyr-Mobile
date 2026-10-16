@@ -6770,7 +6770,13 @@ bool VulkanCommandProcessor::IssueDraw(xenos::PrimitiveType prim_type,
       pixel_shader && device_properties.pipelineFragmentShadingRate) {
     const xenos::MsaaSamples guest_msaa_samples =
         regs.Get<reg::RB_SURFACE_INFO>().msaa_samples;
-    if (guest_msaa_samples != xenos::MsaaSamples::k1X &&
+    // The upstream shading-rate option remains limited to multisampled
+    // draws. Zephyr's separate opt-in experiment may also shade 1x surfaces
+    // at 2x2: fullscreen and non-MSAA draws would otherwise never benefit.
+    // All Vulkan sample-count, depth-write and sample-mask guards below still
+    // apply. This changes fragment shader frequency, NOT attachment size.
+    if ((guest_msaa_samples != xenos::MsaaSamples::k1X ||
+         cvars::vulkan_zephyr_coarse_shading) &&
         (uint32_t(1) << uint32_t(render_target_cache_->GetHostMsaaSamples(
              guest_msaa_samples))) <=
             uint32_t(
