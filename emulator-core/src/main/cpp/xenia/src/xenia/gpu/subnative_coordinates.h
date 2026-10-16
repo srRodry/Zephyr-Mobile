@@ -93,6 +93,21 @@ constexpr bool TestHalfCoverageInvalid() {
 static_assert(TestHalfCoverageValid());
 static_assert(TestHalfCoverageInvalid());
 
+// The maximum 32-bit guest coordinate must not overflow when calculating
+// a host extent, and the validator must reject guest rectangles that would
+// overflow x + width / y + height before HalfCoverage is called.
+constexpr bool TestHalfCoverageBoundary() {
+  Rectangle host{};
+  return TryHalfCoverage({0xFFFFFFFEu, 0, 1, 1},
+                         {0xFFFFFFFFu, 1}, host) &&
+         host.x == 0x7FFFFFFFu && host.width == 1 &&
+         !TryHalfCoverage({0xFFFFFFFFu, 0, 1, 1},
+                          {0xFFFFFFFFu, 1}, host) &&
+         !TryHalfCoverage({0xFFFFFFFEu, 0, 3, 1},
+                          {0xFFFFFFFFu, 1}, host);
+}
+static_assert(TestHalfCoverageBoundary());
+
 static_assert(FloorHalf(1280) == 640);
 static_assert(CeilHalf(720) == 360);
 static_assert(CeilHalf(3) == 2);
