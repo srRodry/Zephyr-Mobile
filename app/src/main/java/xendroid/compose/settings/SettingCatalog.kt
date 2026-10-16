@@ -88,6 +88,8 @@ object SettingCatalog {
             e("Vulkan|vulkan_zephyr_coarse_shading", A, isNew = true),
             e("GPU|vulkan_mid_frame_submission_draws", X),
             e("Kernel|guest_scheduler", X),
+            e("Kernel|guest_scheduler_prefer_fast_cores", A, isNew = true,
+                dependsOn = "Kernel|guest_scheduler" to "true"),
             e("Kernel|guest_scheduler_quantum_us", X, dependsOn = "Kernel|guest_scheduler" to "true"),
             e("GPU|texture_cache_memory_limit_soft", X),
             e("GPU|texture_cache_memory_limit_hard", X),
