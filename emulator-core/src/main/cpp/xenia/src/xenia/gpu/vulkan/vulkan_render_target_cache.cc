@@ -85,10 +85,10 @@ DEFINE_bool(
     "Vulkan");
 
 DEFINE_bool(
-    vulkan_log_render_target_dimensions, false,
+    vulkan_log_render_target_dimensions, true,
     "Log the first 64 created Vulkan render-target guest and host dimensions, "
     "scales, sample counts, depth flag and format. Diagnostic only; does not "
-    "enable subnative rendering.",
+    "enable subnative rendering. Enabled for the temporary diagnostic APK.",
     "Vulkan");
 
 DEFINE_bool(
