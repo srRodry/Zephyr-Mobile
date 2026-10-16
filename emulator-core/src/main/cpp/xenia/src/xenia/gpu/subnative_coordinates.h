@@ -124,6 +124,20 @@ static_assert(HalfViewportCoordinate(-1.0f) == -0.5f);
 static_assert(HalfViewportExtent(1280.0f) == 640.0f);
 static_assert(HalfViewportExtent(720.0f) == 360.0f);
 
+// MSAA and depth must be considered before allowing a physical resize.
+// This deliberately conservative capability check is only a prerequisite
+// for future integration: it does not turn on subnative rasterization.
+constexpr bool SupportsHalfResolutionCandidate(uint32_t sample_count,
+                                               bool is_depth,
+                                               Extent guest_extent) {
+  return sample_count == 1 && !is_depth &&
+         guest_extent.width >= 2 && guest_extent.height >= 2;
+}
+static_assert(SupportsHalfResolutionCandidate(1, false, {1280, 720}));
+static_assert(!SupportsHalfResolutionCandidate(4, false, {1280, 720}));
+static_assert(!SupportsHalfResolutionCandidate(1, true, {1280, 720}));
+static_assert(!SupportsHalfResolutionCandidate(1, false, {1, 720}));
+
 static_assert(FloorHalf(1280) == 640);
 static_assert(CeilHalf(720) == 360);
 static_assert(CeilHalf(3) == 2);
