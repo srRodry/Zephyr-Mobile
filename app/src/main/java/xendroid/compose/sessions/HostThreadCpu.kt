@@ -3,6 +3,10 @@ package xendroid.compose.sessions
 import java.io.File
 import kotlinx.serialization.Serializable
 
+/** A 5-second /proc stat snapshot at which this host CPU was observed. */
+@Serializable
+data class HostThreadProcessorObservation(val cpu: Int, val samples: Int)
+
 /** CPU execution, relative to one core, not whole-device utilization or a bottleneck verdict. */
 @Serializable
 data class HostThreadCpuUsage(
@@ -14,6 +18,8 @@ data class HostThreadCpuUsage(
     val peakPercentOneCore: Double,
     /** CPUs seen at sample instants, not residency, affinity or frequency. */
     val observedProcessors: List<Int> = emptyList(),
+    /** Instantaneous CPU observations, not affinity, time residency or frequency. */
+    val processorObservations: List<HostThreadProcessorObservation> = emptyList(),
 )
 
 @Serializable
@@ -89,7 +95,9 @@ class HostThreadCpuReader(
 class HostThreadCpuProfiler {
     private data class Key(val tid: Int, val start: Long)
     private data class Total(var name: String, var ticks: Long = 0, var ns: Long = 0,
-                             var windows: Int = 0, var peak: Double = 0.0, val cpus: MutableSet<Int> = sortedSetOf())
+                             var windows: Int = 0, var peak: Double = 0.0,
+                             val cpus: MutableSet<Int> = sortedSetOf(),
+                             val cpuSnapshots: MutableMap<Int, Int> = sortedMapOf())
     private var previous: HostThreadCpuSample? = null
     private val totals = linkedMapOf<Key, Total>()
     private var attempts = 0
@@ -134,7 +142,10 @@ class HostThreadCpuProfiler {
             total.ns += wall
             total.windows++
             total.peak = maxOf(total.peak, percent)
-            row.processor?.let { total.cpus += it }
+            row.processor?.let {
+                total.cpus += it
+                total.cpuSnapshots[it] = (total.cpuSnapshots[it] ?: 0) + 1
+            }
         }
     }
 
@@ -143,7 +154,8 @@ class HostThreadCpuProfiler {
         val hz = tickHz
         val rows = if (hz == null) emptyList() else totals.map { (key, total) ->
             HostThreadCpuUsage(key.tid, key.start, total.name, total.windows,
-                total.ticks.toDouble() * 1e11 / hz / total.ns, total.peak, total.cpus.toList())
+                total.ticks.toDouble() * 1e11 / hz / total.ns, total.peak, total.cpus.toList(),
+                total.cpuSnapshots.map { HostThreadProcessorObservation(it.key, it.value) })
         }.sortedByDescending { it.meanPercentOneCore }.take(MAX_REPORTED_THREADS)
         return HostThreadCpuReport(clockTicksPerSecond = hz, attempts = attempts, unavailableReads = unavailable,
             unreadableThreads = unreadable, truncatedReads = truncated,
