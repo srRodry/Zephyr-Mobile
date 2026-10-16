@@ -35,6 +35,7 @@
 #include "xenia/base/profiling.h"
 #include "xenia/base/xxhash.h"
 #include "xenia/gpu/draw_util.h"
+#include "xenia/gpu/subnative_coordinates.h"
 #include "xenia/gpu/gpu_flags.h"
 #include "xenia/gpu/gpu_live_options.h"
 #include "xenia/gpu/packet_disassembler.h"
@@ -62,6 +63,7 @@ DECLARE_int32(adrenotools_turbo_reassert_seconds);
 #endif
 DECLARE_bool(clear_memory_page_state);
 DECLARE_bool(vulkan_in_pass_resolve_debug_read_usage);
+DECLARE_bool(vulkan_subnative_360p);
 DECLARE_bool(log_gpu_frame_time_breakdown);
 DECLARE_bool(vulkan_resolve_clear_in_guest_pass);
 DECLARE_bool(spirv_specialize_no_alpha);
@@ -6732,6 +6734,22 @@ bool VulkanCommandProcessor::IssueDraw(xenos::PrimitiveType prim_type,
   gviargs.SetupRegisterValues(regs);
 
   draw_util::GetHostViewportInfo(&gviargs, viewport_info);
+  // Preview only: inspect the viewport produced by the real draw path.
+  // No Vulkan viewport/scissor or attachment dimensions are changed.
+  if (cvars::vulkan_subnative_360p) {
+    static std::atomic<uint32_t> logged_viewports{0};
+    if (logged_viewports.fetch_add(1, std::memory_order_relaxed) < 32) {
+      const auto half_viewport = subnative::HalfCoverage(
+          {viewport_info.xy_offset[0], viewport_info.xy_offset[1],
+           viewport_info.xy_extent[0], viewport_info.xy_extent[1]});
+      XELOGI("Vulkan 360p viewport preview (NOT ACTIVE): "
+             "host=({}, {}) {}x{}, candidate=({}, {}) {}x{}",
+             viewport_info.xy_offset[0], viewport_info.xy_offset[1],
+             viewport_info.xy_extent[0], viewport_info.xy_extent[1],
+             half_viewport.x, half_viewport.y, half_viewport.width,
+             half_viewport.height);
+    }
+  }
   // vulkan_shading_rate: coarse shading of the multisampled scene's draws,
   // where the rate is allowed with what the pixel shader writes.
   draw_shading_rate_ = 0;
