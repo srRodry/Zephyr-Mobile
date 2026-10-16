@@ -28,7 +28,7 @@
 #include "xenia/kernel/xthread.h"
 
 DEFINE_bool(
-    guest_scheduler_stats, false,
+    guest_scheduler_stats, true,
     "Log guest scheduler counters once a second: blocked-waiter re-poll rate, "
     "fiber switches, forced preemptions, and how long offloaded blocking calls "
     "queue behind the single I/O worker.",
