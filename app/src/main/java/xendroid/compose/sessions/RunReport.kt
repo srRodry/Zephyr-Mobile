@@ -105,6 +105,15 @@ object RunReports {
                     add("  ${thread.name} (TID ${thread.tid}): " +
                         "%.1f%% mean, %.1f%% peak, %d windows".format(java.util.Locale.ROOT,
                             thread.meanPercentOneCore, thread.peakPercentOneCore, thread.windows))
+                    // Show only the main guest dispatcher's sampled CPU placement.
+                    // CPU numbers are observations at discrete reads, not
+                    // affinity masks, residence percentages or CPU frequencies.
+                    if (thread.name == "Guest CPU 0" && thread.processorObservations.isNotEmpty()) {
+                        add("    Host CPUs sampled (not residency): " +
+                            thread.processorObservations.joinToString(", ") {
+                                "${it.cpu} × ${it.samples}"
+                            })
+                    }
                 }
                 add("  Read cost: %.2f ms total, %.2f ms maximum; 5-second samples, not per-frame timings".format(
                     java.util.Locale.ROOT, cpu.readTotalMs, cpu.readMaxMs))
