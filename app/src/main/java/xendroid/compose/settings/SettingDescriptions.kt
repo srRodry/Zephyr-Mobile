@@ -97,7 +97,7 @@ object SettingDescriptions {
         "ignore_thread_priorities" to "Ignores game-requested thread priorities and lets the host schedule threads normally",
         "inline_mmio_access" to "Inlines constant-address hardware (MMIO) loads and stores into compiled code for speed",
         "interlaced" to "Reports an interlaced video mode to games instead of progressive scan",
-        "internal_display_resolution" to "Not a scaler: it only tells the game what the TV is. Most titles render at a fixed size and ignore it, so the picture usually will not change. For higher detail use Resolution scale under GPU",
+        "internal_display_resolution" to "Reports the console display mode to the game; does not force Vulkan rendering resolution. Experimental 640x360 (option 18) only helps if the title changes its own render targets. Restart the game and compare frame rate and Vulkan target dimensions. Revert to 1280x720 (option 8) if ignored or unstable.",
         "kernel_cert_monitor" to "Reports the certification monitor as present to the game (debug/testing feature)",
         "kernel_debug_monitor" to "Reports a debug monitor (remote debugger) as attached to the game",
         "kernel_display_gamma_type" to "Display gamma curve reported to games; BT.709 best matches a 360 on an HDTV",
