@@ -64,6 +64,35 @@ static_assert(HalfExtent({1279, 719}).height == 360);
 static_assert(FitsInside(HalfCoverage({1, 1, 3, 3}), HalfExtent({4, 4})));
 static_assert(!FitsInside({1, 1, 2, 2}, {2, 2}));
 
+// Convert a guest viewport/scissor rectangle into the host half-resolution
+// rectangle and reject regions outside the corresponding attachment.
+// This is a pure helper; the Vulkan command processor does not call it yet.
+constexpr bool TryHalfCoverage(Rectangle guest_region, Extent guest_attachment,
+                               Rectangle& host_region_out) {
+  if (!FitsInside(guest_region, guest_attachment)) {
+    return false;
+  }
+  const Rectangle host_region = HalfCoverage(guest_region);
+  if (!FitsInside(host_region, HalfExtent(guest_attachment))) {
+    return false;
+  }
+  host_region_out = host_region;
+  return true;
+}
+
+constexpr bool TestHalfCoverageValid() {
+  Rectangle host{};
+  return TryHalfCoverage({1, 1, 3, 3}, {5, 5}, host) &&
+         host.x == 0 && host.y == 0 && host.width == 2 &&
+         host.height == 2;
+}
+constexpr bool TestHalfCoverageInvalid() {
+  Rectangle host{};
+  return !TryHalfCoverage({4, 4, 2, 2}, {5, 5}, host);
+}
+static_assert(TestHalfCoverageValid());
+static_assert(TestHalfCoverageInvalid());
+
 static_assert(FloorHalf(1280) == 640);
 static_assert(CeilHalf(720) == 360);
 static_assert(CeilHalf(3) == 2);
