@@ -6763,7 +6763,20 @@ bool VulkanCommandProcessor::IssueDraw(xenos::PrimitiveType prim_type,
   // vulkan_shading_rate: coarse shading of the multisampled scene's draws,
   // where the rate is allowed with what the pixel shader writes.
   draw_shading_rate_ = 0;
-  if ((cvars::vulkan_shading_rate || cvars::vulkan_zephyr_coarse_shading) &&
+  const bool zephyr_2x2_available =
+      cvars::vulkan_zephyr_coarse_shading &&
+      device_properties.pipelineFragmentShadingRate &&
+      device_properties.fragmentShadingRate2x2;
+  if (cvars::vulkan_zephyr_coarse_shading && !zephyr_2x2_available) {
+    static std::atomic<bool> logged_unsupported_zephyr_rate{false};
+    if (!logged_unsupported_zephyr_rate.exchange(
+            true, std::memory_order_relaxed)) {
+      XELOGW("Zephyr VRS 2x2 requested but Vulkan device does not support "
+             "the required pipeline shading feature or fragment size; "
+             "keeping normal shading");
+    }
+  }
+  if ((cvars::vulkan_shading_rate || zephyr_2x2_available) &&
       pixel_shader && device_properties.pipelineFragmentShadingRate) {
     const xenos::MsaaSamples guest_msaa_samples =
         regs.Get<reg::RB_SURFACE_INFO>().msaa_samples;
@@ -6773,7 +6786,7 @@ bool VulkanCommandProcessor::IssueDraw(xenos::PrimitiveType prim_type,
     // All Vulkan sample-count, depth-write and sample-mask guards below still
     // apply. This changes fragment shader frequency, NOT attachment size.
     if ((guest_msaa_samples != xenos::MsaaSamples::k1X ||
-         cvars::vulkan_zephyr_coarse_shading) &&
+         zephyr_2x2_available) &&
         (uint32_t(1) << uint32_t(render_target_cache_->GetHostMsaaSamples(
              guest_msaa_samples))) <=
             uint32_t(
@@ -6785,9 +6798,21 @@ bool VulkanCommandProcessor::IssueDraw(xenos::PrimitiveType prim_type,
         (!regs.Get<reg::RB_COLORCONTROL>().alpha_to_mask_enable ||
          device_properties.fragmentShadingRateWithShaderSampleMask ||
          (cvars::host_alpha_to_coverage && (normalized_color_mask & 0xF)))) {
-      draw_shading_rate_ = cvars::vulkan_zephyr_coarse_shading
-                               ? 3u  // 2x2 shading rate, subject to GPU support.
+      draw_shading_rate_ = zephyr_2x2_available
+                               ? 3u  // 2x2, supported by Vulkan device limits.
                                : (uint32_t(cvars::vulkan_shading_rate) & 3u);
+      if (zephyr_2x2_available) {
+        static std::atomic<bool> logged_active_zephyr_rate{false};
+        if (!logged_active_zephyr_rate.exchange(
+                true, std::memory_order_relaxed)) {
+          XELOGI("Zephyr VRS 2x2 selected for an eligible draw: guest MSAA {}, "
+                 "host MSAA {}. Fragment shading is coarse, render target "
+                 "resolution is unchanged",
+                 uint32_t(guest_msaa_samples),
+                 uint32_t(render_target_cache_->GetHostMsaaSamples(
+                     guest_msaa_samples)));
+        }
+      }
     }
   }
   // Update dynamic graphics pipeline state.
