@@ -245,7 +245,10 @@ class VulkanDevice {
     bool pipelineFragmentShadingRate = false;
     // Zephyr's requested 2x2 rate also requires a fragment-size limit
     // of at least 2x2. Do not infer this from extension availability alone.
-    bool fragmentShadingRate2x2 = false;
+    // Mask of host sample counts for which VK_KHR_fragment_shading_rate
+    // explicitly advertises the 2x2 fragment size. A maximum size alone
+    // does not guarantee that 2x2 exists at every sample count.
+    VkSampleCountFlags fragmentShadingRate2x2Samples = 0;
     bool fragmentShadingRateWithShaderDepthStencilWrites = false;
     bool fragmentShadingRateWithSampleMask = false;
     bool fragmentShadingRateWithShaderSampleMask = false;
