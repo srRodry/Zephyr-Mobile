@@ -49,6 +49,8 @@ class HostThreadCpuTest {
         assertEquals(1000.0 / 100 / 15 * 100, t.meanPercentOneCore, 1e-9)
         assertEquals(100.0, t.peakPercentOneCore, 1e-9)
         assertEquals(listOf(4, 7), t.observedProcessors)
+        assertEquals(listOf(HostThreadProcessorObservation(4, 1),
+                            HostThreadProcessorObservation(7, 1)), t.processorObservations)
     }
 
     @Test fun tidReuseDoesNotBecomeAnEnormousCpuSpike() {
