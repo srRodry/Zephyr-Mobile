@@ -37,6 +37,33 @@ constexpr Rectangle HalfCoverage(Rectangle guest) {
   return {x0, y0, x1 - x0, y1 - y0};
 }
 
+// Scale an attachment extent using ceil division so odd-sized allocations
+// retain their final partial host pixel. Guest EDRAM addressing is unchanged.
+struct Extent {
+  uint32_t width;
+  uint32_t height;
+};
+
+constexpr Extent HalfExtent(Extent guest) {
+  return {CeilHalf(guest.width), CeilHalf(guest.height)};
+}
+
+// Invariant: half-resolution coverage must remain inside the corresponding
+// half-resolution attachment. Does not permit scaling resolve addresses.
+constexpr bool FitsInside(Rectangle region, Extent attachment) {
+  return region.x <= attachment.width &&
+         region.y <= attachment.height &&
+         region.width <= attachment.width - region.x &&
+         region.height <= attachment.height - region.y;
+}
+
+static_assert(HalfExtent({1280, 720}).width == 640);
+static_assert(HalfExtent({1280, 720}).height == 360);
+static_assert(HalfExtent({1279, 719}).width == 640);
+static_assert(HalfExtent({1279, 719}).height == 360);
+static_assert(FitsInside(HalfCoverage({1, 1, 3, 3}), HalfExtent({4, 4})));
+static_assert(!FitsInside({1, 1, 2, 2}, {2, 2}));
+
 static_assert(FloorHalf(1280) == 640);
 static_assert(CeilHalf(720) == 360);
 static_assert(CeilHalf(3) == 2);
