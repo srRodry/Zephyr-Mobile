@@ -37,6 +37,16 @@ DEFINE_bool(
     "created (PipeStats lines). Takes effect at startup.",
     "Vulkan");
 
+// Zephyr's opt-in shading mode also needs this extension during device
+// creation. Define this switch in the Vulkan device module so it is available
+// before the command processor constructs any graphics pipelines.
+DEFINE_bool(
+    vulkan_zephyr_coarse_shading, false,
+    "Enable experimental 2x2 pipeline fragment shading where supported. "
+    "Automatically requests VK_KHR_fragment_shading_rate at startup. "
+    "Does not change render target dimensions.",
+    "Vulkan");
+
 DEFINE_bool(
     vulkan_fragment_shading_rate, false,
     "Enable VK_KHR_fragment_shading_rate when the driver has it, with the "
@@ -286,7 +296,8 @@ std::unique_ptr<VulkanDevice> VulkanDevice::CreateIfSupported(
     // #227. Only for the coarse shading option.
     if (get_physical_device_properties2_supported &&
         properties.apiVersion >= VK_MAKE_API_VERSION(0, 1, 2, 0) &&
-        cvars::vulkan_fragment_shading_rate) {
+        (cvars::vulkan_fragment_shading_rate ||
+         cvars::vulkan_zephyr_coarse_shading)) {
       XE_UI_VULKAN_STRUCT_EXTENSION(KHR_fragment_shading_rate)
     }
   }
