@@ -15,6 +15,19 @@ pattern = r'cpu0_phase_stats_\.Measure\(\s*cpu_index == 0 && cvars::guest_schedu
 matches = re.findall(pattern, body, re.S)
 assert [kind for kind, _ in matches] == ['kRepoll', 'kFiber', 'kIdle', 'kIdle', 'kIdle']
 unwrapped = 'void GuestScheduler::RunLoop(' + re.sub(pattern, lambda m: m[2].strip(), body, flags=re.S)
+# The Android CPU preference is an opt-in pre-loop scheduling hint. Keep the
+# original scheduler's predicates, queue operations and fiber transitions
+# locked against the frozen baseline rather than updating that baseline.
+fast_core_prelude = '''#if XE_PLATFORM_ANDROID || XE_PLATFORM_xendroid
+  if (cpu_index == 0) {
+    MaybePreferFastCoresForCpu0();
+  }
+#endif
+'''
+assert unwrapped.count(fast_core_prelude) == 1, 'Missing or duplicated CPU 0 affinity prelude'
+unwrapped = unwrapped.replace(fast_core_prelude, '', 1)
+assert 'sched_getaffinity(0, sizeof(original), &original)' in source
+assert 'sched_setaffinity(0, sizeof(preferred), &preferred)' in source
 baseline = (root / 'emulator-core/src/test/cpp/guest_scheduler_run_loop_baseline.inc').read_text()
 baseline = baseline[baseline.index('void GuestScheduler::RunLoop('):]
 normalize = lambda s: re.sub(r'\s+', '', s)
