@@ -5770,6 +5770,11 @@ RenderTargetCache::RenderTarget* VulkanRenderTargetCache::CreateRenderTarget(
       // Preview the prospective 1/2x attachment extent. This only logs a
       // calculation and must not be interpreted as actual 360p rendering.
       if (cvars::vulkan_subnative_360p) {
+        // A 2D attachment cannot be represented by a zero-sized VkImage.
+        // Also report candidate byte-area savings, not measured GPU gains.
+        const uint64_t actual_pixels =
+            uint64_t(image_create_info.extent.width) *
+            uint64_t(image_create_info.extent.height);
         const auto half_extent = subnative::HalfExtent(
             {image_create_info.extent.width, image_create_info.extent.height});
         XELOGI("Vulkan RT 360p preview (NOT ACTIVE): actual={}x{}, "
@@ -5778,6 +5783,13 @@ RenderTargetCache::RenderTarget* VulkanRenderTargetCache::CreateRenderTarget(
                image_create_info.extent.height, half_extent.width,
                half_extent.height, uint32_t(image_create_info.samples),
                key.is_depth);
+        const uint64_t candidate_pixels =
+            uint64_t(half_extent.width) * uint64_t(half_extent.height);
+        XELOGI("Vulkan RT 360p preview (NOT ACTIVE): pixels actual={}, "
+               "candidate={}, reduction={} percent (pixel count only)",
+               actual_pixels, candidate_pixels,
+               actual_pixels ? (100 * (actual_pixels - candidate_pixels) /
+                                actual_pixels) : 0);
       }
     }
   }
