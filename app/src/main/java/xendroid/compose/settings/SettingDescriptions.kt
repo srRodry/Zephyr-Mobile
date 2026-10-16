@@ -171,6 +171,7 @@ object SettingDescriptions {
         "vulkan_log_debug_messages" to "Write Vulkan debug-utils messages to the emulator log instead of the system debug output",
         "vulkan_mid_frame_submission_draws" to "Submit GPU work after this many draws instead of once per frame; 0 off, too low hurts tiled GPUs",
         "vulkan_pipeline_creation_threads" to "Threads used to build graphics pipelines: -1 auto, 0 single-threaded, or an explicit count",
+        "vulkan_zephyr_coarse_shading" to "Experimental 2x2 Vulkan variable rate shading when supported by the GPU. May reduce pixel shader work, including 1x draws, without changing render target resolution. Can cause visible shading artifacts; turn off if graphics regress. Applies after restarting the game.",
         "vulkan_renderdoc_capture" to "Load the RenderDoc capture layer so frames can be captured by attaching from qrenderdoc",
         "vulkan_sparse_shared_memory" to "Use sparse binding for guest memory; disabling uses a full 512 MB buffer but helps some GPU debuggers",
         "vulkan_texture_descriptor_reuse_edge" to "Use upstream's descriptor reuse check instead of the content-hash one, for A/B comparison",
