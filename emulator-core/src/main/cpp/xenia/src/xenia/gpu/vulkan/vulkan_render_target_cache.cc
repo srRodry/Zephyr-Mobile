@@ -43,6 +43,7 @@ DECLARE_bool(msaa_4x_as_2x);
 DECLARE_bool(vulkan_resolve_dest_diag);
 DECLARE_bool(rt_cache_ownership_claim_memo);
 DECLARE_bool(vulkan_dynamic_rendering);
+DECLARE_uint32(internal_display_resolution);
 
 DEFINE_bool(
     vulkan_in_pass_resolve_debug_read_usage, false,
@@ -98,10 +99,11 @@ DEFINE_bool(
     "Vulkan");
 
 DEFINE_bool(
-    vulkan_log_render_target_dimensions, true,
-    "Log the first 64 created Vulkan render-target guest and host dimensions, "
-    "scales, sample counts, depth flag and format. Diagnostic only; does not "
-    "enable subnative rendering. Enabled for the temporary diagnostic APK.",
+    vulkan_log_render_target_dimensions, false,
+    "Log early Vulkan render-target guest and host extents plus a bounded "
+    "color-target width summary. Also enabled automatically when experimental "
+    "guest video mode 18 (640x360) is requested. Diagnostic only; does not "
+    "enable subnative rendering.",
     "Vulkan");
 
 DEFINE_bool(
@@ -5751,13 +5753,20 @@ RenderTargetCache::RenderTarget* VulkanRenderTargetCache::CreateRenderTarget(
            key.is_depth ? "depth" : "color", key.resource_format);
     return nullptr;
   }
-  // Diagnostic only: report actual Vulkan attachment dimensions without
-  // changing guest rendering, EDRAM mapping, or the resolve path.
-  // Cap output to avoid excessive logging during gameplay.
-  if (cvars::vulkan_log_render_target_dimensions ||
-      cvars::vulkan_subnative_360p) {
+  // Diagnostic only: compare *actual allocated host image extents* with
+  // guest attachment widths. Xenos tiled render targets can include padding,
+  // and a render target's dimensions do not necessarily describe the visible
+  // frame. Never treat this log as proof of full-scene 360p rendering.
+  // Collect only at RT creation (not per draw), with bounded log output.
+  const bool log_rt_dimensions =
+      cvars::vulkan_log_render_target_dimensions ||
+      cvars::vulkan_subnative_360p ||
+      cvars::internal_display_resolution == 18;
+  if (log_rt_dimensions) {
     static std::atomic<uint32_t> logged_targets{0};
-    if (logged_targets.fetch_add(1, std::memory_order_relaxed) < 64) {
+    const uint32_t target_number =
+        logged_targets.fetch_add(1, std::memory_order_relaxed) + 1;
+    if (target_number <= 24) {
       XELOGI(
           "Vulkan RT dimensions: guest={}x{}, host={}x{}, scale={}x{}, "
           "samples={}, depth={}, format={}",
@@ -5799,6 +5808,43 @@ RenderTargetCache::RenderTarget* VulkanRenderTargetCache::CreateRenderTarget(
                actual_pixels, candidate_pixels,
                actual_pixels ? (100 * (actual_pixels - candidate_pixels) /
                                 actual_pixels) : 0);
+      }
+    }
+  }
+    // Color RT allocations at 640-wide (or pitch-aligned nearby) versus
+    // 1280-wide are evidence about which render surfaces the game creates.
+    // This is a distribution of *allocation attempts*, not rendered frames.
+    // Do not include tiny postprocess buffers or MSAA/depth assumptions.
+    if (!key.is_depth && key.GetWidth() >= 512) {
+      static std::atomic<uint32_t> large_color_targets{0};
+      static std::atomic<uint32_t> guest_sd_widths{0};
+      static std::atomic<uint32_t> guest_hd_widths{0};
+      static std::atomic<uint32_t> host_sd_widths{0};
+      static std::atomic<uint32_t> host_hd_widths{0};
+      const uint32_t guest_width = key.GetWidth();
+      const uint32_t host_width = image_create_info.extent.width;
+      if (guest_width >= 576 && guest_width <= 768) {
+        guest_sd_widths.fetch_add(1, std::memory_order_relaxed);
+      } else if (guest_width >= 1152 && guest_width <= 1408) {
+        guest_hd_widths.fetch_add(1, std::memory_order_relaxed);
+      }
+      if (host_width >= 576 && host_width <= 768) {
+        host_sd_widths.fetch_add(1, std::memory_order_relaxed);
+      } else if (host_width >= 1152 && host_width <= 1408) {
+        host_hd_widths.fetch_add(1, std::memory_order_relaxed);
+      }
+      const uint32_t n =
+          large_color_targets.fetch_add(1, std::memory_order_relaxed) + 1;
+      if (n == 8 || n == 32 || n == 128 || n == 512) {
+        XELOGI("Vulkan RT width audit: {} color allocation attempts "
+               "(guest widths >= 512), guest near 640={}, near 1280={}, "
+               "host near 640={}, near 1280={}. Other sizes excluded from "
+               "these four buckets; Xenos pitch padding may apply. "
+               "NOT a count of rendered frames or proof of 360p.",
+               n, guest_sd_widths.load(std::memory_order_relaxed),
+               guest_hd_widths.load(std::memory_order_relaxed),
+               host_sd_widths.load(std::memory_order_relaxed),
+               host_hd_widths.load(std::memory_order_relaxed));
       }
     }
   }
