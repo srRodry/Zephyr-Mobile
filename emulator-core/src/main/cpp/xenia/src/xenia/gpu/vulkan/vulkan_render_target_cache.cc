@@ -5810,7 +5810,6 @@ RenderTargetCache::RenderTarget* VulkanRenderTargetCache::CreateRenderTarget(
                                 actual_pixels) : 0);
       }
     }
-  }
     // Color RT allocations at 640-wide (or pitch-aligned nearby) versus
     // 1280-wide are evidence about which render surfaces the game creates.
     // This is a distribution of *allocation attempts*, not rendered frames.
