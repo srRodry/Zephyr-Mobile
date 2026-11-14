@@ -1,0 +1,24 @@
+name: Zephyr research tools
+on:
+  push:
+    branches: [research/android-x360-foundation]
+    paths:
+      - 'tools/compare-benchmarks.py'
+      - 'tools/test-compare-benchmarks.py'
+      - '.github/workflows/zephyr-research.yml'
+  pull_request:
+    paths:
+      - 'tools/compare-benchmarks.py'
+      - 'tools/test-compare-benchmarks.py'
+      - '.github/workflows/zephyr-research.yml'
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  comparison:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test benchmark comparison
+        run: python3 tools/test-compare-benchmarks.py
