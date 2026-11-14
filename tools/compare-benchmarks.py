@@ -53,7 +53,7 @@ def read_capture(directory):
     return {"directory": str(directory), "context": context, "summary": summary}
 
 
-def compare(reference, candidate):
+def compare(reference, candidate, *, allow_config_change=False):
     if len(reference) < 3 or len(candidate) < 3:
         raise ValueError("At least three independent captures per arm are required")
     paths = [Path(r["directory"]).resolve() for r in reference + candidate]
@@ -62,12 +62,14 @@ def compare(reference, candidate):
     first = reference[0]
     for run in reference + candidate:
         for key in CONTEXT_FIELDS:
+            if allow_config_change and key == "config_sha256":
+                continue
             if run["context"][key] != first["context"][key]:
                 raise ValueError(f"Incomparable context: {key} differs in {run['directory']}")
         if run["summary"]["package"] != first["summary"]["package"]:
             raise ValueError("Incomparable captures: package differs")
     for arm in (reference, candidate):
-        for key in ("commit", "apk_sha256"):
+        for key in ("commit", "apk_sha256", "config_sha256"):
             if len({r["context"][key] for r in arm}) != 1:
                 raise ValueError(f"Mixed {key} values within one arm")
     durations = [r["summary"]["measurement_elapsed_s"] for r in reference + candidate]
@@ -85,7 +87,10 @@ def compare(reference, candidate):
             "candidate_range": [min(b), max(b)],
         }
     return {
-        "schema_version": 1, "reference_runs": len(reference),
+        "schema_version": 1,
+        "config_change_allowed": allow_config_change,
+        "config_changed": reference[0]["context"]["config_sha256"] != candidate[0]["context"]["config_sha256"],
+        "reference_runs": len(reference),
         "candidate_runs": len(candidate), "metrics": rows,
         "reference_commit": reference[0]["context"]["commit"],
         "candidate_commit": candidate[0]["context"]["commit"],
@@ -104,10 +109,13 @@ def main():
     parser.add_argument("--reference", nargs="+", type=Path, required=True)
     parser.add_argument("--candidate", nargs="+", type=Path, required=True)
     parser.add_argument("--output", type=Path, help="New JSON report; existing files are preserved")
+    parser.add_argument("--allow-config-change", action="store_true",
+                        help="Explicit configuration experiment; other context must still match")
     args = parser.parse_args()
     try:
         result = compare([read_capture(p) for p in args.reference],
-                         [read_capture(p) for p in args.candidate])
+                         [read_capture(p) for p in args.candidate],
+                         allow_config_change=args.allow_config_change)
         rendered = json.dumps(result, indent=2, allow_nan=False) + "\n"
         if args.output:
             with args.output.open("x", encoding="utf-8") as stream:

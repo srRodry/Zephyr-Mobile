@@ -12,6 +12,8 @@
 #include <cmath>
 #include <cstddef>
 #include <cstdint>
+#include <set>
+#include <utility>
 
 #include "third_party/fmt/include/fmt/format.h"
 #include "third_party/glslang/SPIRV/GLSL.std.450.h"
@@ -54,6 +56,17 @@ DEFINE_bool(
     "and then nir_op_fmadz, which the Adreno ir3 compiler does not implement - "
     "it aborts shader compilation (Project Gotham Racing 3, Dark Souls on "
     "a8xx). Enable for titles whose shaders fail to compile that way.",
+    "GPU");
+
+DEFINE_bool(
+    spirv_structured_forward_jumps, false,
+    "Translate forward jumps of the shader microcode, where they nest like the "
+    "if and else they usually come from, as if and else - instead of a loop "
+    "iteration and a dispatch through a switch over all the labels of the "
+    "shader for each jump taken. Compilers test the switch's cases one by one. "
+    "The first export shader of Halo: Reach's particles takes up to 43 jumps "
+    "in each of 14 iterations of a loop, over 28 labels. Takes effect for "
+    "shaders translated afterwards.",
     "GPU");
 
 DEFINE_bool(
@@ -1039,7 +1052,8 @@ void SpirvShaderTranslator::StartTranslation() {
 
   // If no jumps, don't create a switch, but still create a loop so exece can
   // break.
-  bool has_main_switch = !current_shader().label_addresses().empty();
+  AnalyzeStructuredJumps();
+  bool has_main_switch = structured_jumps_.main_switch_needed;
 
   // Main loop header - based on whether it's the first iteration (entered from
   // the function or from the continuation), choose the program counter.
@@ -1094,7 +1108,7 @@ std::vector<uint8_t> SpirvShaderTranslator::CompleteTranslation() {
   if (!is_depth_only_fragment_shader_) {
     // Close flow control within the last switch case.
     CloseExecConditionals();
-    bool has_main_switch = !current_shader().label_addresses().empty();
+    bool has_main_switch = structured_jumps_.main_switch_needed;
     // After the final exec (if it happened to be not exece, which would already
     // have a break branch), break from the switch if it exists, or from the
     // loop it doesn't.
@@ -1429,6 +1443,11 @@ void SpirvShaderTranslator::ProcessLabel(uint32_t cf_index) {
   // Close flow control within the previous switch case.
   CloseExecConditionals();
 
+  if (structured_jumps_.labels.count(cf_index)) {
+    CloseStructuredJumpRegions(cf_index);
+    return;
+  }
+
   spv::Function& function = builder_->getBuildPoint()->getParent();
   // Create the next switch case and fallthrough to it.
   spv::Block* new_case = new spv::Block(builder_->getUniqueId(), function);
@@ -1468,9 +1487,9 @@ void SpirvShaderTranslator::ProcessExecInstructionEnd(
     // Break out of the main switch (if exists) and the main loop.
     CloseInstructionPredication();
     if (!builder_->getBuildPoint()->isTerminated()) {
-      builder_->createBranch(current_shader().label_addresses().empty()
-                                 ? main_loop_merge_
-                                 : main_switch_merge_);
+      builder_->createBranch(structured_jumps_.main_switch_needed
+                                 ? main_switch_merge_
+                                 : main_loop_merge_);
     }
   }
   UpdateExecConditionals(instr.type, instr.bool_constant_index,
@@ -1704,8 +1723,126 @@ void SpirvShaderTranslator::ProcessLoopEndInstruction(
   // Now going to fall through to the next control flow instruction.
 }
 
+void SpirvShaderTranslator::AnalyzeStructuredJumps() {
+  structured_jumps_ = StructuredJumps();
+  structured_jump_regions_.clear();
+  const Shader& shader = current_shader();
+  structured_jumps_.main_switch_needed = !shader.label_addresses().empty();
+  if (!structured_jumps_.main_switch_needed ||
+      !cvars::spirv_structured_forward_jumps ||
+      shader.uses_subroutine_calls()) {
+    return;
+  }
+  std::vector<ShaderJump> jumps;
+  std::set<uint32_t> switch_labels;
+  for (uint32_t i = 0; i < shader.cf_pair_index_bound(); ++i) {
+    ucode::ControlFlowInstruction cf_ab[2];
+    ucode::UnpackControlFlowInstructions(shader.ucode_dwords() + i * 3, cf_ab);
+    for (uint32_t j = 0; j < 2; ++j) {
+      const ucode::ControlFlowInstruction& cf = cf_ab[j];
+      switch (cf.opcode()) {
+        case ucode::ControlFlowOpcode::kLoopStart:
+          switch_labels.insert(cf.loop_start.address());
+          break;
+        case ucode::ControlFlowOpcode::kLoopEnd:
+          switch_labels.insert(cf.loop_end.address());
+          break;
+        case ucode::ControlFlowOpcode::kCondJmp:
+          jumps.push_back(ShaderJump{i * 2 + j, cf.cond_jmp.address(),
+                                     cf.cond_jmp.is_unconditional()});
+          break;
+        default:
+          break;
+      }
+    }
+  }
+  // Labels of control flow past the bound of the program stay cases too.
+  std::set<uint32_t> jump_targets;
+  for (const ShaderJump& jump : jumps) {
+    jump_targets.insert(jump.target);
+  }
+  for (uint32_t label : shader.label_addresses()) {
+    if (!jump_targets.count(label)) {
+      switch_labels.insert(label);
+    }
+  }
+  structured_jumps_ = gpu::AnalyzeStructuredJumps(
+      jumps, std::move(switch_labels), shader.cf_pair_index_bound() * 2);
+}
+
+void SpirvShaderTranslator::OpenStructuredJumpRegion(
+    const ParsedJumpInstruction& instr, uint32_t else_end) {
+  CloseExecConditionals();
+  EnsureBuildPointAvailable();
+  const spv::Id condition_id =
+      instr.type == ParsedJumpInstruction::Type::kConditional
+          ? LoadBoolConstantCondition(instr.bool_constant_index)
+          : builder_->createLoad(var_main_predicate_, spv::NoPrecision);
+  spv::Function& function = builder_->getBuildPoint()->getParent();
+  StructuredJumpRegion region;
+  region.end = instr.target_address;
+  region.else_block =
+      else_end ? new spv::Block(builder_->getUniqueId(), function) : nullptr;
+  region.else_end = else_end;
+  region.merge = new spv::Block(builder_->getUniqueId(), function);
+  builder_->createSelectionMerge(region.merge, spv::SelectionControlMaskNone);
+  spv::Block& region_block = builder_->makeNewBlock();
+  spv::Block* const not_region_block =
+      region.else_block ? region.else_block : region.merge;
+  // The region runs if the jump isn't taken.
+  builder_->createConditionalBranch(
+      condition_id, instr.condition ? not_region_block : &region_block,
+      instr.condition ? &region_block : not_region_block);
+  builder_->setBuildPoint(&region_block);
+  structured_jump_regions_.push_back(region);
+}
+
+void SpirvShaderTranslator::CloseStructuredJumpRegions(uint32_t cf_index) {
+  while (!structured_jump_regions_.empty() &&
+         structured_jump_regions_.back().end == cf_index) {
+    StructuredJumpRegion& region = structured_jump_regions_.back();
+    spv::Block& last_block = *builder_->getBuildPoint();
+    if (!last_block.isTerminated()) {
+      builder_->createBranch(region.merge);
+    }
+    if (region.else_block) {
+      last_block.getParent().addBlock(region.else_block);
+      builder_->setBuildPoint(region.else_block);
+      region.end = region.else_end;
+      region.else_block = nullptr;
+      // Nothing outside ends before its else.
+      return;
+    }
+    last_block.getParent().addBlock(region.merge);
+    builder_->setBuildPoint(region.merge);
+    if (region.merge->getPredecessors().empty()) {
+      // Both branches end by jumping elsewhere or exiting.
+      region.merge->addInstruction(
+          std::make_unique<spv::Instruction>(spv::OpUnreachable));
+    }
+    structured_jump_regions_.pop_back();
+  }
+}
+
 void SpirvShaderTranslator::ProcessJumpInstruction(
     const ParsedJumpInstruction& instr) {
+  if (!structured_jumps_.kinds.empty()) {
+    switch (structured_jumps_.kinds[instr.dword_index]) {
+      case StructuredJumps::Kind::kIf:
+        OpenStructuredJumpRegion(instr, 0);
+        return;
+      case StructuredJumps::Kind::kIfElse:
+        OpenStructuredJumpRegion(instr,
+                                 structured_jumps_.else_ends[instr.dword_index]);
+        return;
+      case StructuredJumps::Kind::kElseJump:
+        // The label right after it ends the region.
+        CloseExecConditionals();
+        return;
+      default:
+        break;
+    }
+  }
   // Treat like exec, merge with execs if possible, since it's an if too.
   ParsedExecInstruction::Type type;
   if (instr.type == ParsedJumpInstruction::Type::kConditional) {
@@ -3982,6 +4119,31 @@ void SpirvShaderTranslator::StartFragmentShaderInMain() {
   }
 }
 
+spv::Id SpirvShaderTranslator::LoadBoolConstantCondition(
+    uint32_t bool_constant_index) {
+  id_vector_temp_.clear();
+  // Bool constants (member 0).
+  id_vector_temp_.push_back(const_int_0_);
+  // 128-bit vector.
+  id_vector_temp_.push_back(
+      builder_->makeIntConstant(int(bool_constant_index >> 7)));
+  // 32-bit scalar of a 128-bit vector.
+  id_vector_temp_.push_back(
+      builder_->makeIntConstant(int((bool_constant_index >> 5) & 3)));
+  spv::Id bool_constant_scalar =
+      builder_->createLoad(builder_->createAccessChain(
+                               spv::StorageClassUniform,
+                               uniform_bool_loop_constants_, id_vector_temp_),
+                           spv::NoPrecision);
+  return builder_->createBinOp(
+      spv::OpINotEqual, type_bool_,
+      builder_->createBinOp(
+          spv::OpBitwiseAnd, type_uint_, bool_constant_scalar,
+          builder_->makeUintConstant(uint32_t(1)
+                                     << (bool_constant_index & 31))),
+      const_uint_0_);
+}
+
 void SpirvShaderTranslator::UpdateExecConditionals(
     ParsedExecInstruction::Type type, uint32_t bool_constant_index,
     bool condition) {
@@ -4021,27 +4183,7 @@ void SpirvShaderTranslator::UpdateExecConditionals(
   EnsureBuildPointAvailable();
   spv::Id condition_id;
   if (type == ParsedExecInstruction::Type::kConditional) {
-    id_vector_temp_.clear();
-    // Bool constants (member 0).
-    id_vector_temp_.push_back(const_int_0_);
-    // 128-bit vector.
-    id_vector_temp_.push_back(
-        builder_->makeIntConstant(int(bool_constant_index >> 7)));
-    // 32-bit scalar of a 128-bit vector.
-    id_vector_temp_.push_back(
-        builder_->makeIntConstant(int((bool_constant_index >> 5) & 3)));
-    spv::Id bool_constant_scalar =
-        builder_->createLoad(builder_->createAccessChain(
-                                 spv::StorageClassUniform,
-                                 uniform_bool_loop_constants_, id_vector_temp_),
-                             spv::NoPrecision);
-    condition_id = builder_->createBinOp(
-        spv::OpINotEqual, type_bool_,
-        builder_->createBinOp(
-            spv::OpBitwiseAnd, type_uint_, bool_constant_scalar,
-            builder_->makeUintConstant(uint32_t(1)
-                                       << (bool_constant_index & 31))),
-        const_uint_0_);
+    condition_id = LoadBoolConstantCondition(bool_constant_index);
     cf_exec_bool_constant_or_predicate_ = bool_constant_index;
   } else if (type == ParsedExecInstruction::Type::kPredicated) {
     condition_id = builder_->createLoad(var_main_predicate_, spv::NoPrecision);

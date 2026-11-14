@@ -32,3 +32,20 @@ License texts and engine notices are bundled as offline assets under
 `file:///android_asset/engine-licenses/` (fonts: `file:///android_asset/font-licenses/`);
 About → Open-source licenses links to them. Distribute the source and build instructions for the exact APK revision,
 including these native changes and the imported source/notices.
+
+## Research: structured shader jumps
+
+Imported from phforner0/Xendroid-Plus commit
+`4f0d10aa353e3be729862411df59827889de6cc9`, authored by phforner0
+with the co-author attribution retained in the upstream history. Files:
+`spirv_shader_translator.cc`, `spirv_shader_translator.h`,
+`structured_jumps.h` under the Xenia GPU directory, and
+`emulator-core/src/test/cpp/structured_jumps_test.cc`.
+Original Xenia BSD notices are retained. Xendroid+ contributions are
+Copyright (C) 2026 phforner0 and contributors, AGPL-3.0-or-later as declared
+by that revision. Full license is bundled in
+`emulator-core/src/main/assets/engine-licenses/xendroid-plus-AGPL-3.0.txt`.
+For this combined research build, distribute corresponding source under the
+applicable AGPL terms alongside the retained third-party notices.
+Source: https://github.com/srRodry/Zephyr-Mobile/tree/research/android-x360-gpu-candidate
+Upstream: https://github.com/phforner0/Xendroid-Plus/commit/4f0d10aa353e3be729862411df59827889de6cc9

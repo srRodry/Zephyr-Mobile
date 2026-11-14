@@ -24,7 +24,7 @@ else
     dl=(-ldl)   # dladdr/dl_iterate_phdr before glibc 2.34
 fi
 flags=(-std=c++20 -O1 -Wall -I "$cpp" -I "$cpp/xenia" -I "$cpp/xenia/src" -I "$test/stubs")
-for name in presentation_runtime_test pipeline_cache_file_test vblank_pacer_test changed_settings_test frame_stats_test audio_buffer_tuner_test audio_block_renderer_test; do
+for name in presentation_runtime_test pipeline_cache_file_test vblank_pacer_test changed_settings_test frame_stats_test audio_buffer_tuner_test audio_block_renderer_test structured_jumps_test; do
     "${cxx[@]}" "${flags[@]}" "$test/$name.cc" -o "$build/$name"
 done
 # C01: the crash record is a source file of its own (signal-handler code).
@@ -36,6 +36,7 @@ done
 "$build/frame_stats_test"
 "$build/audio_buffer_tuner_test"
 "$build/audio_block_renderer_test"
+"$build/structured_jumps_test"
 "$build/crash_record_test" "$build/crash-record-scratch"
 # Host threads and APC delivery (Thread::QueueUserCallback) on the fork's Android
 # path (XE_PLATFORM_xendroid), so only with the NDK; Xenia's headers need clang.

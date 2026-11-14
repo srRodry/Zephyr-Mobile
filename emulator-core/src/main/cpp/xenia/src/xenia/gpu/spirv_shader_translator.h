@@ -20,6 +20,7 @@
 #include "xenia/base/platform.h"
 #include "xenia/gpu/shader_translator.h"
 #include "xenia/gpu/spirv_builder.h"
+#include "xenia/gpu/structured_jumps.h"
 #include "xenia/gpu/xenos.h"
 
 namespace xe {
@@ -835,6 +836,13 @@ class SpirvShaderTranslator : public ShaderTranslator {
   // Closes conditionals opened by exec and instructions within them (but not by
   // labels) and updates the state accordingly.
   void CloseExecConditionals();
+  // spirv_structured_forward_jumps: which forward jumps become if / if-else
+  // and which labels leave the main switch.
+  void AnalyzeStructuredJumps();
+  spv::Id LoadBoolConstantCondition(uint32_t bool_constant_index);
+  void OpenStructuredJumpRegion(const ParsedJumpInstruction& instr,
+                                uint32_t else_end);
+  void CloseStructuredJumpRegions(uint32_t cf_index);
 
   spv::Id GetStorageAddressingIndex(
       InstructionStorageAddressingMode addressing_mode, uint32_t storage_index,
@@ -1412,6 +1420,18 @@ class SpirvShaderTranslator : public ShaderTranslator {
   std::unique_ptr<spv::Instruction> main_switch_op_;
   spv::Block* main_switch_merge_;
   std::vector<spv::Id> main_switch_next_pc_phi_operands_;
+
+  // spirv_structured_forward_jumps.
+  StructuredJumps structured_jumps_;
+  struct StructuredJumpRegion {
+    // The label ending the branch being built.
+    uint32_t end;
+    // The else branch if it's still to be built.
+    spv::Block* else_block;
+    uint32_t else_end;
+    spv::Block* merge;
+  };
+  std::vector<StructuredJumpRegion> structured_jump_regions_;
 
   // If the exec bool constant / predicate conditional is open, block after it
   // (not added to the function yet).

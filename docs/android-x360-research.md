@@ -77,8 +77,9 @@ Em cada diretório de captura, criar `benchmark-context.json` com strings reais:
 ```
 
 O exemplo exige preenchimento e não é um resultado de benchmark.
-Para comparar uma alteração de configuração, esta versão da ferramenta recusa
-hashes diferentes: ela foi projetada para mudanças de código com configuração fixa.
+Para comparar uma alteração de configuração, o padrão recusa hashes diferentes. Para um experimento deliberado de configuração,
+`--allow-config-change` registra essa diferença e ainda exige consistência dentro
+de cada versão. Consulte [Experimento 01](structured-jumps-experiment.md).
 
 Coletar pelo menos três rodadas independentes por versão, intercaladas A/B,
 com duração semelhante, mesma cena, mesmo driver, cache aquecido e temperatura
