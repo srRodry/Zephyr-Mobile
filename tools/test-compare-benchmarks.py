@@ -50,6 +50,18 @@ class ComparisonTests(unittest.TestCase):
                 with self.assertRaises(ValueError):
                     comparison.compare(self.reference, candidate)
 
+    def test_explicit_configuration_experiment(self):
+        for run in self.candidate:
+            run["context"]["config_sha256"] = "e" * 64
+        with self.assertRaises(ValueError):
+            comparison.compare(self.reference, self.candidate)
+        result = comparison.compare(self.reference, self.candidate, allow_config_change=True)
+        self.assertTrue(result["config_changed"])
+        self.assertTrue(result["config_change_allowed"])
+        self.candidate[0]["context"]["config_sha256"] = "f" * 64
+        with self.assertRaises(ValueError):
+            comparison.compare(self.reference, self.candidate, allow_config_change=True)
+
     def test_reject_insufficient_or_duplicate_runs(self):
         for candidate in (self.candidate[:2], self.candidate[:2] + self.candidate[:1]):
             with self.assertRaises(ValueError):

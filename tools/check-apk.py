@@ -20,6 +20,7 @@ import zipfile
 
 CORE_LIBRARY = "lib/arm64-v8a/libe.so"
 LICENSES = {
+    "assets/engine-licenses/xendroid-plus-AGPL-3.0.txt",
     "assets/engine-licenses/dxbc-license.txt",
     "assets/engine-licenses/fidelityfx-notice.txt",
     "assets/engine-licenses/lsfg-GPL-3.0.txt",
