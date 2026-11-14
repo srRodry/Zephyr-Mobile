@@ -29,7 +29,7 @@ fun Modifier.zephyrBackdrop(): Modifier {
     val c = Xd.colors
     return drawWithCache {
         val atmosphere = Brush.linearGradient(
-            listOf(c.bg, Color(0xFF0B3027), c.bg),
+            listOf(Color(0xFF123E30), c.bg, Color(0xFF071E1A)),
             start = Offset(size.width, 0f), end = Offset(0f, size.height),
         )
         val current = Path().apply {
@@ -37,10 +37,16 @@ fun Modifier.zephyrBackdrop(): Modifier {
             cubicTo(size.width * .25f, size.height * .12f, size.width * .56f,
                 size.height * 1.05f, size.width * 1.15f, size.height * .18f)
         }
+        val halo = Brush.radialGradient(
+            listOf(c.acc.copy(alpha = .16f), Color.Transparent),
+            center = Offset(size.width * .78f, size.height * .16f),
+            radius = size.maxDimension * .7f,
+        )
         onDrawBehind {
             drawRect(atmosphere)
-            drawPath(current, c.acc.copy(alpha = .035f), style = Stroke(36.dp.toPx()))
-            drawPath(current, c.acc.copy(alpha = .12f), style = Stroke(1.dp.toPx()))
+            drawRect(halo)
+            drawPath(current, c.acc.copy(alpha = .045f), style = Stroke(64.dp.toPx()))
+            drawPath(current, c.acc.copy(alpha = .28f), style = Stroke(1.dp.toPx()))
         }
     }
 }
@@ -52,15 +58,26 @@ fun Modifier.zephyrSurface(shape: Shape = ZephyrPanelShape, emphasized: Boolean 
     val top = if (emphasized) c.solid(c.s3) else c.solid(c.s2)
     val bottom = c.solid(c.s1)
     return clip(shape)
-        .background(Brush.linearGradient(listOf(top, bottom, bottom)))
+        .background(Brush.linearGradient(listOf(top, bottom, Color(0xFF061B16))))
         .border(1.dp, if (emphasized) c.acc.copy(alpha = .55f) else c.line, shape)
         .drawWithCache {
             val sheen = Brush.linearGradient(
-                listOf(Color.White.copy(alpha = .045f), Color.Transparent),
+                listOf(Color.White.copy(alpha = .13f), Color.Transparent),
                 end = Offset(size.width * .7f, size.height * .5f),
             )
+            val reflection = Path().apply {
+                moveTo(0f, 0f)
+                lineTo(size.width * .78f, 0f)
+                quadraticBezierTo(size.width * .48f, size.height * .24f, 0f, size.height * .58f)
+                close()
+            }
+            val rim = Brush.horizontalGradient(listOf(Color.Transparent,
+                c.acc.copy(alpha = if (emphasized) .85f else .4f), Color.Transparent))
             onDrawBehind {
                 drawRect(sheen)
+                drawPath(reflection, Color.White.copy(alpha = .035f))
+                drawLine(rim, Offset(0f, size.height - 1.dp.toPx()),
+                    Offset(size.width, size.height - 1.dp.toPx()), 1.dp.toPx())
                 drawLine(c.acc.copy(alpha = if (emphasized) .7f else .22f),
                     Offset(24.dp.toPx(), 1.dp.toPx()),
                     Offset(size.width * .6f, 1.dp.toPx()), 1.dp.toPx())

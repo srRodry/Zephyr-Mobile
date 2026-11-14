@@ -19,6 +19,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -124,7 +125,10 @@ internal fun LibraryFeaturedGame(
                 val topLeft = Offset((size.width - w) / 2, size.height - h)
                 drawOval(Brush.radialGradient(listOf(c.acc.copy(alpha = .16f), Color.Transparent),
                     center = Offset(size.width / 2, size.height - h / 2), radius = w / 2), topLeft, Size(w, h))
-                drawOval(c.acc.copy(alpha = .32f), topLeft, Size(w, h), style = Stroke(1.dp.toPx()))
+                drawOval(Color(0xFF06150F), topLeft + Offset(0f, 5.dp.toPx()), Size(w, h))
+                drawOval(c.acc.copy(alpha = .55f), topLeft, Size(w, h), style = Stroke(1.5.dp.toPx()))
+                drawOval(c.acc.copy(alpha = .16f), topLeft + Offset(w * .12f, h * .18f),
+                    Size(w * .76f, h * .64f), style = Stroke(1.dp.toPx()))
             }
             val coverWidth = (maxWidth * .42f).coerceIn(110.dp, 154.dp)
             nearby.take(4).forEachIndexed { index, (neighbour, neighbourArt) ->
@@ -133,12 +137,14 @@ internal fun LibraryFeaturedGame(
                 LibraryArtwork(neighbour, neighbourArt,
                     Modifier.align(Alignment.Center).offset(x = coverWidth * (side * (.55f + depth * .12f)), y = 12.dp)
                         .width(coverWidth * (.76f - depth * .08f))
-                        .graphicsLayer { rotationY = side * -18f; alpha = .65f - depth * .08f }
+                        .graphicsLayer { rotationY = side * -22f; alpha = .94f - depth * .08f }
                         .zIndex(-depth.toFloat())
                         .clickable(role = Role.Button) { onSelectNearby(neighbour) }
                         .semantics { contentDescription = neighbour.name })
             }
-            LibraryArtwork(game, art, Modifier.width(coverWidth).zIndex(1f), data.favorite(game))
+            LibraryArtwork(game, art, Modifier.width(coverWidth).zIndex(1f)
+                .shadow(18.dp, RoundedCornerShape(4.dp), ambientColor = c.acc, spotColor = c.acc)
+                .border(1.dp, c.acc.copy(alpha = .85f), RoundedCornerShape(4.dp)), data.favorite(game))
         }
         Column(Modifier.fillMaxWidth().testTag("library-featured-identity"), verticalArrangement = Arrangement.spacedBy(7.dp)) {
             Text(game.name, style = XdText.heroSm, color = c.fg, maxLines = 2, overflow = TextOverflow.Ellipsis)

@@ -86,7 +86,7 @@ fun ZephyrBladeRail(current: XdArea?, modifier: Modifier = Modifier) {
     Column(modifier.width(128.dp).fillMaxHeight().zephyrBackdrop().testTag("zephyr-navigation-landscape")
         .windowInsetsPadding(WindowInsets.safeDrawing.part(top = true, bottom = true, start = true))) {
         Column(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            Image(painterResource(R.drawable.zephyr_launcher_foreground), stringResource(R.string.app_name), Modifier.size(44.dp))
+            ZephyrOrbitMark(48.dp)
             Text("ZEPHYR", style = XdText.eyebrow, color = c.fg, modifier = Modifier.padding(top = 6.dp))
         }
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
@@ -134,10 +134,10 @@ private fun BladeTab(group: BladeGroup, current: XdArea?, modifier: Modifier) {
         BladeGroup.SYSTEM -> R.string.zephyr_ui2_system
     })
     Box(modifier) {
-        Column(Modifier.fillMaxWidth().heightIn(min = 56.dp).focusRing(bladeShape).clip(bladeShape)
+        Column(Modifier.fillMaxWidth().heightIn(min = 56.dp).focusRing(bladeShape).zephyrSurface(bladeShape, emphasized = picked)
             .background(Brush.verticalGradient(if (picked)
-                listOf(Color(0xFF206748), Color(0xFF103D2E)) else listOf(c.s2, c.s1)))
-            .border(1.dp, if (picked) c.acc.copy(alpha = .75f) else c.line.copy(alpha = .55f), bladeShape)
+                listOf(Color(0xFF3A9C65).copy(alpha = .45f), Color.Transparent,
+                    Color(0xFF49DB89).copy(alpha = .12f)) else listOf(Color.Transparent, Color.Transparent)))
             .clickable(role = if (group == BladeGroup.SYSTEM || group == BladeGroup.GAMES) Role.Button else Role.Tab) {
                 when (group) {
                     BladeGroup.GAMES, BladeGroup.SYSTEM -> expanded = true
