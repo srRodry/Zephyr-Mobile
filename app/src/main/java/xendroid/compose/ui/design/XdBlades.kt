@@ -1,5 +1,6 @@
 package xendroid.compose.ui.design
 
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.border
 import androidx.compose.foundation.background
@@ -21,6 +22,7 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -62,13 +64,15 @@ private val bladeShape = GenericShape { size, _ ->
 @Composable
 fun BTopAreaBar(current: XdArea?, modifier: Modifier = Modifier) {
     val c = Xd.colors
+    val enlargedText = LocalDensity.current.fontScale > 1.15f
     Column(modifier.fillMaxWidth().zephyrBackdrop().testTag("zephyr-navigation-portrait")
         .windowInsetsPadding(WindowInsets.safeDrawing.part(top = true, start = true, end = true))) {
         BladeIdentity(Modifier.fillMaxWidth())
-        Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp),
+        Row(Modifier.fillMaxWidth().then(if (enlargedText) Modifier.horizontalScroll(rememberScrollState()) else Modifier)
+            .padding(horizontal = 10.dp, vertical = 7.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             BladeGroup.entries.forEach { group ->
-                BladeTab(group, current, Modifier.weight(1f))
+                BladeTab(group, current, if (enlargedText) Modifier.widthIn(min = 132.dp) else Modifier.weight(1f))
             }
         }
         HorizontalDivider(color = c.line)
@@ -145,7 +149,8 @@ private fun BladeTab(group: BladeGroup, current: XdArea?, modifier: Modifier) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Text(label, Modifier.weight(1f), color = if (picked) c.onAction else c.fg2,
                     style = XdText.label.copy(fontSize = 13.sp, lineHeight = 17.sp,
-                        fontWeight = if (picked) FontWeight.Bold else FontWeight.Medium))
+                        fontWeight = if (picked) FontWeight.Bold else FontWeight.Medium),
+                    maxLines = 1, overflow = TextOverflow.Ellipsis)
                 if (group == BladeGroup.GAMES || group == BladeGroup.SYSTEM) {
                     Icon(XdIcons.chevD, null, Modifier.size(12.dp), tint = if (picked) c.onAction else c.fg2)
                 }
