@@ -1,0 +1,49 @@
+name: Zephyr permanent signing check
+on:
+  push:
+    branches: [research/android-x360-gpu-candidate]
+    paths: ['.github/workflows/zephyr-signing-check.yml']
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  signing:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '21'
+      - name: Verify private key and expected public certificate
+        shell: bash
+        env:
+          VARIANT: test
+          TEST_KEYSTORE: ${{ secrets.TEST_KEYSTORE_BASE64 }}
+          TEST_ALIAS: ${{ secrets.TEST_KEY_ALIAS }}
+          TEST_PASSWORD: ${{ secrets.TEST_KEYSTORE_PASSWORD }}
+          EXPECTED_CERT_SHA256: 22e1b7cd028e034eb6e483a40f96927fd91fab8601bf50aeb87798c64d053353
+        run: |
+          set -euo pipefail
+          set +x
+          umask 077
+          if [ -z "$TEST_KEYSTORE" ] || [ -z "$TEST_ALIAS" ] || [ -z "$TEST_PASSWORD" ]; then
+            echo "::error::All three TEST signing secrets are required."
+            exit 1
+          fi
+          bash tools/validate-signing.sh
+          work=$(mktemp -d)
+          trap 'rm -rf "$work"' EXIT
+          printf '%s' "$TEST_KEYSTORE" | base64 --decode > "$work/key.p12"
+          export STORE_PASSWORD="$TEST_PASSWORD"
+          keytool -exportcert -keystore "$work/key.p12" -alias "$TEST_ALIAS" \
+            -storepass:env STORE_PASSWORD -file "$work/certificate.der" >/dev/null 2>&1
+          actual=$(sha256sum "$work/certificate.der" | cut -d' ' -f1)
+          if [ "$actual" != "$EXPECTED_CERT_SHA256" ]; then
+            echo "::error::The configured certificate differs from the permanent research key."
+            exit 1
+          fi
+          echo "Permanent private key unlocked and certificate fingerprint verified."
+          echo "### Zephyr permanent signing key verified" >> "$GITHUB_STEP_SUMMARY"
+          echo "Certificate SHA-256: `$actual`" >> "$GITHUB_STEP_SUMMARY"
