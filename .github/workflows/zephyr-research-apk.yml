@@ -1,6 +1,6 @@
 name: Zephyr research APK pair
 
-# Two isolated test APKs, built sequentially with a shared test signing key.
+# Two isolated test APKs signed with the verified permanent research key.
 # No release job. Pushes require [zephyr-apk]; routine edits do not rebuild both.
 
 on:
@@ -95,6 +95,10 @@ jobs:
         RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
       run: |
         bash tools/validate-signing.sh
+        if [ -z "$TEST_KEYSTORE" ]; then
+          echo "::error::The permanent TEST signing secrets are now required for research updates."
+          exit 1
+        fi
 
 
     - name: Install system tools
@@ -272,6 +276,11 @@ jobs:
           --out "$NAME.apk" "$RUNNER_TEMP/aligned.apk"
         "$bt/apksigner" verify --verbose --print-certs "$NAME.apk" > "$NAME.signing.txt"
         grep -E 'Signer #1 certificate (DN|SHA-256)' "$NAME.signing.txt"
+        fingerprint=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$NAME.signing.txt" | tr '[:upper:]' '[:lower:]')
+        if [ "$signed_with" != test ] || [ "$fingerprint" != 22e1b7cd028e034eb6e483a40f96927fd91fab8601bf50aeb87798c64d053353 ]; then
+          echo "::error::Research APK must use the verified permanent test certificate."
+          exit 1
+        fi
         {
           echo "### $NAME.apk"
           echo "- Package: \`$PACKAGE\`"
@@ -443,6 +452,11 @@ jobs:
           --out "$NAME.apk" "$RUNNER_TEMP/aligned.apk"
         "$bt/apksigner" verify --verbose --print-certs "$NAME.apk" > "$NAME.signing.txt"
         grep -E 'Signer #1 certificate (DN|SHA-256)' "$NAME.signing.txt"
+        fingerprint=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$NAME.signing.txt" | tr '[:upper:]' '[:lower:]')
+        if [ "$signed_with" != test ] || [ "$fingerprint" != 22e1b7cd028e034eb6e483a40f96927fd91fab8601bf50aeb87798c64d053353 ]; then
+          echo "::error::Research APK must use the verified permanent test certificate."
+          exit 1
+        fi
         {
           echo "### $NAME.apk"
           echo "- Package: \`$PACKAGE\`"
