@@ -25,8 +25,6 @@ jobs:
       - name: Install pinned Android tools
         run: sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0' 'ndk;29.0.14206865' 'cmake;3.30.3'
       - uses: gradle/actions/setup-gradle@v4
-      - name: Compile interface
-        run: bash ./gradlew :app:compileDebugKotlin --no-daemon --stacktrace
       - name: Render orientations and verify navigation
         run: |
           bash ./gradlew :app:testUitestUnitTest --no-daemon --stacktrace -Pscreenshots="$PWD/app/build/emerald-shots" \

@@ -72,7 +72,7 @@ fun BTopAreaBar(current: XdArea?, modifier: Modifier = Modifier) {
             .padding(horizontal = 10.dp, vertical = 7.dp),
             horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             BladeGroup.entries.forEach { group ->
-                BladeTab(group, current, if (enlargedText) Modifier.widthIn(min = 132.dp) else Modifier.weight(1f))
+                BladeTab(group, current, if (enlargedText) Modifier.width(132.dp) else Modifier.weight(1f))
             }
         }
         HorizontalDivider(color = c.line)

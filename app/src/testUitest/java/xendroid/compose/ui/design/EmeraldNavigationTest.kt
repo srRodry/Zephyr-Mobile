@@ -5,6 +5,9 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.test.hasText
+import androidx.compose.ui.test.hasAnyAncestor
+import androidx.compose.ui.test.hasTestTag
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
@@ -65,6 +68,8 @@ class EmeraldNavigationTest {
     @Test @Config(qualifiers = Phone.PORT)
     fun enlargedTextKeepsPrimaryActionReachable() {
         screen(1.4f)
+        compose.onNode(hasText("Jogos") and hasAnyAncestor(hasTestTag("zephyr-navigation-portrait")),
+            useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithText("Gerenciar drivers").assertIsDisplayed().performClick()
         compose.shot("emerald/sistema-fonte-ampliada")
     }
