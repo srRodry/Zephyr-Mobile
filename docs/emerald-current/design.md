@@ -17,7 +17,7 @@ linhas de HUD e partículas. Painéis usam cantos alternados e reflexo estático
 | Condição | Navegação | Biblioteca | Detalhes |
 |---|---|---|---|
 | Retrato | Marca e quatro lâminas acima do conteúdo | Destaque central com até quatro capas reais vizinhas, seguido da biblioteca completa | Ações no destaque e ficha por toque |
-| Paisagem a partir de 840 dp | Lâminas na lateral | Capas com escala/perspectiva de seleção e lista filtrável | Painel persistente de 260–300 dp |
+| Paisagem a partir de 840 dp | Lâminas na lateral | Vitrine em primeiro plano; busca/filtros expansíveis pelo ícone de busca | Painel persistente de 260–300 dp |
 | Paisagem de 600–839 dp | Lateral | Conteúdo ocupa a largura restante | Toque abre ficha; não comprime uma terceira coluna |
 | Janela abaixo de 600 dp | Navegação superior | Composição compacta | Conteúdo rolável |
 

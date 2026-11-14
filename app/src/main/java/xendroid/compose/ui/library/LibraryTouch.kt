@@ -117,6 +117,7 @@ fun LibraryTouch(
     detail: @Composable (Game) -> Unit,
     area: XdArea = XdArea.GAMES,
 ) {
+    var optionsExpanded by rememberSaveable { mutableStateOf(false) }
     val frameColors = Xd.colors
     val shown = remember(data, filter, query) { data.shown(filter, query) }
     val featured = shown.firstOrNull { it.stableId == selected?.stableId } ?: shown.firstOrNull()
@@ -140,8 +141,11 @@ fun LibraryTouch(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(stringResource(R.string.lib_title), Modifier.weight(1f), color = c.fg,
                                     style = XdText.h1.copy(fontSize = 26.sp, lineHeight = 30.sp))
+                                if (!portrait) XdIconButton(XdIcons.search, stringResource(R.string.lib_search),
+                                    { optionsExpanded = !optionsExpanded }, modifier = Modifier.testTag("library-toggle-tools"))
                                 XdIconButton(XdIcons.more, stringResource(R.string.lib_more), onMenu)
                             }
+                            if (portrait || optionsExpanded || query.isNotBlank() || filter != LibraryFilter.All) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 XdSearchField(
                                     query,
@@ -183,6 +187,7 @@ fun LibraryTouch(
                                 LibraryChoice(stringResource(R.string.zephyr_library_view, views.first { it.first == density }.second),
                                     views, density, onDensity)
                                 LibraryChoice(sortText(data.sort), LibrarySort.entries.map { it to sortText(it) }, data.sort, onSort)
+                            }
                             }
                             // Existing notices use dark semantic warning colors; preserve their readable surface.
                             CompositionLocalProvider(LocalXd provides frameColors) {

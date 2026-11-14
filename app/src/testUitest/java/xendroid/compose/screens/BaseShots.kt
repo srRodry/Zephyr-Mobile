@@ -191,6 +191,15 @@ class BaseShots {
         compose.onNodeWithTag("library-showcase").assertExists()
     }
 
+    @Config(qualifiers = Phone.LAND) @Test fun landscapeSearchToolsRemainReachable() {
+        library(InputMode.TOUCH)
+        compose.onNodeWithTag("library-search").assertDoesNotExist()
+        compose.onNodeWithTag("library-toggle-tools").performClick()
+        compose.onNodeWithTag("library-search").assertExists()
+        compose.onNodeWithTag("library-toggle-tools").performClick()
+        compose.onNodeWithTag("library-search").assertDoesNotExist()
+    }
+
     @Config(qualifiers = Phone.PORT) @Test fun sheetCoverOnlyLeadsOverview() {
         game(InputMode.TOUCH)
         compose.onNodeWithTag("game-feature-cover").assertExists()
