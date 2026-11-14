@@ -10,7 +10,11 @@ de disponibilidade das funções e métricas ali ilustradas.
 O emblema continua sendo o Z original do Zephyr, acompanhado por dois arcos
 abertos. Não adota a esfera Xbox como marca do produto. O fundo desenha uma
 corrente curva discreta, em vez de preencher a leitura com fibra de carbono,
-linhas de HUD e partículas. Painéis usam cantos alternados e reflexo estático.
+linhas de HUD e partículas. Painéis usam cantos alternados, reflexo diagonal
+estático e luz nas bordas. O refinamento aprofunda o vidro esmeralda, reforça
+a lâmina selecionada e ilumina o palco das capas, sem animações permanentes.
+A capa principal recebe sombra verde; as vizinhas preservam mais cor e
+perspectiva. As ações principais usam três níveis de verde para criar volume.
 
 ## Composição adaptativa
 
