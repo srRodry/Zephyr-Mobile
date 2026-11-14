@@ -48,7 +48,7 @@ fun XdEditorialHero(
     if (smart) {
         val c = Xd.colors
         val shape = ZephyrPanelShape
-        Column(modifier.fillMaxWidth().clip(shape).background(c.s1).border(1.dp, c.line2, shape).padding(14.dp),
+        Column(modifier.fillMaxWidth().zephyrSurface(shape, emphasized = true).padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(14.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                 Box(Modifier.size(4.dp, 64.dp).background(Xd.colors.acc))
@@ -85,8 +85,7 @@ fun XdSilverPanel(modifier: Modifier = Modifier, content: @Composable ColumnScop
     val colors = Xd.colors
     CompositionLocalProvider(LocalXd provides colors) {
         Column(
-            modifier.fillMaxWidth().clip(ZephyrPanelShape).background(colors.s1)
-                .border(1.dp, colors.line2, ZephyrPanelShape)
+            modifier.fillMaxWidth().zephyrSurface(emphasized = true)
                 .padding(horizontal = 16.dp, vertical = 8.dp),
             content = content,
         )

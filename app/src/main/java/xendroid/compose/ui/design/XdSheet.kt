@@ -109,9 +109,7 @@ fun XdSheet(
                     .widthIn(max = maxW)
                     .fillMaxWidth()
                     .heightIn(max = maxHeight * if (landscape) 0.92f else 0.9f)
-                    .clip(shape)
-                    .background(c.solid(c.sheet))
-                    .border(1.dp, Color.White.copy(alpha = 0.06f), shape)
+                    .zephyrSurface(shape, emphasized = true)
                     .clickable(remember = MutableInteractionSource(), indication = null) {}
                     .onFocusChanged { inside.set(it.hasFocus) }
                     // Used by touch, nothing takes the focus as the sheet opens (a text field would

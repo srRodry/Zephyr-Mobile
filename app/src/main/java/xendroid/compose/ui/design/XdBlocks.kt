@@ -46,21 +46,15 @@ import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 
 /** Shared structural panel shape for Zephyr 2.0: one restrained top-right cut. */
-val ZephyrPanelShape: Shape = GenericShape { size, _ ->
-    val cut = minOf(size.width * 0.06f, size.height * 0.18f)
-    moveTo(0f, 0f)
-    lineTo(size.width - cut, 0f)
-    lineTo(size.width, cut)
-    lineTo(size.width, size.height)
-    lineTo(0f, size.height)
-    close()
-}
+val ZephyrPanelShape: Shape = RoundedCornerShape(
+    topStart = 20.dp, topEnd = 8.dp, bottomEnd = 20.dp, bottomStart = 8.dp,
+)
 
 /** Shared interactive geometry: compact and restrained, distinct from structural panels and pills. */
-val ZephyrActionShape: Shape = RoundedCornerShape(4.dp)
+val ZephyrActionShape: Shape = RoundedCornerShape(topStart = 14.dp, topEnd = 5.dp, bottomEnd = 14.dp, bottomStart = 5.dp)
 
 /** Grouped tabs and segmented controls use one shared container radius. */
-val ZephyrSegmentShape: Shape = RoundedCornerShape(6.dp)
+val ZephyrSegmentShape: Shape = RoundedCornerShape(12.dp)
 
 /** A structural Zephyr surface card with the shared clipped panel silhouette. */
 @Composable
@@ -77,9 +71,7 @@ fun XdCard(
     val c = Xd.colors
     Column(
         modifier
-            .clip(shape)
-            .background(c.s1)
-            .then(if (outlined) Modifier.border(1.dp, c.line2, shape) else Modifier)
+            .zephyrSurface(shape, emphasized = outlined)
             .padding(horizontal = if (tight) 12.dp else 16.dp, vertical = if (tight) 10.dp else 14.dp),
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
@@ -113,15 +105,15 @@ fun XdHubRow(
     Row(
         modifier.fillMaxWidth().heightIn(min = 84.dp)
             .focusRing(ZephyrPanelShape)
-            .clip(ZephyrPanelShape)
-            .background(c.s1)
-            .border(1.dp, c.line2, ZephyrPanelShape)
+            .zephyrSurface()
             .clickable(role = Role.Button, onClick = onClick)
             .padding(start = 14.dp, end = 18.dp, top = 13.dp, bottom = 13.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(12.dp),
     ) {
-        Icon(icon, null, Modifier.size(24.dp), tint = c.fg2)
+        Box(Modifier.size(46.dp).zephyrSurface(ZephyrActionShape, emphasized = true), contentAlignment = Alignment.Center) {
+            Icon(icon, null, Modifier.size(24.dp), tint = c.acc)
+        }
         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(title, style = XdText.label, color = c.fg)
             if (subtitle != null) Text(subtitle, style = XdText.bodySm, color = c.fg2)

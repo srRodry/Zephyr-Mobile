@@ -1,6 +1,7 @@
 package xendroid.compose.ui.design
 
 import androidx.compose.foundation.Image
+import androidx.compose.foundation.border
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
@@ -17,6 +18,9 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -40,11 +44,17 @@ private fun groupOf(area: XdArea?): BladeGroup? = when (area) {
 }
 
 private val bladeShape = GenericShape { size, _ ->
-    val cut = (size.height * 0.14f).coerceAtMost(size.width / 8f)
-    moveTo(cut, 0f)
-    lineTo(size.width, 0f)
-    lineTo(size.width - cut, size.height)
-    lineTo(0f, size.height)
+    val bend = size.height * .24f
+    moveTo(bend, 0f)
+    lineTo(size.width - bend * .45f, 0f)
+    quadraticBezierTo(size.width, 0f, size.width, bend * .7f)
+    lineTo(size.width, size.height - bend)
+    quadraticBezierTo(size.width - bend * .7f, size.height - bend * .55f,
+        size.width - bend * 1.8f, size.height)
+    lineTo(bend * .45f, size.height)
+    quadraticBezierTo(0f, size.height, 0f, size.height - bend * .7f)
+    lineTo(0f, bend)
+    quadraticBezierTo(bend * .6f, bend * .7f, bend, 0f)
     close()
 }
 
@@ -52,11 +62,11 @@ private val bladeShape = GenericShape { size, _ ->
 @Composable
 fun BTopAreaBar(current: XdArea?, modifier: Modifier = Modifier) {
     val c = Xd.colors
-    Column(modifier.fillMaxWidth().background(c.bg)
+    Column(modifier.fillMaxWidth().zephyrBackdrop().testTag("zephyr-navigation-portrait")
         .windowInsetsPadding(WindowInsets.safeDrawing.part(top = true, start = true, end = true))) {
         BladeIdentity(Modifier.fillMaxWidth())
-        Row(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp),
-            horizontalArrangement = Arrangement.spacedBy(2.dp)) {
+        Row(Modifier.fillMaxWidth().padding(horizontal = 10.dp, vertical = 7.dp),
+            horizontalArrangement = Arrangement.spacedBy(4.dp)) {
             BladeGroup.entries.forEach { group ->
                 BladeTab(group, current, Modifier.weight(1f))
             }
@@ -69,12 +79,14 @@ fun BTopAreaBar(current: XdArea?, modifier: Modifier = Modifier) {
 @Composable
 fun ZephyrBladeRail(current: XdArea?, modifier: Modifier = Modifier) {
     val c = Xd.colors
-    Column(modifier.width(144.dp).fillMaxHeight().background(c.bg)
+    Column(modifier.width(128.dp).fillMaxHeight().zephyrBackdrop().testTag("zephyr-navigation-landscape")
         .windowInsetsPadding(WindowInsets.safeDrawing.part(top = true, bottom = true, start = true))) {
-        Image(painterResource(R.drawable.zephyr_launcher_foreground), stringResource(R.string.app_name),
-            Modifier.padding(8.dp).size(40.dp))
+        Column(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
+            Image(painterResource(R.drawable.zephyr_launcher_foreground), stringResource(R.string.app_name), Modifier.size(44.dp))
+            Text("ZEPHYR", style = XdText.eyebrow, color = c.fg, modifier = Modifier.padding(top = 6.dp))
+        }
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
-            .padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+            .padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             BladeGroup.entries.forEach { group -> BladeTab(group, current, Modifier.fillMaxWidth()) }
         }
         BladeProfile(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp))
@@ -83,11 +95,11 @@ fun ZephyrBladeRail(current: XdArea?, modifier: Modifier = Modifier) {
 
 @Composable
 private fun BladeIdentity(modifier: Modifier) {
-    Row(modifier.padding(horizontal = 10.dp), verticalAlignment = Alignment.CenterVertically,
+    Row(modifier.padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        Image(painterResource(R.drawable.zephyr_launcher_foreground), null, Modifier.size(30.dp))
+        ZephyrOrbitMark(42.dp)
         Text(stringResource(R.string.app_name), Modifier.weight(1f), color = Xd.colors.fg,
-            style = XdText.label.copy(fontWeight = FontWeight.Bold), maxLines = 1, overflow = TextOverflow.Ellipsis)
+            style = XdText.h1.copy(fontSize = 21.sp, lineHeight = 25.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
         BladeProfile(Modifier.widthIn(max = 150.dp))
     }
 }
@@ -119,7 +131,9 @@ private fun BladeTab(group: BladeGroup, current: XdArea?, modifier: Modifier) {
     })
     Box(modifier) {
         Column(Modifier.fillMaxWidth().heightIn(min = 56.dp).focusRing(bladeShape).clip(bladeShape)
-            .background(if (picked) c.action else c.s1)
+            .background(Brush.verticalGradient(if (picked)
+                listOf(Color(0xFF206748), Color(0xFF103D2E)) else listOf(c.s2, c.s1)))
+            .border(1.dp, if (picked) c.acc.copy(alpha = .75f) else c.line.copy(alpha = .55f), bladeShape)
             .clickable(role = if (group == BladeGroup.SYSTEM || group == BladeGroup.GAMES) Role.Button else Role.Tab) {
                 when (group) {
                     BladeGroup.GAMES, BladeGroup.SYSTEM -> expanded = true
@@ -137,7 +151,7 @@ private fun BladeTab(group: BladeGroup, current: XdArea?, modifier: Modifier) {
                 }
             }
             // A geometric selection mark accompanies color; the complete shape is the touch target.
-            if (picked) Box(Modifier.padding(top = 5.dp).width(20.dp).height(2.dp).background(c.onAction))
+            if (picked) Box(Modifier.padding(top = 5.dp).width(26.dp).height(2.dp).background(c.acc))
         }
         DropdownMenu(expanded, onDismissRequest = { expanded = false }, modifier = Modifier.background(c.s1)) {
             val areas = when (group) {

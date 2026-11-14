@@ -51,7 +51,7 @@ data class XdColors(
     val controller: Boolean,
 ) {
     /** Deep green actions keep white labels readable; lime is for focus and highlights. */
-    val action: Color get() = if (controller) acc else Color(0xFF107C10)
+    val action: Color get() = if (controller) acc else Color(0xFF15573F)
     val onAction: Color get() = if (controller) onAcc else Color.White
     val playable = Color(0xFF7BD77D)
     val ingame = Color(0xFFE8C55A)
@@ -75,18 +75,18 @@ data class XdColors(
         // Zephyr-Mobile: dark green surfaces, deep green actions and restrained lime highlights.
         // Keep semantic compatibility colors independent of branding.
         val Touch = XdColors(
-            bg = Color(0xFF070D08), s1 = Color(0xFF0F1A11), s2 = Color(0xFF16251A), s3 = Color(0xFF203625),
-            s4 = Color(0xFF304B35), sheet = Color(0xFF0F1A11),
-            line = Color(0xFF40552D), line2 = Color(0xFF64834A),
-            fg = Color(0xFFEAF3EA), fg2 = Color(0xFFB8CBB9), fg3 = Color(0xFFA0B9A2),
-            acc = Color(0xFF9BF00B), onAcc = Color(0xFF0B1A0C), dyn = Color(0xFF16251A), controller = false,
+            bg = Color(0xFF04110F), s1 = Color(0xFF0B231E), s2 = Color(0xFF113128), s3 = Color(0xFF193E33),
+            s4 = Color(0xFF21473B), sheet = Color(0xFF0B231E),
+            line = Color(0xFF2F594B), line2 = Color(0xFF4D806A),
+            fg = Color(0xFFE9F8F0), fg2 = Color(0xFFC0D9CE), fg3 = Color(0xFFA7C4B7),
+            acc = Color(0xFF87F16D), onAcc = Color(0xFF081D13), dyn = Color(0xFF113128), controller = false,
         )
         val Controller = XdColors(
-            bg = Color(0xFF070D08), s1 = Color(0x18FFFFFF), s2 = Color(0x24FFFFFF), s3 = Color(0x30FFFFFF),
-            s4 = Color(0x40FFFFFF), sheet = Color(0xFF0F1A11),
+            bg = Color(0xFF04110F), s1 = Color(0x18FFFFFF), s2 = Color(0x24FFFFFF), s3 = Color(0x30FFFFFF),
+            s4 = Color(0x40FFFFFF), sheet = Color(0xFF0B231E),
             line = Color(0x1FFFFFFF), line2 = Color(0x38FFFFFF),
-            fg = Color(0xFFEAF3EA), fg2 = Color(0xC7EAF3EA), fg3 = Color(0x8FEAF3EA),
-            acc = Color(0xFF9BF00B), onAcc = Color(0xFF0B1A0C), dyn = Color(0xFF16251A), controller = true,
+            fg = Color(0xFFE9F8F0), fg2 = Color(0xC7E9F8F0), fg3 = Color(0x8FE9F8F0),
+            acc = Color(0xFF87F16D), onAcc = Color(0xFF081D13), dyn = Color(0xFF113128), controller = true,
         )
 
         fun of(mode: InputMode) = if (mode == InputMode.CONTROLLER) Controller else Touch

@@ -8,33 +8,33 @@
     android:viewportWidth="108"
     android:viewportHeight="108">
     <!-- Opaque dark green backing for file pickers, shortcuts and missing covers. -->
-    <path android:fillColor="#070D08"
+    <path android:fillColor="#04110F"
         android:pathData="M20,4 H88 Q104,4 104,20 V88 Q104,104 88,104 H20 Q4,104 4,88 V20 Q4,4 20,4 Z"/>
     <!-- Lime upper stroke -->
-    <path android:fillColor="#9BF00B"
+    <path android:fillColor="#87F16D"
         android:pathData="M31,34 L43,26 L78,26 L66,34 Z"/>
     <!-- Three speed cuts, evoking the console / motion theme -->
-    <path android:fillColor="#9BF00B"
+    <path android:fillColor="#87F16D"
         android:pathData="M29,39 L35,39 L31,43 L25,43 Z"/>
-    <path android:fillColor="#9BF00B"
+    <path android:fillColor="#87F16D"
         android:pathData="M37,39 L43,39 L39,43 L33,43 Z"/>
-    <path android:fillColor="#9BF00B"
+    <path android:fillColor="#87F16D"
         android:pathData="M45,39 L51,39 L47,43 L41,43 Z"/>
     <!-- Main green Z, two interlocking diagonals -->
-    <path android:fillColor="#74CB18"
+    <path android:fillColor="#44C88B"
         android:pathData="M61,36 L73,36 L44,67 L31,75 L42,59 Z"/>
-    <path android:fillColor="#9BF00B"
+    <path android:fillColor="#87F16D"
         android:pathData="M42,68 L72,68 L64,76 L30,76 Z"/>
     <!-- Deep green cut through the mark -->
-    <path android:fillColor="#107C10"
+    <path android:fillColor="#15573F"
         android:pathData="M73,34 L81,28 L53,61 L43,65 Z"/>
-    <path android:fillColor="#50B82B"
+    <path android:fillColor="#39A98A"
         android:pathData="M53,62 L78,62 L69,69 L46,69 Z"/>
-    <path android:fillColor="#107C10"
+    <path android:fillColor="#15573F"
         android:pathData="M46,70 L70,70 L64,75 L37,75 Z"/>
     <!-- Speed cuts on the lower edge -->
-    <path android:fillColor="#9BF00B"
+    <path android:fillColor="#87F16D"
         android:pathData="M73,58 L78,58 L75,61 L70,61 Z"/>
-    <path android:fillColor="#9BF00B"
+    <path android:fillColor="#87F16D"
         android:pathData="M80,58 L85,58 L82,61 L77,61 Z"/>
 </vector>
