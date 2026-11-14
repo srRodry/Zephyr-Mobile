@@ -121,7 +121,7 @@ fun XdButton(
             .defaultMinSize(minHeight = height)
             .height(height)
             .clip(shape)
-            .background(Brush.verticalGradient(if (kind == XdButtonKind.PRIMARY)
+            .background(Brush.verticalGradient(if (kind == XdButtonKind.PRIMARY && !c.controller)
                 listOf(Color(0xFF24764F), bg) else listOf(bg, bg)))
             .then(if (kind == XdButtonKind.GHOST || kind == XdButtonKind.PRIMARY)
                 Modifier.border(1.dp, if (kind == XdButtonKind.PRIMARY) c.acc.copy(alpha = .65f) else c.line2, shape)

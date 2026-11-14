@@ -123,7 +123,8 @@ fun LibraryTouch(
     val focus = LocalFocusManager.current
     val openSelected: (Game) -> Unit = { game -> onSelect(game); onOpen(game) }
     BoxWithConstraints(Modifier.fillMaxSize().zephyrBackdrop()) {
-        val portrait = maxHeight > maxWidth || maxWidth < 600.dp
+        val viewportWidth = maxWidth
+        val portrait = maxHeight > viewportWidth || viewportWidth < 600.dp
         val listMode = portrait && density == CoverDensity.MEDIUM
         val main: @Composable (Modifier) -> Unit = { m ->
             LibraryPlane(m.windowInsetsPadding(WindowInsets.safeDrawing.part(top = !portrait,
@@ -212,7 +213,8 @@ fun LibraryTouch(
                                         LibraryFeaturedGame(featured, artOf(featured), data, preparing,
                                             onPlay = { onSelect(featured); onPlay(featured) },
                                             onOpen = { openSelected(featured) }, onFavorite = { onFavorite(featured) },
-                                            nearby = shown.filter { it.stableId != featured.stableId }.take(4).map { it to artOf(it) })
+                                            nearby = shown.filter { it.stableId != featured.stableId }.take(4).map { it to artOf(it) },
+                                            onSelectNearby = onSelect)
                                     } else if (!portrait) {
                                         Text(
                                             stringResource(R.string.zephyr_library_your_library),
@@ -232,7 +234,7 @@ fun LibraryTouch(
                         items(shown, key = { it.stableId }) { game ->
                             LibraryCard(game, data, artOf(game), picked = game.stableId == selected?.stableId,
                                 small = density == CoverDensity.SMALL, listMode = listMode,
-                                onClick = { if (portrait || maxWidth < 840.dp || game.stableId == selected?.stableId) openSelected(game) else onSelect(game) },
+                                onClick = { if (portrait || viewportWidth < 840.dp || game.stableId == selected?.stableId) openSelected(game) else onSelect(game) },
                                 onLongClick = { openSelected(game) }, onFocused = { if (!portrait) onSelect(game) },
                                 onPad = { b -> when (b) {
                                     PadButton.Y -> { onFavorite(game); true }
@@ -248,9 +250,9 @@ fun LibraryTouch(
         else Row(Modifier.fillMaxSize()) {
             BRail(area)
             main(Modifier.weight(1f))
-            if (maxWidth >= 840.dp) {
+            if (viewportWidth >= 840.dp) {
             VerticalDivider(thickness = 1.dp, color = frameColors.line)
-            LibraryPlane(Modifier.width(if (maxWidth < 960.dp) 260.dp else 300.dp).fillMaxHeight()
+            LibraryPlane(Modifier.width(if (viewportWidth < 960.dp) 260.dp else 300.dp).fillMaxHeight()
                 .windowInsetsPadding(WindowInsets.safeDrawing.part(top = true, end = true, bottom = true))) {
                 if (selected != null) detail(selected) else XdEmpty(stringResource(R.string.xd_lib_pick))
             }

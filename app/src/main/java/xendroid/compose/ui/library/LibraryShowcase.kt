@@ -1,5 +1,6 @@
 package xendroid.compose.ui.library
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
@@ -109,6 +110,7 @@ internal fun LibraryFeaturedGame(
     game: Game, art: CoverArt, data: LibraryData, preparing: Boolean,
     onPlay: () -> Unit, onOpen: () -> Unit, onFavorite: () -> Unit,
     nearby: List<Pair<Game, CoverArt>> = emptyList(),
+    onSelectNearby: (Game) -> Unit = {},
 ) {
     val c = Xd.colors
     Column(Modifier.fillMaxWidth().testTag("library-featured")
@@ -132,7 +134,9 @@ internal fun LibraryFeaturedGame(
                     Modifier.align(Alignment.Center).offset(x = coverWidth * (side * (.55f + depth * .12f)), y = 12.dp)
                         .width(coverWidth * (.76f - depth * .08f))
                         .graphicsLayer { rotationY = side * -18f; alpha = .65f - depth * .08f }
-                        .zIndex(-depth.toFloat()))
+                        .zIndex(-depth.toFloat())
+                        .clickable(role = Role.Button) { onSelectNearby(neighbour) }
+                        .semantics { contentDescription = neighbour.name })
             }
             LibraryArtwork(game, art, Modifier.width(coverWidth).zIndex(1f), data.favorite(game))
         }
