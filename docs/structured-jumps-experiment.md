@@ -44,9 +44,11 @@ O workflow `Zephyr research APK pair` usa:
 - Candidato: o commit que dispara o workflow nesta branch.
 - Mesmo pacote isolado: `xendroid.compose.zephyr.research`.
 - Mesmas versões de NDK, SDK, CMake e flags do pipeline existente.
-- Assinatura estável de teste ou de release já configurada no repositório.
-  Sem chave estável, falha antes da compilação; chaves temporárias diferentes
-  impediriam atualizar o mesmo pacote entre os dois APKs.
+- Compilação sequencial no mesmo job. Usa a chave de teste ou de release
+  configurada; sem essas chaves, gera uma única chave temporária para o par,
+  mantém o segredo apenas no runner e apaga a chave ao final. APKs do mesmo
+  par podem substituir um ao outro; pares de execuções diferentes não terão
+  necessariamente a mesma assinatura.
 - APK, comprovante de assinatura e manifesto JSON com commit e SHA-256.
 
 Não publica release nem modifica o app regular. A execução em push exige
@@ -86,3 +88,10 @@ O comparador permite o mesmo commit nos dois braços para testar configurações
 Se o hash de configuração variar, o relatório declara a diferença; não a oculta
 como ganho exclusivamente de código. Inspecionar manualmente temperaturas,
 logs, screenshots e velocidade real do jogo.
+
+## Correção do primeiro workflow
+
+A execução 43641755558 parou na verificação de assinatura, antes de compilar:
+nenhuma chave de teste/release está configurada. O pipeline foi convertido de
+matriz paralela para dois builds sequenciais que compartilham uma chave de teste
+quando necessário. A chave privada não é publicada em artifacts ou no código.
