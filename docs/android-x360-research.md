@@ -14,8 +14,9 @@ não representam quantidade de otimizações. A resposta consultada contém
 apenas 250 commits e no máximo 300 arquivos: não é um inventário completo.
 Uma auditoria exaustiva exige histórico completo/paginação e revisão por subsistema.
 
-O download direto por Git não se completou nesta sessão. A inspeção inicial
-foi feita pela API. Não há compilação Android nem medição física nesta etapa.
+A inspeção inicial foi feita pela API enquanto o clone Git estava em andamento.
+O clone terminou posteriormente. Não há compilação Android nem medição física
+nesta etapa.
 
 ## Decisão de arquitetura
 
@@ -108,3 +109,4 @@ Os metadados são informados pelo operador: não substituem verificação dos ar
 
 Não há ganho de FPS, correção gráfica ou compatibilidade nova comprovados por
 este commit. Ele estabelece a comparação reproduzível e a trilha de pesquisa.
+
