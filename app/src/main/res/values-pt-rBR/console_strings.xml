@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="zephyr_console_previous">Jogo anterior</string>
+    <string name="zephyr_console_next">Próximo jogo</string>
+    <string name="zephyr_console_browse">Ver todos os jogos</string>
+</resources>

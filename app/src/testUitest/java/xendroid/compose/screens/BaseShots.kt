@@ -1,6 +1,7 @@
 package xendroid.compose.screens
 
 import androidx.compose.runtime.remember
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollTo
@@ -58,14 +59,15 @@ class BaseShots {
                 gameSettings = { id -> remember(id) { container.gameSettingsViewModelFactory(id).create(GameSettingsViewModel::class.java) } })
         }
         if (pick != null) {
-            // Non-opening selection is a wide-layout interaction now: the horizontal shelf drives
-            // the persistent detail panel. Phone list taps intentionally open the game sheet.
-            compose.onNodeWithTag("library-grid").performScrollToNode(hasTestTag("library-showcase"))
-            compose.onNodeWithTag("library-showcase").performScrollToNode(hasContentDescription(pick))
-            val cover = compose.onNode(
-                hasContentDescription(pick) and hasAnyAncestor(hasTestTag("library-showcase")),
-                useUnmergedTree = true,
-            )
+            // The default screen is now a centered stage; neighbours and arrows select only.
+            val target = hasContentDescription(pick) and hasAnyAncestor(hasTestTag("library-coverflow"))
+            repeat(14) {
+                if (compose.onAllNodes(target, useUnmergedTree = true).fetchSemanticsNodes().isEmpty()) {
+                    compose.onNodeWithTag("library-next").performClick()
+                    compose.waitForIdle()
+                }
+            }
+            val cover = compose.onNode(target, useUnmergedTree = true)
             cover.performClick()
             compose.waitForIdle()
             cover.assertIsSelected()
@@ -78,7 +80,6 @@ class BaseShots {
         Fixture.settle()
         compose.waitForIdle()
         if (openFeatured) {
-            compose.onNodeWithTag("library-grid").performScrollToNode(hasTestTag("library-featured"))
             compose.onNodeWithTag("library-featured-identity").assertExists()
             if (pick != null) {
                 compose.onNode(hasText(pick) and hasAnyAncestor(hasTestTag("library-featured-identity")),
@@ -115,7 +116,7 @@ class BaseShots {
 
     @Config(qualifiers = Phone.LAND) @Test fun libraryLand() { library(InputMode.TOUCH, pick = "Forza Horizon"); compose.shot("base/depois-biblioteca-paisagem") }
     @Config(qualifiers = Phone.PORT) @Test fun libraryPortSelect() { library(InputMode.TOUCH); compose.shot("base/depois-biblioteca-retrato-selecao") }
-    @Config(qualifiers = Phone.PORT) @Test fun libraryPort() { library(InputMode.TOUCH); compose.shot("base/depois-biblioteca-retrato") }
+    @Config(qualifiers = Phone.PORT) @Test fun libraryPort() { library(InputMode.TOUCH, pick = "Forza Horizon"); compose.shot("base/depois-biblioteca-retrato") }
     @Config(qualifiers = Phone.LAND) @Test fun libraryController() { library(InputMode.CONTROLLER); compose.shot("base/depois-biblioteca-controle") }
     @Config(qualifiers = Phone.PORT) @Test fun libraryControllerPort() { library(InputMode.CONTROLLER); compose.shot("base/depois-biblioteca-controle-retrato") }
 
@@ -179,16 +180,18 @@ class BaseShots {
 
     @Config(qualifiers = Phone.PORT) @Test fun libraryPhoneAvoidsDuplicateShelf() {
         library(InputMode.TOUCH)
-        compose.onNodeWithTag("library-search").assertExists()
-        compose.onNodeWithTag("library-grid").performScrollToNode(hasTestTag("library-featured"))
-        compose.onNodeWithTag("library-featured").assertExists()
+        compose.onNodeWithTag("library-search").assertDoesNotExist()
+        compose.onNodeWithTag("library-grid").assertDoesNotExist()
+        compose.onNodeWithTag("library-coverflow").assertIsDisplayed()
+        compose.onNodeWithTag("library-featured-play").assertIsDisplayed()
         compose.onNodeWithTag("library-showcase").assertDoesNotExist()
     }
 
     @Config(qualifiers = Phone.LAND) @Test fun libraryWideKeepsSelectorShelf() {
         library(InputMode.TOUCH)
-        compose.onNodeWithTag("library-grid").performScrollToNode(hasTestTag("library-showcase"))
-        compose.onNodeWithTag("library-showcase").assertExists()
+        compose.onNodeWithTag("library-coverflow").assertIsDisplayed()
+        compose.onNodeWithTag("library-grid").assertDoesNotExist()
+        compose.onNodeWithTag("library-featured-play").assertIsDisplayed()
     }
 
     @Config(qualifiers = Phone.LAND) @Test fun landscapeSearchToolsRemainReachable() {
@@ -198,6 +201,7 @@ class BaseShots {
         compose.onNodeWithTag("library-search").assertExists()
         compose.onNodeWithTag("library-toggle-tools").performClick()
         compose.onNodeWithTag("library-search").assertDoesNotExist()
+        compose.onNodeWithTag("library-console").assertIsDisplayed()
     }
 
     @Config(qualifiers = Phone.PORT) @Test fun sheetCoverOnlyLeadsOverview() {
@@ -230,6 +234,7 @@ class BaseShots {
 
     @Config(qualifiers = Phone.PORT) @Test fun libraryRecentFilterIsReachableByTouch() {
         library(InputMode.TOUCH)
+        compose.onNodeWithTag("library-toggle-tools").performClick()
         compose.onNodeWithTag("library-grid").performScrollToNode(hasTestTag("library-filter-recent"))
         compose.onNodeWithTag("library-filter-recent").performClick()
         compose.waitForIdle()

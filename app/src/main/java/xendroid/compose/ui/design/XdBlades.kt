@@ -46,17 +46,16 @@ private fun groupOf(area: XdArea?): BladeGroup? = when (area) {
 }
 
 private val bladeShape = GenericShape { size, _ ->
-    val bend = size.height * .24f
-    moveTo(bend, 0f)
-    lineTo(size.width - bend * .45f, 0f)
-    quadraticBezierTo(size.width, 0f, size.width, bend * .7f)
-    lineTo(size.width, size.height - bend)
-    quadraticBezierTo(size.width - bend * .7f, size.height - bend * .55f,
-        size.width - bend * 1.8f, size.height)
-    lineTo(bend * .45f, size.height)
-    quadraticBezierTo(0f, size.height, 0f, size.height - bend * .7f)
-    lineTo(0f, bend)
-    quadraticBezierTo(bend * .6f, bend * .7f, bend, 0f)
+    val h = size.height
+    moveTo(h * .3f, 0f)
+    lineTo(size.width - h * .08f, 0f)
+    quadraticBezierTo(size.width + h * .03f, 0f, size.width - h * .01f, h * .22f)
+    lineTo(size.width - h * .16f, h * .68f)
+    quadraticBezierTo(size.width - h * .23f, h, size.width - h * .52f, h)
+    lineTo(h * .08f, h)
+    quadraticBezierTo(-h * .03f, h, h * .01f, h * .79f)
+    lineTo(h * .16f, h * .29f)
+    quadraticBezierTo(h * .21f, h * .05f, h * .3f, 0f)
     close()
 }
 
@@ -91,7 +90,7 @@ fun ZephyrBladeRail(current: XdArea?, modifier: Modifier = Modifier) {
         }
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
             .padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            BladeGroup.entries.forEach { group -> BladeTab(group, current, Modifier.fillMaxWidth()) }
+            BladeGroup.entries.forEach { group -> BladeTab(group, current, Modifier.fillMaxWidth(), showIcon = true) }
         }
         BladeProfile(Modifier.fillMaxWidth().padding(horizontal = 6.dp, vertical = 4.dp))
     }
@@ -122,7 +121,7 @@ private fun BladeProfile(modifier: Modifier) {
 }
 
 @Composable
-private fun BladeTab(group: BladeGroup, current: XdArea?, modifier: Modifier) {
+private fun BladeTab(group: BladeGroup, current: XdArea?, modifier: Modifier, showIcon: Boolean = false) {
     val c = Xd.colors
     val nav = LocalXdNavigator.current
     val picked = groupOf(current) == group
@@ -136,8 +135,8 @@ private fun BladeTab(group: BladeGroup, current: XdArea?, modifier: Modifier) {
     Box(modifier) {
         Column(Modifier.fillMaxWidth().heightIn(min = 56.dp).focusRing(bladeShape).zephyrSurface(bladeShape, emphasized = picked)
             .background(Brush.verticalGradient(if (picked)
-                listOf(Color(0xFF3A9C65).copy(alpha = .45f), Color.Transparent,
-                    Color(0xFF49DB89).copy(alpha = .12f)) else listOf(Color.Transparent, Color.Transparent)))
+                listOf(Color(0xFF63E855).copy(alpha = .62f), Color(0xFF08642D).copy(alpha = .4f),
+                    Color(0xFF25A94F).copy(alpha = .38f)) else listOf(Color.Transparent, Color.Transparent)))
             .clickable(role = if (group == BladeGroup.SYSTEM || group == BladeGroup.GAMES) Role.Button else Role.Tab) {
                 when (group) {
                     BladeGroup.GAMES, BladeGroup.SYSTEM -> expanded = true
@@ -147,6 +146,15 @@ private fun BladeTab(group: BladeGroup, current: XdArea?, modifier: Modifier) {
             }.semantics { selected = picked }.padding(horizontal = 12.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.Center) {
             Row(verticalAlignment = Alignment.CenterVertically) {
+                if (showIcon) {
+                    Icon(when (group) {
+                        BladeGroup.GAMES -> XdIcons.gamepad
+                        BladeGroup.CONTENT -> XdIcons.layers
+                        BladeGroup.PROFILES -> XdIcons.user
+                        BladeGroup.SYSTEM -> XdIcons.gear
+                    }, null, Modifier.size(18.dp), tint = c.fg)
+                    Spacer(Modifier.width(7.dp))
+                }
                 Text(label, Modifier.weight(1f), color = if (picked) c.onAction else c.fg2,
                     style = XdText.label.copy(fontSize = 13.sp, lineHeight = 17.sp,
                         fontWeight = if (picked) FontWeight.Bold else FontWeight.Medium),

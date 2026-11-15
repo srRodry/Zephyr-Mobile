@@ -126,6 +126,13 @@ fun LibraryTouch(
     BoxWithConstraints(Modifier.fillMaxSize().zephyrBackdrop()) {
         val viewportWidth = maxWidth
         val portrait = maxHeight > viewportWidth || viewportWidth < 600.dp
+        if (!optionsExpanded && query.isBlank() && filter == LibraryFilter.All && featured != null) {
+            LibraryConsole(portrait, area, shown, featured, data, artOf, onSelect, preparing,
+                onPlay = { onSelect(featured); onPlay(featured) },
+                onOpen = { openSelected(featured) }, onFavorite = { onFavorite(featured) },
+                onBrowse = { optionsExpanded = true }, onMenu = onMenu, notices = notices)
+            return@BoxWithConstraints
+        }
         val listMode = portrait && density == CoverDensity.MEDIUM
         val main: @Composable (Modifier) -> Unit = { m ->
             LibraryPlane(m.windowInsetsPadding(WindowInsets.safeDrawing.part(top = !portrait,
@@ -141,7 +148,7 @@ fun LibraryTouch(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(stringResource(R.string.lib_title), Modifier.weight(1f), color = c.fg,
                                     style = XdText.h1.copy(fontSize = 26.sp, lineHeight = 30.sp))
-                                if (!portrait) XdIconButton(XdIcons.search, stringResource(R.string.lib_search),
+                                XdIconButton(XdIcons.search, stringResource(R.string.lib_search),
                                     { optionsExpanded = !optionsExpanded }, modifier = Modifier.testTag("library-toggle-tools"))
                                 XdIconButton(XdIcons.more, stringResource(R.string.lib_more), onMenu)
                             }
