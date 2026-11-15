@@ -26,10 +26,9 @@ import androidx.compose.ui.unit.sp
 import xendroid.compose.R
 
 /**
- * The redesign's tokens (docs/ui-redesign/bc): one dark set of colours for touch (B) and a
- * second for controller mode (C), where surfaces are translucent over the cover's colour and
- * the targets are larger. Every screen reads them through [Xd]; Material components get the
- * same colours through the [ColorScheme] built from them.
+ * Shared Emerald tokens for touch and controller. Input mode may change focus and target
+ * sizes, but never the brand palette, component hierarchy or content. Material components
+ * also receive these colors through the [ColorScheme] built from them.
  */
 @Immutable
 data class XdColors(
@@ -51,8 +50,8 @@ data class XdColors(
     val controller: Boolean,
 ) {
     /** Deep green actions keep white labels readable; lime is for focus and highlights. */
-    val action: Color get() = if (controller) acc else Color(0xFF15573F)
-    val onAction: Color get() = if (controller) onAcc else Color.White
+    val action: Color get() = Color(0xFF15573F)
+    val onAction: Color get() = Color.White
     val playable = Color(0xFF7BD77D)
     val ingame = Color(0xFFE8C55A)
     val intro = Color(0xFFEC9B52)
@@ -69,7 +68,7 @@ data class XdColors(
     val warn get() = ingame
     val ok get() = playable
     /** Corner of a cover: square-ish in touch mode, rounder on the big controller carousel. */
-    val coverRadius: Dp get() = if (controller) 12.dp else 7.dp
+    val coverRadius: Dp get() = 7.dp
 
     companion object {
         // Zephyr-Mobile: dark green surfaces, deep green actions and restrained lime highlights.
@@ -81,13 +80,8 @@ data class XdColors(
             fg = Color(0xFFE9F8F0), fg2 = Color(0xFFC0D9CE), fg3 = Color(0xFFA7C4B7),
             acc = Color(0xFF87F16D), onAcc = Color(0xFF081D13), dyn = Color(0xFF113128), controller = false,
         )
-        val Controller = XdColors(
-            bg = Color(0xFF04110F), s1 = Color(0x18FFFFFF), s2 = Color(0x24FFFFFF), s3 = Color(0x30FFFFFF),
-            s4 = Color(0x40FFFFFF), sheet = Color(0xFF0B231E),
-            line = Color(0x1FFFFFFF), line2 = Color(0x38FFFFFF),
-            fg = Color(0xFFE9F8F0), fg2 = Color(0xC7E9F8F0), fg3 = Color(0x8FE9F8F0),
-            acc = Color(0xFF87F16D), onAcc = Color(0xFF081D13), dyn = Color(0xFF113128), controller = true,
-        )
+        // Input method never changes the visual identity: both modes share Emerald tokens.
+        val Controller = Touch.copy(controller = true)
 
         fun of(mode: InputMode) = if (mode == InputMode.CONTROLLER) Controller else Touch
     }
@@ -247,7 +241,7 @@ fun XdTheme(mode: InputMode, colors: XdColors? = null, content: @Composable () -
 fun WithCoverColors(dyn: Color?, accent: Color?, content: @Composable () -> Unit) {
     val base = LocalXd.current
     if (!base.controller || dyn == null || accent == null) { content(); return }
-    val tinted = remember(base, dyn, accent) { base.withCover(dyn, accent) }
+    val tinted = remember(base, dyn) { base.copy(dyn = dyn) }
     val scheme = remember(tinted) { scheme(tinted) }
     CompositionLocalProvider(LocalXd provides tinted) {
         MaterialTheme(colorScheme = scheme, typography = typography, content = content)

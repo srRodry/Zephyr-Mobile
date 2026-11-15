@@ -312,17 +312,8 @@ fun GameLibraryScreen(
                 d.patchesTotal?.let { total -> context.getString(R.string.xd_of, d.patchesEnabled ?: 0, total) }
             }
         }
-        if (Xd.controller) {
-            val tab = LibraryFilter.parse(tabKey ?: if (activity.isEmpty()) "all" else "recent")
-            val shown = data.shown(tab, "")
-            val focused = shown.firstOrNull { it.stableId == selectedId } ?: shown.firstOrNull()
-            LaunchedEffect(focused?.identityKey) { focused?.let { viewModel.loadDetails(it) } }
-            LibraryController(
-                data, tab, { tabKey = it.key }, focused?.stableId, { selectedId = it }, art, lastFps, patchesOf,
-                onPlay = actions::play, onOpen = { onOpenGame(it, null) }, onFavorite = actions::toggleFavorite,
-                gamertag = activeProfile, preparing = actions.preparing,
-            )
-        } else {
+        // One adaptive library for touch and controller; only navigation differs.
+        run {
             val defaultFilter = if (collectionsArea) collections.firstOrNull()?.let { LibraryFilter.Collection(it.name) } ?: LibraryFilter.All else LibraryFilter.All
             val filter = filterKey?.let(LibraryFilter::parse) ?: defaultFilter
             val shown = data.shown(filter, query)

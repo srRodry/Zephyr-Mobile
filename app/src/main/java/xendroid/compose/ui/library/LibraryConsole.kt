@@ -105,10 +105,27 @@ internal fun LibraryConsole(
     if (portrait) Column(Modifier.fillMaxSize().consoleAtmosphere()) {
         BTopAreaBar(area)
         body(Modifier.weight(1f))
+        if (Xd.controller) ControllerConsoleHints()
     } else Row(Modifier.fillMaxSize().consoleAtmosphere()) {
         ZephyrBladeRail(area)
-        body(Modifier.weight(1f))
+        Column(Modifier.weight(1f)) {
+            body(Modifier.weight(1f))
+            if (Xd.controller) ControllerConsoleHints()
+        }
     }
+}
+
+@Composable
+private fun ControllerConsoleHints() {
+    val swap = LocalSwapConfirm.current
+    CHints(listOf(
+        XdHint(if (swap) "B" else "A", stringResource(R.string.lib_play)),
+        XdHint("X", stringResource(R.string.xd_lib_sheet)),
+        XdHint("Y", stringResource(R.string.xd_lib_favorite)),
+        XdHint("LB", stringResource(R.string.zephyr_console_previous)),
+        XdHint("RB", stringResource(R.string.zephyr_console_next)),
+        XdHint("≡", stringResource(R.string.xd_hint_menu)),
+    ), modifier = Modifier.padding(horizontal = 16.dp), scrim = false)
 }
 
 /** Wide flowing ribbons and localized light are cached vector geometry, not a full-screen bitmap. */
