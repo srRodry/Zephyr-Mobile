@@ -105,12 +105,16 @@ jobs:
               "zephyr_launcher_foreground",
               "zephyr_launcher_monochrome",
               "zephyr_app_icon",
+              "zephyr_brand_mark",
           }
           for name in required:
               path = root / "drawable" / f"{name}.xml"
               node = ET.parse(path).getroot()
-              assert node.tag == "vector", f"Expected vector drawable: {path}"
-              assert node.findall("path"), f"Empty launcher drawable: {path}"
+              if name == "zephyr_launcher_background":
+                  assert node.tag == "shape" and node.find("solid") is not None, f"Missing solid background: {path}"
+              else:
+                  assert node.tag == "vector", f"Expected vector drawable: {path}"
+                  assert node.findall(".//path"), f"Empty launcher drawable: {path}"
 
           for name in ("ic_launcher", "ic_launcher_round"):
               path = root / "mipmap-anydpi-v26" / f"{name}.xml"
@@ -136,7 +140,7 @@ jobs:
           for filename in ("ZephyrAtmosphere.kt", "XdLogo.kt"):
               source = design / filename
               text = source.read_text()
-              assert "R.drawable.zephyr_launcher_foreground" in text, f"Missing Zephyr mark: {source}"
+              assert "R.drawable.zephyr_brand_mark" in text, f"Missing Zephyr mark: {source}"
               assert "R.drawable.xd_logo_mark" not in text, f"Legacy mark still displayed: {source}"
           blades = (design / "XdBlades.kt").read_text()
           assert "ZephyrOrbitMark(" in blades, "Blade navigation must use the shared Zephyr mark"
