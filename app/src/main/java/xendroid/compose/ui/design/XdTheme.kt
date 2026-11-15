@@ -81,13 +81,8 @@ data class XdColors(
             fg = Color(0xFFE9F8F0), fg2 = Color(0xFFC0D9CE), fg3 = Color(0xFFA7C4B7),
             acc = Color(0xFF87F16D), onAcc = Color(0xFF081D13), dyn = Color(0xFF113128), controller = false,
         )
-        val Controller = XdColors(
-            bg = Color(0xFF04110F), s1 = Color(0x18FFFFFF), s2 = Color(0x24FFFFFF), s3 = Color(0x30FFFFFF),
-            s4 = Color(0x40FFFFFF), sheet = Color(0xFF0B231E),
-            line = Color(0x1FFFFFFF), line2 = Color(0x38FFFFFF),
-            fg = Color(0xFFE9F8F0), fg2 = Color(0xC7E9F8F0), fg3 = Color(0x8FE9F8F0),
-            acc = Color(0xFF87F16D), onAcc = Color(0xFF081D13), dyn = Color(0xFF113128), controller = true,
-        )
+        // Input method never changes the visual identity: both modes share Emerald tokens.
+        val Controller = Touch.copy(controller = true)
 
         fun of(mode: InputMode) = if (mode == InputMode.CONTROLLER) Controller else Touch
     }
@@ -247,7 +242,7 @@ fun XdTheme(mode: InputMode, colors: XdColors? = null, content: @Composable () -
 fun WithCoverColors(dyn: Color?, accent: Color?, content: @Composable () -> Unit) {
     val base = LocalXd.current
     if (!base.controller || dyn == null || accent == null) { content(); return }
-    val tinted = remember(base, dyn, accent) { base.withCover(dyn, accent) }
+    val tinted = remember(base, dyn) { base.copy(dyn = dyn) }
     val scheme = remember(tinted) { scheme(tinted) }
     CompositionLocalProvider(LocalXd provides tinted) {
         MaterialTheme(colorScheme = scheme, typography = typography, content = content)
