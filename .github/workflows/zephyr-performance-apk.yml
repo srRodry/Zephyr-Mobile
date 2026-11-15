@@ -1,7 +1,7 @@
 name: Zephyr performance beta APK
 
 # One isolated beta APK, signed with the existing permanent research key.
-# Pushes require [zephyr-apk]; no GitHub Release is published.
+# Pushes require [zephyr-apk]; verified Research APKs publish to the in-app feed.
 
 on:
   push:
@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: zephyr-research-apk-${{ github.ref }}
@@ -185,7 +185,8 @@ jobs:
           --tests 'xendroid.compose.ui.design.ZephyrPaletteTest' \
           --tests 'xendroid.compose.ui.design.EmeraldNavigationTest' \
           --tests 'xendroid.compose.compatibility.SettingsProfilesTest' \
-          --tests 'xendroid.compose.settings.SettingsSchemaTest'
+          --tests 'xendroid.compose.settings.SettingsSchemaTest' \
+          --tests 'xendroid.compose.updater.*'
 
     - name: Build release APK
       env:
@@ -335,6 +336,68 @@ jobs:
         if-no-files-found: error
         retention-days: 14
         compression-level: 0
+
+    - name: Publish verified Research update
+      uses: actions/github-script@v7
+      env:
+        APK: ${{ steps.sign_candidate.outputs.apk }}
+        NAME: ${{ steps.cfg_candidate.outputs.name }}
+        SHA: ${{ steps.cfg_candidate.outputs.sha }}
+      with:
+        script: |
+          const fs = require('fs');
+          const crypto = require('crypto');
+          const versionCode = 100000 + Number(context.runNumber);
+          const tag = 'Zephyr-Research-v' + versionCode + '-' + process.env.SHA;
+          const apk = process.env.APK;
+          const bytes = fs.readFileSync(apk);
+          const digest = crypto.createHash('sha256').update(bytes).digest('hex');
+          const checksums = process.env.NAME + '.sha256';
+          fs.writeFileSync(checksums, digest + '  ' + apk + '\n');
+          const body = [
+            '<!-- update-summary:pt-BR',
+            '- Atualização do Zephyr Research com melhorias ARM64, texturas e carregamento.',
+            '- Canal de atualizações integrado ao aplicativo.',
+            '-->',
+            'Beta experimental; desempenho ainda não validado no aparelho.',
+            'Pacote: xendroid.compose.zephyr.research',
+            'VersionCode: ' + versionCode,
+            'Código-fonte: https://github.com/' + context.repo.owner + '/' + context.repo.repo + '/tree/' + context.sha,
+            'SHA-256: ' + digest,
+          ].join('\n');
+          let release;
+          try {
+            release = (await github.rest.repos.getReleaseByTag({...context.repo, tag})).data;
+            if (!release.draft) {
+              core.info('Release already published; keeping immutable assets.');
+              return;
+            }
+          } catch (error) {
+            if (error.status !== 404) throw error;
+            release = (await github.rest.repos.createRelease({
+              ...context.repo, tag_name: tag, target_commitish: context.sha,
+              name: 'Zephyr Research beta ' + context.runNumber,
+              body, draft: true, prerelease: true
+            })).data;
+          }
+          const files = [apk, checksums, process.env.NAME + '.json', process.env.NAME + '.signing.txt'];
+          const assets = (await github.rest.repos.listReleaseAssets({...context.repo, release_id: release.id})).data;
+          for (const asset of assets) {
+            await github.rest.repos.deleteReleaseAsset({...context.repo, asset_id: asset.id});
+          }
+          for (const file of files) {
+            const data = fs.readFileSync(file);
+            const asset = (await github.rest.repos.uploadReleaseAsset({
+              ...context.repo, release_id: release.id, name: file, data,
+              headers: {'content-type': file.endsWith('.apk') ? 'application/vnd.android.package-archive' : 'application/octet-stream', 'content-length': data.length}
+            })).data;
+            if (file === apk && (asset.size !== bytes.length || asset.digest !== 'sha256:' + digest)) {
+              throw new Error('Published APK size/digest mismatch; release kept as draft.');
+            }
+          }
+          await github.rest.repos.updateRelease({...context.repo, release_id: release.id, draft: false, prerelease: true, body, make_latest: 'false'});
+          core.summary.addLink('Download Zephyr Research', release.html_url);
+          await core.summary.write();
 
     - name: Remove signing material
       if: ${{ always() }}

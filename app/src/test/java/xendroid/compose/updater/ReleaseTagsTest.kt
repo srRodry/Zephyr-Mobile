@@ -24,4 +24,15 @@ class ReleaseTagsTest {
         assertFalse(isUpdateFor(ReleaseTag(null, "1a2b3c4d"), installedVersionCode = 41, installedCommit = "99999999"))
         assertFalse(isUpdateFor(ReleaseTag(42, "1a2b3c4d"), installedVersionCode = 1, installedCommit = "unknown"))
     }
+
+    @Test fun researchTagsAreNumberedAndPackageIsolated() {
+        assertEquals(ReleaseTag(100013, "1a2b3c4d"),
+            parseReleaseTag("Zephyr-Research-v100013-1A2B3C4D"))
+        assertTrue(releaseMatchesPackage("Zephyr-Research-v100013-1a2b3c4d", "xendroid.compose.zephyr.research"))
+        assertFalse(releaseMatchesPackage("XenDroid-v100014-1a2b3c4d", "xendroid.compose.zephyr.research"))
+        assertFalse(releaseMatchesPackage("Zephyr-Research-v100013-1a2b3c4d", "xendroid.compose.fork"))
+        assertFalse(releaseMatchesPackage("Zephyr-Research-v100013-1a2b3c4d", "xendroid.compose.debug"))
+        assertFalse(releaseMatchesPackage("Zephyr-Research-v100013-1a2b3c4d", "xendroid.compose.uitest"))
+        assertTrue(releaseMatchesPackage("XenDroid-v42-1a2b3c4d", "xendroid.compose.fork"))
+    }
 }

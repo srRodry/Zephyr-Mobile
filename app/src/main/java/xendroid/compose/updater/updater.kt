@@ -79,7 +79,7 @@ fun saveLastCheck(context: Context) {
 }
 
 fun updateChannel(context: Context): UpdateChannel =
-    prefs(context).getString(KEY_CHANNEL, null)?.let { runCatching { UpdateChannel.valueOf(it) }.getOrNull() } ?: UpdateChannel.STABLE
+    prefs(context).getString(KEY_CHANNEL, null)?.let { runCatching { UpdateChannel.valueOf(it) }.getOrNull() } ?: if (BuildConfig.APPLICATION_ID == "xendroid.compose.zephyr.research") UpdateChannel.PREVIEW else UpdateChannel.STABLE
 
 fun setUpdateChannel(context: Context, channel: UpdateChannel) {
     prefs(context).edit().putString(KEY_CHANNEL, channel.name).apply()
@@ -108,7 +108,7 @@ private val api = Retrofit.Builder()
 
 /** The release feed for this build, or null when this package has no published channel. */
 fun updateRepository(): Pair<String, String>? {
-    if (!BuildConfig.APPLICATION_ID.endsWith(".fork")) return null
+    if (BuildConfig.APPLICATION_ID !in setOf("xendroid.compose.fork", "xendroid.compose.zephyr.research")) return null
     val parts = BuildConfig.UPDATE_REPOSITORY.split('/')
     if (parts.size != 2 || parts.any { it.isBlank() }) return null
     return parts[0] to parts[1]
@@ -119,7 +119,8 @@ suspend fun checkForUpdates(context: Context): UpdateResult {
     val channel = updateChannel(context)
     if (channel == UpdateChannel.OFF) return UpdateResult.Latest(BuildConfig.VERSION_NAME)
     Log.d("Updater", "Checking $owner/$repo ($channel)")
-    val releases = if (channel == UpdateChannel.PREVIEW) api.releases(owner, repo) else listOf(api.latestRelease(owner, repo))
+    val releases = api.releases(owner, repo, perPage = 100)
+        .filter { releaseMatchesPackage(it.tagName, BuildConfig.APPLICATION_ID) }
     val skipped = prefs(context).getInt(KEY_SKIPPED, 0).takeIf { it > 0 }
     val offer = chooseUpdate(releases.map { it.toFeed() }, channel, BuildConfig.VERSION_CODE,
         BuildConfig.VERSION_NAME.lowercase(), skipped)
