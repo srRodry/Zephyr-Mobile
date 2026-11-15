@@ -17,7 +17,7 @@ no mesmo lugar, shaders iguais ou batches. A abordagem é mais conservadora que
 referência, não aplicado nem apresentado como seu equivalente de desempenho.
 
 `Use()` invalida o rastreador e ordena acessos externos; a entrada inicial passa
-pelo caminho original. Buffers host-importados, local read attachments e regiões
+pelo caminho original. Buffers zero-copy/host-importados, local read attachments e regiões
 inválidas mantêm o caminho anterior. Máximo de 256 regiões; saturação força uma
 barreira. Operações desconhecidas não recebem uma promessa de independência.
 Os testes com sanitizers cobrem riscos, limites e 50.000 comparações com um modelo

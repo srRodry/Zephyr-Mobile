@@ -23,7 +23,7 @@ permissions:
 
 concurrency:
   group: zephyr-research-apk-${{ github.ref }}
-  cancel-in-progress: false
+  cancel-in-progress: true
 
 jobs:
   apk:

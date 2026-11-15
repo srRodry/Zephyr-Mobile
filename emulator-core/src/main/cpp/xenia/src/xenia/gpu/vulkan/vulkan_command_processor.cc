@@ -7060,6 +7060,7 @@ bool VulkanCommandProcessor::IssueDraw(xenos::PrimitiveType prim_type,
     PassEndReasonScope pass_end_reason_scope(*this,
                                              PassEndReason::kSharedMemory);
     if (cvars::vulkan_disjoint_memexport_barriers && !route_to_host &&
+        !shared_memory_->is_zero_copy() &&
         shared_memory_->host_buffer() == VK_NULL_HANDLE &&
         !render_target_cache_->local_read_attachments()) {
       DisjointDrawRanges::Range reads[97];
