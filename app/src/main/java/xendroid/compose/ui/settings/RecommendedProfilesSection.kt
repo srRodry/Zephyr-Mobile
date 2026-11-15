@@ -70,6 +70,7 @@ private fun ProfileBlock(loaded: LoadedProfile, facts: DeviceFacts?, enabled: Bo
     Column(verticalArrangement = Arrangement.spacedBy(2.dp)) {
         Text(profile.name, style = MaterialTheme.typography.bodyLarge)
         Text(when (loaded.source) {
+            ProfileSource.EXPERIMENTAL -> stringResource(R.string.zephyr_perf_experimental)
             ProfileSource.BUNDLED -> stringResource(R.string.prof_from_app)
             ProfileSource.LOCAL -> stringResource(R.string.prof_from_file, loaded.origin)
             ProfileSource.COMMUNITY -> stringResource(R.string.prof_from_community, loaded.origin)

@@ -50,6 +50,8 @@ object SettingsSchema {
             // Master toggle gates cross-draw descriptor-set reuse; the edge toggle (only when
             // reuse is on) picks edge's bitmask gate vs the content-hash gate for A/B.
             b("Vulkan", "vulkan_cache_texture_descriptors", "Cache texture descriptors", true),
+            b("Vulkan", "vulkan_disjoint_memexport_barriers", "Disjoint memory-export barriers (experimental)", false),
+            b("GPU", "spirv_structured_forward_jumps", "Structured shader jumps (experimental)", false),
             b("Vulkan", "vulkan_texture_descriptor_reuse_edge", "Texture descriptor gate: edge (off = hash)", false),
         )),
 

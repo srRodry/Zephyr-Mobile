@@ -16,17 +16,17 @@ class SettingsSchemaTest {
     // 146 before the redesign, plus the 29 cvars of the core it shows now (docs/ui-redesign/README.md),
     // less APU|mute and GPU|readback_memexport, which the core never defined (ajustes-2.md).
     // Display|host_present_from_non_ui_thread is intentionally absent (forced true natively).
-    @Test fun total_entry_count_is_173() {
-        assertEquals(173, all.size)
+    @Test fun total_entry_count_is_175() {
+        assertEquals(175, all.size)
         assertEquals(
-            173,
+            175,
             all.count { it is Setting.Bool } + all.count { it is Setting.IntRange } +
                 all.count { it is Setting.ListChoice } + all.count { it is Setting.Action } + all.count { it is Setting.Text },
         )
     }
 
     @Test fun counts_by_type_match_verified_inventory() {
-        assertEquals(119, all.count { it is Setting.Bool })        // 103 + 18 new - 2 the core never had
+        assertEquals(121, all.count { it is Setting.Bool })        // 103 + 18 new - 2 the core never had
         assertEquals(20, all.count { it is Setting.IntRange })     // 14 + 6 new
         assertEquals(30, all.count { it is Setting.ListChoice })   // 27 + 3 new
         assertEquals(2, all.count { it is Setting.Action })
@@ -50,7 +50,8 @@ class SettingsSchemaTest {
             "GPU|readback_resolve_sync", "GPU|precise_interpolation", "Vulkan|vulkan_allow_reverse_z",
             "Vulkan|vulkan_dynamic_rendering", "Vulkan|vulkan_avoid_geometry_shaders", "Vulkan|vulkan_depth_unorm24",
             "General|guest_crash_is_fatal").forEach { b(it, true) }
-        listOf("GPU|depth_bias_shader_offset", "GPU|memexport_enable", "UI|achievement_notification_position_by_game",
+        listOf("Vulkan|vulkan_disjoint_memexport_barriers", "GPU|spirv_structured_forward_jumps",
+            "GPU|depth_bias_shader_offset", "GPU|memexport_enable", "UI|achievement_notification_position_by_game",
             "Storage|mount_memory_unit").forEach { b(it, false) }
         assertEquals("0", (SettingsSchema.byKey["GPU|draw_resolution_scale_threshold"] as Setting.ListChoice).default)
         assertEquals("-1", (SettingsSchema.byKey["Kernel|console_type"] as Setting.ListChoice).default)

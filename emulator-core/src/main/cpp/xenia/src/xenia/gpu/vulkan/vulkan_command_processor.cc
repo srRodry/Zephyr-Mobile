@@ -104,6 +104,11 @@ DECLARE_bool(spirv_texture_sign_specialization_used);
 DECLARE_bool(spirv_texture_fetch_constants_decoded);
 DECLARE_bool(spirv_texture_exp_adjust_specialization);
 
+DEFINE_bool(vulkan_disjoint_memexport_barriers, false,
+    "Experimental: omit shared-memory barriers only between guest draws with "
+    "provably disjoint reads and exports. No in-place or same-shader exemptions. "
+    "Disabled with host-imported buffers and local read attachments.", "Vulkan");
+
 DEFINE_bool(
     vulkan_texture_sign_classes, true,
     "With spirv_texture_sign_specialization: give each draw's pipeline the "
@@ -3882,6 +3887,10 @@ void VulkanCommandProcessor::IssueSwap(uint32_t frontbuffer_ptr,
           s.resolve_clears_in_guest_pass / f, s.rb_uma_direct / f,
           s.rb_uma_first_use / f, s.rb_uma_unread / f,
           s.rb_uma_bytes / f / 1024.0);
+      if (cvars::vulkan_disjoint_memexport_barriers) {
+        XELOGI("ZephyrMemexport: disjoint Use calls skipped per frame={:.1f}",
+               shared_memory_->TakeDisjointUseCallsSkipped() / f);
+      }
       // What the replays sent to the driver per frame, and how much of the
       // state setting repeated what the command buffer already had.
       if (cvars::vulkan_replay_stats) {
@@ -6937,10 +6946,10 @@ bool VulkanCommandProcessor::IssueDraw(xenos::PrimitiveType prim_type,
   // references, allowing us to check the current register values at draw time.
   const Shader::ConstantRegisterMap& constant_map_vertex =
       vertex_shader->constant_register_map();
+  uint32_t vfetch_addresses[96];
+  uint32_t vfetch_sizes[96];
+  uint32_t vfetch_current_queued = 0;
   {
-    uint32_t vfetch_addresses[96];
-    uint32_t vfetch_sizes[96];
-    uint32_t vfetch_current_queued = 0;
     for (uint32_t i = 0;
          i < xe::countof(constant_map_vertex.vertex_fetch_bitmap); ++i) {
       uint32_t vfetch_bits_remaining =
@@ -7050,7 +7059,29 @@ bool VulkanCommandProcessor::IssueDraw(xenos::PrimitiveType prim_type,
   {
     PassEndReasonScope pass_end_reason_scope(*this,
                                              PassEndReason::kSharedMemory);
-    if (memexport_extent_start < memexport_extent_end) {
+    if (cvars::vulkan_disjoint_memexport_barriers && !route_to_host &&
+        !shared_memory_->is_zero_copy() &&
+        shared_memory_->host_buffer() == VK_NULL_HANDLE &&
+        !render_target_cache_->local_read_attachments()) {
+      DisjointDrawRanges::Range reads[97];
+      size_t read_count = 0;
+      for (uint32_t i = 0; i < vfetch_current_queued; ++i) {
+        reads[read_count++] = {vfetch_addresses[i] << 2, vfetch_sizes[i] << 2};
+      }
+      if (primitive_processing_result.index_buffer_type ==
+              PrimitiveProcessor::ProcessedIndexBufferType::kGuestDMA ||
+          primitive_processing_result.index_buffer_type ==
+              PrimitiveProcessor::ProcessedIndexBufferType::kHostBuiltinForDMA) {
+        reads[read_count++] = {primitive_processing_result.guest_index_base,
+            primitive_processing_result.guest_draw_vertex_count <<
+                (vgt_draw_initiator.index_size == xenos::IndexFormat::kInt32 ? 2 : 1)};
+      }
+      shared_memory_->UseForDisjointGuestDraw(reads, read_count,
+          memexport_extent_start < memexport_extent_end
+              ? DisjointDrawRanges::Range{memexport_extent_start,
+                                         memexport_extent_end - memexport_extent_start}
+              : DisjointDrawRanges::Range{});
+    } else if (memexport_extent_start < memexport_extent_end) {
       shared_memory_->Use(
           VulkanSharedMemory::Usage::kGuestDrawReadWrite,
           std::make_pair(memexport_extent_start,

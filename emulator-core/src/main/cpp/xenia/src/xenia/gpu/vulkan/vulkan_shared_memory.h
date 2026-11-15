@@ -17,6 +17,7 @@
 
 #include "xenia/base/cvar.h"
 #include "xenia/gpu/shared_memory.h"
+#include "xenia/gpu/disjoint_draw_ranges.h"
 #include "xenia/gpu/trace_writer.h"
 #include "xenia/memory.h"
 #include "xenia/ui/vulkan/vulkan_upload_buffer_pool.h"
@@ -53,11 +54,22 @@ class VulkanSharedMemory : public SharedMemory {
   // read-write accesses are ordered with each other.
   void Use(Usage usage, std::pair<uint32_t, uint32_t> written_range = {});
 
+  // Experimental: omit only barriers between provably disjoint guest draws.
+  void UseForDisjointGuestDraw(const DisjointDrawRanges::Range* reads,
+                              size_t read_count, DisjointDrawRanges::Range write);
+  uint64_t TakeDisjointUseCallsSkipped() {
+    uint64_t result = disjoint_use_calls_skipped_;
+    disjoint_use_calls_skipped_ = 0;
+    return result;
+  }
+
   VkBuffer buffer() const { return buffer_; }
 
   // Notes a range written by an in-pass draw without inserting a barrier at
   // the write point - ordering happens at the next Use().
   void MarkInPassWrite(std::pair<uint32_t, uint32_t> written_range) {
+    disjoint_draws_active_ = false;
+    disjoint_draws_.Clear();
     if (last_written_range_.second) {
       uint32_t start =
           std::min(last_written_range_.first, written_range.first);
@@ -144,6 +156,9 @@ class VulkanSharedMemory : public SharedMemory {
   uint8_t* host_mapped_data_ = nullptr;
   bool host_mapped_coherent_ = false;
 
+  DisjointDrawRanges disjoint_draws_;
+  bool disjoint_draws_active_ = false;
+  uint64_t disjoint_use_calls_skipped_ = 0;
   Usage last_usage_;
   std::pair<uint32_t, uint32_t> last_written_range_;
 

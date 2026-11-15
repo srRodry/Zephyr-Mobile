@@ -19,6 +19,7 @@ class SettingsProfileStore(
     private val localDir: File,
     private val recordsDir: File,
     private val clock: () -> Long = System::currentTimeMillis,
+    private val experimental: () -> String? = { null },
 ) {
     private val json = Json { ignoreUnknownKeys = true; encodeDefaults = true }
     private val titlePattern = Regex("[0-9A-F]{8}")
@@ -35,7 +36,10 @@ class SettingsProfileStore(
                     .getOrElse { SettingsProfiles.Parsed(emptyList(), listOf("${file.name}: could not be read")) }
             }
         }
-        return SettingsProfiles.merge(listOf(app) + local)
+        val experiments = experimental()?.let {
+            SettingsProfiles.parse(it, ProfileSource.EXPERIMENTAL, "Zephyr beta: experimental")
+        } ?: SettingsProfiles.Parsed(emptyList(), emptyList())
+        return SettingsProfiles.merge(listOf(app, experiments) + local)
     }
 
     /** At most [MAX_LOCAL_FILES] plain `.json` files (no links, no hidden ones), by name. */
@@ -90,5 +94,6 @@ class SettingsProfileStore(
         const val LOCAL_FOLDER = "settings-profiles"
         /** The asset with the app's own profiles. */
         const val ASSET = "settings-profiles/recommended.json"
+        const val EXPERIMENTAL_ASSET = "settings-profiles/experimental-beta.json"
     }
 }

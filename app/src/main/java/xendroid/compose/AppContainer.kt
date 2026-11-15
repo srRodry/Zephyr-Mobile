@@ -75,6 +75,12 @@ class AppContainer(context: Context) {
             },
             localDir = java.io.File(Utils.get_storage_root_path(), xendroid.compose.compatibility.SettingsProfileStore.LOCAL_FOLDER),
             recordsDir = java.io.File(Application.get_internal_data_dir(), "settings-profiles-applied"),
+            experimental = {
+                runCatching {
+                    appContext.assets.open(xendroid.compose.compatibility.SettingsProfileStore.EXPERIMENTAL_ASSET)
+                        .use { it.readBytes().toString(Charsets.UTF_8) }
+                }.getOrNull()
+            },
         )
     }
 

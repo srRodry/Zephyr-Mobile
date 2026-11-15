@@ -1,0 +1,324 @@
+name: Zephyr performance beta APK
+
+# One isolated beta APK, signed with the existing permanent research key.
+# Pushes require [zephyr-apk]; no GitHub Release is published.
+
+on:
+  push:
+    branches: [perf/edge30-beta1]
+    paths-ignore:
+      - '**.md'
+      - 'docs/**'
+      - 'performance-tests/**'
+      - 'tools/**'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/workflows/cache-cleanup.yml'
+      - '.github/workflows/checks.yml'
+      - '.github/workflows/pages.yml'
+      - 'website/**'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zephyr-research-apk-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  apk:
+    name: APK (arm64-v8a)
+    if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[zephyr-apk]') }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 300
+
+    container:
+      image: ghcr.io/cirruslabs/android-sdk:35
+
+    env:
+      ANDROID_SDK_ROOT: /opt/android-sdk-linux
+      ANDROID_NDK_VERSION: 29.0.14206865
+      CMAKE_VERSION: 3.30.3
+      BUILD_TOOLS_VERSION: 35.0.0
+      LANG: C.UTF-8
+      LC_ALL: C.UTF-8
+      GRADLE_OPTS: -Dorg.gradle.daemon=false
+      # Native compile cache (emulator-core/build.gradle adds the launcher).
+      USE_CCACHE: 'true'
+      CCACHE_COMPILERCHECK: content
+      XENDROID_NINJA_JOBS: '2'
+      XENDROID_THINLTO_JOBS: '2'
+
+    outputs:
+      sha: ${{ steps.cfg_candidate.outputs.sha }}
+      name: ${{ steps.cfg_candidate.outputs.name }}
+      apk: ${{ steps.sign_candidate.outputs.apk }}
+      signed_with: ${{ steps.sign_candidate.outputs.signed_with }}
+
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+      with:
+        fetch-depth: 1
+
+    - name: Build settings
+      id: cfg
+      env:
+        RESEARCH_ARM: beta1
+      run: |
+        git config --global --add safe.directory "$GITHUB_WORKSPACE"
+        sha=$(git rev-parse --short=8 HEAD)
+        variant=test
+        name="Zephyr-Performance_${RESEARCH_ARM}_$sha"
+        package=xendroid.compose.zephyr.research
+        package_args="-PxendroidReleaseIdSuffix=.zephyr.research -PxendroidReleaseDebuggable -PxendroidUpdateRepo=srRodry/Zephyr-Mobile"
+        {
+          echo "sha=$sha"
+          echo "variant=$variant"
+          echo "name=$name"
+          echo "package=$package"
+          echo "package_args=$package_args"
+        } >> "$GITHUB_OUTPUT"
+        # Paths inside the container (github.workspace is the host path).
+        echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+        echo "Building $package as $name.apk"
+
+    - name: Validate signing configuration early
+      env:
+        VARIANT: ${{ steps.cfg.outputs.variant }}
+        RELEASE_KEYSTORE: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        RELEASE_ALIAS: ${{ secrets.KEY_ALIAS }}
+        RELEASE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        TEST_KEYSTORE: ${{ secrets.TEST_KEYSTORE_BASE64 }}
+        TEST_ALIAS: ${{ secrets.TEST_KEY_ALIAS }}
+        TEST_PASSWORD: ${{ secrets.TEST_KEYSTORE_PASSWORD }}
+        RELEASE_KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+      run: |
+        bash tools/validate-signing.sh
+        if [ -z "$TEST_KEYSTORE" ]; then
+          echo "::error::The permanent TEST signing secrets are now required for research updates."
+          exit 1
+        fi
+
+
+    - name: Install system tools
+      run: |
+        apt-get update -qq
+        DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
+          ninja-build g++ python3 glslang-tools spirv-tools ccache
+
+    - name: Set up Gradle
+      uses: gradle/actions/setup-gradle@v4
+      with:
+        validate-wrappers: true
+
+    - name: Cache NDK and CMake
+      uses: actions/cache@v4
+      with:
+        path: |
+          /opt/android-sdk-linux/ndk/${{ env.ANDROID_NDK_VERSION }}
+          /opt/android-sdk-linux/cmake/${{ env.CMAKE_VERSION }}
+        key: sdk-ndk${{ env.ANDROID_NDK_VERSION }}-cmake${{ env.CMAKE_VERSION }}
+
+    - name: Install Android SDK packages
+      shell: bash
+      run: |
+        # Use bash explicitly inside the Android SDK container.
+        # sdkmanager may close stdin before yes exits; ignore yes's SIGPIPE
+        # while still failing if sdkmanager itself returns a nonzero status.
+        set +o pipefail
+        yes | sdkmanager --licenses > /dev/null
+        sdk_status=${PIPESTATUS[1]}
+        set -o pipefail
+        if [ "$sdk_status" -ne 0 ]; then
+          echo "::error::Android SDK license acceptance failed (exit $sdk_status)"
+          exit "$sdk_status"
+        fi
+        for package in "ndk;$ANDROID_NDK_VERSION" "cmake;$CMAKE_VERSION" \
+                       "build-tools;$BUILD_TOOLS_VERSION" "platforms;android-35"; do
+          dir="$ANDROID_SDK_ROOT/$(echo "$package" | tr ';' '/')"
+          [ -d "$dir" ] || sdkmanager "$package" > /dev/null
+        done
+        echo "ANDROID_NDK_HOME=$ANDROID_SDK_ROOT/ndk/$ANDROID_NDK_VERSION" >> "$GITHUB_ENV"
+        echo "sdk.dir=$ANDROID_SDK_ROOT" > local.properties
+
+    - name: ccache
+      uses: hendrikmuhs/ccache-action@v1.2
+      with:
+        key: ndk${{ env.ANDROID_NDK_VERSION }}-arm64
+        max-size: 2G
+
+    - name: Build settings (candidate)
+      id: cfg_candidate
+      env:
+        RESEARCH_ARM: beta1
+      run: |
+        git config --global --add safe.directory "$GITHUB_WORKSPACE"
+        sha=$(git rev-parse --short=8 HEAD)
+        variant=test
+        name="Zephyr-Performance_${RESEARCH_ARM}_$sha"
+        package=xendroid.compose.zephyr.research
+        package_args="-PxendroidReleaseIdSuffix=.zephyr.research -PxendroidReleaseDebuggable -PxendroidUpdateRepo=srRodry/Zephyr-Mobile"
+        {
+          echo "sha=$sha"
+          echo "variant=$variant"
+          echo "name=$name"
+          echo "package=$package"
+          echo "package_args=$package_args"
+        } >> "$GITHUB_OUTPUT"
+        # Paths inside the container (github.workspace is the host path).
+        echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
+        echo "Building $package as $name.apk"
+
+    - name: Build release APK
+      env:
+        SHA: ${{ steps.cfg_candidate.outputs.sha }}
+        PACKAGE_ARGS: ${{ steps.cfg_candidate.outputs.package_args }}
+      run: |
+        chmod +x gradlew
+        # PACKAGE_ARGS holds several arguments (unquoted on purpose).
+        # The run number orders builds for the in-app updater (versionCode); the
+        # release tag below carries the same number.
+        ./gradlew --console=plain --build-cache --parallel \
+          -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8" \
+          -PgitHash="$SHA" -PxendroidVersionCode="$((100000 + GITHUB_RUN_NUMBER))" $PACKAGE_ARGS :app:assembleRelease
+        ccache -s || true
+        df -h "$GITHUB_WORKSPACE" || true
+
+    - name: Sign APK
+      id: sign_candidate
+      env:
+        NAME: ${{ steps.cfg_candidate.outputs.name }}
+        PACKAGE: ${{ steps.cfg_candidate.outputs.package }}
+        VARIANT: ${{ steps.cfg_candidate.outputs.variant }}
+        KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+        KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
+        KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
+        KEY_PASSWORD: ${{ secrets.KEY_PASSWORD }}
+        TEST_KEYSTORE_BASE64: ${{ secrets.TEST_KEYSTORE_BASE64 }}
+        TEST_KEY_ALIAS: ${{ secrets.TEST_KEY_ALIAS }}
+        TEST_KEYSTORE_PASSWORD: ${{ secrets.TEST_KEYSTORE_PASSWORD }}
+      run: |
+        set -eu
+        bt="$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS_VERSION"
+        unsigned=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
+        "$bt/zipalign" -f -p 4 "$unsigned" "$RUNNER_TEMP/aligned.apk"
+        keystore="$RUNNER_TEMP/signing.keystore"
+        trap 'rm -f "$keystore"' EXIT
+        # A partially configured signing key must fail visibly. Otherwise CI
+        # silently falls back to a new key and installed updates stop working.
+        if [ "$VARIANT" = test ] && {
+          [ -n "$TEST_KEYSTORE_BASE64" ] ||
+          [ -n "$TEST_KEY_ALIAS" ] ||
+          [ -n "$TEST_KEYSTORE_PASSWORD" ]
+        }; then
+          if [ -z "$TEST_KEYSTORE_BASE64" ] || [ -z "$TEST_KEY_ALIAS" ] ||
+             [ -z "$TEST_KEYSTORE_PASSWORD" ]; then
+            echo "::error::Incomplete test signing secrets: set TEST_KEYSTORE_BASE64, TEST_KEY_ALIAS and TEST_KEYSTORE_PASSWORD together."
+            exit 1
+          fi
+        fi
+        if [ -n "$KEYSTORE_BASE64" ] || [ -n "$KEY_ALIAS" ] ||
+           [ -n "$KEYSTORE_PASSWORD" ]; then
+          if [ -z "$KEYSTORE_BASE64" ] || [ -z "$KEY_ALIAS" ] ||
+             [ -z "$KEYSTORE_PASSWORD" ]; then
+            echo "::error::Incomplete release signing secrets: set ANDROID_KEYSTORE_BASE64, KEY_ALIAS and KEYSTORE_PASSWORD together."
+            exit 1
+          fi
+        fi
+        if [ "$VARIANT" = test ] && [ -n "$TEST_KEYSTORE_BASE64" ] &&
+           [ -n "$TEST_KEY_ALIAS" ] && [ -n "$TEST_KEYSTORE_PASSWORD" ]; then
+          printf '%s' "$TEST_KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          signed_with=test
+          alias=$TEST_KEY_ALIAS
+          KEYSTORE_PASSWORD=$TEST_KEYSTORE_PASSWORD
+          KEY_PASSWORD=$TEST_KEYSTORE_PASSWORD
+        elif [ -n "$KEYSTORE_BASE64" ] && [ -n "$KEY_ALIAS" ] && [ -n "$KEYSTORE_PASSWORD" ]; then
+          printf '%s' "$KEYSTORE_BASE64" | base64 --decode > "$keystore"
+          signed_with=release
+          alias=$KEY_ALIAS
+          KEY_PASSWORD=${KEY_PASSWORD:-$KEYSTORE_PASSWORD}
+        else
+          echo "::warning::Research-only key shared by this APK pair; later runs use a different key."
+          KEYSTORE_PASSWORD=$RESEARCH_SIGNING_PASSWORD
+          KEY_PASSWORD=$RESEARCH_SIGNING_PASSWORD
+          cp "$RUNNER_TEMP/research-shared.keystore" "$keystore"
+          signed_with=temporary
+          alias=ci
+        fi
+        # Read by apksigner from the environment, never on the command line.
+        export KEYSTORE_PASSWORD KEY_PASSWORD
+        "$bt/apksigner" sign --ks "$keystore" --ks-key-alias "$alias" \
+          --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEY_PASSWORD \
+          --out "$NAME.apk" "$RUNNER_TEMP/aligned.apk"
+        "$bt/apksigner" verify --verbose --print-certs "$NAME.apk" > "$NAME.signing.txt"
+        grep -E 'Signer #1 certificate (DN|SHA-256)' "$NAME.signing.txt"
+        fingerprint=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$NAME.signing.txt" | tr '[:upper:]' '[:lower:]')
+        if [ "$signed_with" != test ] || [ "$fingerprint" != 22e1b7cd028e034eb6e483a40f96927fd91fab8601bf50aeb87798c64d053353 ]; then
+          echo "::error::Research APK must use the verified permanent test certificate."
+          exit 1
+        fi
+        {
+          echo "### $NAME.apk"
+          echo "- Package: \`$PACKAGE\`"
+          echo "- Signed with the $signed_with key"
+          echo "- $(grep 'Signer #1 certificate SHA-256 digest:' "$NAME.signing.txt")"
+          echo "- Size: $(du -h "$NAME.apk" | cut -f1), SHA-256: \`$(sha256sum "$NAME.apk" | cut -d' ' -f1)\`"
+        } >> "$GITHUB_STEP_SUMMARY"
+        echo "apk=$NAME.apk" >> "$GITHUB_OUTPUT"
+        echo "signed_with=$signed_with" >> "$GITHUB_OUTPUT"
+
+    - name: Check APK packaging
+      env:
+        APK: ${{ steps.sign_candidate.outputs.apk }}
+        EXPECTED_PACKAGE: ${{ steps.cfg_candidate.outputs.package }}
+      # arm64-only core with JNI_OnLoad, signed, license texts present, no DLL,
+      # shader cache, game image or profile data inside.
+      run: |
+        python3 tools/check-apk.py "$APK" --aapt2 "$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS_VERSION/aapt2"
+        # Never upload a test build that would overwrite the regular app.
+        actual_package=$("$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS_VERSION/aapt2" dump packagename "$APK" | head -n 1)
+        if [ "$actual_package" != "$EXPECTED_PACKAGE" ]; then
+          echo "::error::Unexpected APK package: $actual_package (expected $EXPECTED_PACKAGE)"
+          exit 1
+        fi
+        echo "Verified APK package: $actual_package" >> "$GITHUB_STEP_SUMMARY"
+
+    - name: Record research build identity
+      env:
+        ARM: candidate
+        APK: ${{ steps.sign_candidate.outputs.apk }}
+        NAME: ${{ steps.cfg_candidate.outputs.name }}
+        PACKAGE: ${{ steps.cfg_candidate.outputs.package }}
+      run: |
+        python3 - <<'PYIDENTITY'
+        import hashlib, json, os, pathlib, subprocess
+        apk = pathlib.Path(os.environ['APK'])
+        result = {
+            'arm': os.environ['ARM'],
+            'commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
+            'package': os.environ['PACKAGE'],
+            'apk_sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
+            'experiments': ['vulkan_disjoint_memexport_barriers', 'spirv_structured_forward_jumps'],
+            'profiles': 'settings-profiles/experimental-beta.json',
+            'experiment_default': 'off',
+            'performance_validated_on_device': False,
+        }
+        pathlib.Path(os.environ['NAME'] + '.json').write_text(json.dumps(result, indent=2) + '\n')
+        PYIDENTITY
+
+    - name: Upload APK
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.cfg_candidate.outputs.name }}
+        path: |
+          ${{ steps.sign_candidate.outputs.apk }}
+          ${{ steps.cfg_candidate.outputs.name }}.signing.txt
+          ${{ steps.cfg_candidate.outputs.name }}.json
+        if-no-files-found: error
+        retention-days: 14
+        compression-level: 0
+
+    - name: Remove signing material
+      if: ${{ always() }}
+      run: rm -f "$RUNNER_TEMP/signing.keystore"
