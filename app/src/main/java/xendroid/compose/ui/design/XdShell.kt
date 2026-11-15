@@ -2,6 +2,7 @@ package xendroid.compose.ui.design
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -278,19 +279,38 @@ fun XdSectionedScreen(
     val real = sections.filter { it.goTo == null && it.content != null }
     val current = real.firstOrNull { it.id == selected } ?: real.firstOrNull()
     val history = rememberSectionHistory(selected, onSelect)
-    if (Xd.controller) {
-        CSectioned(title, sections, current, history, modifier, subtitle, onBack, lead, headIcon, art, actions, hints, overlay, onPad)
-        return
-    }
+    val controller = Xd.controller
+    val rootFocus = remember { FocusRequester() }
+    var guideVisible by remember { mutableStateOf(false) }
+    // The same Zephyr layout is used regardless of input device. Gamepad navigation
+    // only supplies shortcuts and explicit focus; it does not swap screen hierarchies.
+    val sharedModifier = if (controller) modifier
+        .focusRequester(rootFocus)
+        .onPreviewKeyEvent { event ->
+            when (val pad = padButtonOf(event)) {
+                PadButton.START -> { guideVisible = true; true }
+                PadButton.LB, PadButton.RB -> {
+                    if (real.isNotEmpty()) {
+                        val i = real.indexOfFirst { it.id == current?.id }.coerceAtLeast(0)
+                        val d = if (pad == PadButton.LB) -1 else 1
+                        history.pick(real[Math.floorMod(i + d, real.size)].id)
+                    }
+                    true
+                }
+                null -> false
+                else -> onPad?.invoke(pad) == true
+            }
+        }
+        .focusable() else modifier
+    LaunchedEffect(controller) { if (controller) runCatching { rootFocus.requestFocus() } }
     if (touchFrame != null) {
-        Box(modifier.fillMaxSize()) {
+        Box(sharedModifier.fillMaxSize()) {
             touchFrame(current, history)
             overlay?.invoke(this)
         }
-        return
-    }
+    } else {
     val c = Xd.colors
-    BoxWithConstraints(modifier.fillMaxSize().zephyrBackdrop()) {
+    BoxWithConstraints(sharedModifier.fillMaxSize().zephyrBackdrop()) {
         val portrait = maxHeight > maxWidth
         if (portrait) {
             Column(Modifier.fillMaxSize()) {
@@ -331,6 +351,8 @@ fun XdSectionedScreen(
         }
         overlay?.invoke(this)
     }
+    }
+    if (guideVisible) CGuide(onDismiss = { guideVisible = false })
 }
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
