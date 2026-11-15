@@ -1,9 +1,15 @@
 package xendroid.compose.screens
 
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.CompositionLocalProvider
+import xendroid.compose.ui.design.LocalInputMode
+import xendroid.compose.ui.theme.xendroidTheme
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.compose.ui.test.onNodeWithTag
-import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performScrollTo
 import androidx.compose.ui.test.performTextInput
@@ -34,13 +40,21 @@ import xendroid.compose.ui.settings.SettingsScreen
 @Config(sdk = [34], application = ShotApp::class)
 class SettingsHubTest {
     @get:Rule val compose = createComposeRule()
+    private lateinit var backDispatcher: OnBackPressedDispatcher
+    private var inputMode by mutableStateOf(InputMode.TOUCH)
 
     private fun open(mode: InputMode = InputMode.TOUCH, initial: String? = null): SettingsViewModel {
         val container = AppContainer(Fixture.context)
         val vm = container.settingsViewModelFactory().create(SettingsViewModel::class.java)
         Fixture.settleUntil { vm.ready.value || vm.error.value != null }
         assertTrue("Settings loaded", vm.ready.value)
-        compose.app(mode) { SettingsScreen(vm, {}, initialSection = initial) }
+        inputMode = mode
+        compose.app(mode) {
+            backDispatcher = LocalOnBackPressedDispatcherOwner.current!!.onBackPressedDispatcher
+            CompositionLocalProvider(LocalInputMode provides inputMode) {
+                xendroidTheme(mode = inputMode) { SettingsScreen(vm, {}, initialSection = initial) }
+            }
+        }
         Fixture.settle()
         compose.waitForIdle()
         return vm
@@ -112,9 +126,35 @@ class SettingsHubTest {
     }
 
     @Config(qualifiers = Phone.LAND) @Test fun controllerUsesSharedEmeraldHub() {
-        open(InputMode.CONTROLLER)
+        val vm = open(InputMode.CONTROLLER)
+        val before = vm.values.value.mapValues { it.value.raw }
         compose.onNodeWithTag("settings-touch-frame").assertExists()
         compose.onNodeWithTag("settings-hub-home").assertExists()
-        compose.onAllNodesWithText(Fixture.context.getString(R.string.xd_set_summary)).onFirst().assertExists()
+        compose.onNodeWithTag("settings-hub-category:advanced").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("settings-hub-section:resumo").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("settings-hub-content:resumo").assertExists()
+        compose.onNodeWithTag("settings-hub-back").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("settings-hub-section:resumo").assertExists()
+        compose.onNodeWithTag("settings-hub-back").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("settings-hub-home").assertExists()
+        assertEquals(before, vm.values.value.mapValues { it.value.raw })
+    }
+
+    @Config(qualifiers = Phone.PORT) @Test fun switchingInputKeepsDeepLinkAndSystemBackReturnsHome() {
+        val vm = open(initial = "app:data")
+        val before = vm.values.value.mapValues { it.value.raw }
+        for (mode in listOf(InputMode.CONTROLLER, InputMode.TOUCH)) {
+            compose.runOnIdle { inputMode = mode }
+            compose.waitForIdle()
+            compose.onNodeWithTag("settings-hub-content:app:data").assertExists()
+        }
+        compose.runOnIdle { backDispatcher.onBackPressed() }
+        compose.waitForIdle()
+        compose.onNodeWithTag("settings-hub-home").assertExists()
+        assertEquals(before, vm.values.value.mapValues { it.value.raw })
     }
 }

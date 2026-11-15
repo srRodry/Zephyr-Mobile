@@ -211,13 +211,13 @@ fun ControlsScreen(
         XdSection("go-test", stringResource(R.string.xd_ctl_tool_test), XdIcons.gamepad, goTo = links.onTest),
         XdSection("go-phone", stringResource(R.string.xd_ctl_tool_phone), XdIcons.phone, goTo = links.onPhone),
     )
-    // Keep the complete existing overview reachable behind the compact touch landing page.
-    val sections = if (Xd.controller) baseSections else baseSections + XdSection(
+    // Keep every destination available across controller connection changes.
+    val sections = baseSections + XdSection(
         ControlsSections.STATUS, stringResource(R.string.zephyr_controls_status), XdIcons.info,
         heading = stringResource(R.string.zephyr_controls_status), content = baseSections.first().content)
     val padsText = if (pads.isEmpty()) stringResource(R.string.xd_ctl_no_pads) else pluralStringResource(R.plurals.xd_ctl_pads, pads.size, pads.size)
     XdSectionedScreen(
-        title = stringResource(R.string.xd_ctl_title), sections = sections, selected = if (Xd.controller && sections.none { it.id == section }) ControlsSections.OVERVIEW else section, onSelect = { section = it },
+        title = stringResource(R.string.xd_ctl_title), sections = sections, selected = section, onSelect = { section = it },
         area = XdArea.CONTROLS, onBack = onBack, headIcon = XdIcons.gamepad,
         subtitle = padsText + " · " + stringResource(if (touchShown) R.string.xd_ctl_touch_on else R.string.xd_ctl_touch_off),
         touchFrame = { current, history ->

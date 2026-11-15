@@ -145,8 +145,8 @@ fun LibraryTouch(
     var stageFocused by remember { mutableStateOf(false) }
     var guideOpen by remember { mutableStateOf(false) }
     val stageActive = !optionsExpanded && query.isBlank() && filter == LibraryFilter.All && featured != null
-    LaunchedEffect(controller, stageActive) {
-        if (controller && stageActive) runCatching { controllerFocus.requestFocus() }
+    LaunchedEffect(controller, stageActive, guideOpen) {
+        if (controller && stageActive && !guideOpen) runCatching { controllerFocus.requestFocus() }
     }
     val controllerKeys = if (controller) Modifier
         .focusRequester(controllerFocus)
@@ -154,7 +154,9 @@ fun LibraryTouch(
         .onPreviewKeyEvent { e ->
             if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
             val pad = padButtonOf(e)
+            val repeated = e.nativeKeyEvent.repeatCount > 0
             when {
+                repeated && pad in listOf(PadButton.START, PadButton.SELECT, PadButton.X, PadButton.Y) -> true
                 pad == PadButton.START -> { guideOpen = true; true }
                 pad == PadButton.SELECT -> { optionsExpanded = true; true }
                 !stageActive -> false
@@ -172,7 +174,8 @@ fun LibraryTouch(
                 }
                 stageFocused && e.nativeKeyEvent.keyCode in listOf(
                     AndroidKeyEvent.KEYCODE_DPAD_CENTER, AndroidKeyEvent.KEYCODE_ENTER) -> {
-                    featured?.let(onPlay); true
+                    if (!preparing && !repeated) featured?.let(onPlay)
+                    true
                 }
                 else -> false
             }

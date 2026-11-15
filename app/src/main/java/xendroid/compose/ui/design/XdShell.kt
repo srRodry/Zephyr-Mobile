@@ -302,7 +302,9 @@ fun XdSectionedScreen(
             }
         }
         .focusable() else modifier
-    LaunchedEffect(controller) { if (controller) runCatching { rootFocus.requestFocus() } }
+    LaunchedEffect(controller, current?.id, guideVisible) {
+        if (controller && !guideVisible) runCatching { rootFocus.requestFocus() }
+    }
     if (touchFrame != null) {
         Box(sharedModifier.fillMaxSize()) {
             touchFrame(current, history)
