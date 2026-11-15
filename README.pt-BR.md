@@ -1,5 +1,5 @@
 <p align="center">
-  <img src="docs/assets/zephyr-mobile-banner.svg" alt="Zephyr-Mobile · Pixel Code · Emerald Current" width="100%">
+  <img src="docs/assets/zephyr-mobile-banner.svg" alt="Zephyr-Mobile · Pixel Code · Anel" width="100%">
 </p>
 
 <p align="center"><strong>Emulação de Xbox 360 no Android. Leve, medida, afinada para Snapdragon.</strong><br><sub>Um projeto Pixel Code · Edição Research para Motorola Edge 30 Ultra</sub></p>
@@ -13,7 +13,7 @@
 
 ## Zephyr-Mobile, por Pixel Code
 
-O **Zephyr-Mobile** é o projeto experimental de emulação de Xbox 360 para Android da Pixel Code. Sua identidade **Emerald Current** combina superfícies verde-escuras, iluminação esmeralda, o emblema Z e uma biblioteca pensada para toque e controle.
+O **Zephyr-Mobile** é o projeto experimental de emulação de Xbox 360 para Android da Pixel Code. Sua identidade **Anel** combina superfícies verde-escuras, um Z prateado dentro de um anel verde com quatro segmentos e uma biblioteca pensada para toque e controle.
 
 As versões Research atuais concentram o desenvolvimento no **Motorola Edge 30 Ultra — Snapdragon 8+ Gen 1 (SM8475), Adreno 730 e 12 GB de RAM**. As otimizações são avaliadas por jogo; esse foco não garante que todos os títulos iniciem ou rodem sem falhas.
 
@@ -74,4 +74,4 @@ Zephyr-Mobile é um projeto independente, sem vínculo com a Microsoft. Xbox e X
 
 ---
 
-<p align="center"><strong>ZEPHYR-MOBILE</strong><br><sub>Pixel Code · Emerald Current · Android / ARM64 / Vulkan</sub></p>
+<p align="center"><strong>ZEPHYR-MOBILE</strong><br><sub>Pixel Code · Anel · Android / ARM64 / Vulkan</sub></p>

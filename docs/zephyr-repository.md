@@ -1,25 +1,19 @@
 # Zephyr-Mobile · Pixel Code
 
-A apresentação pública usa o emblema Z e a paleta Emerald Current do aplicativo:
-fundo #04110F, esmeralda #44C88B, luz #87F16D e assinatura Pixel Code em dourado
-contido #C8AA70. O banner é SVG estático, sem scripts, fontes remotas ou imagens
-externas. Os caminhos do Z seguem o ícone vetorial do projeto.
-
-## Navegação pública
+A identidade de produto **Anel** usa um Z prateado envolto em quatro segmentos verdes.
+A paleta combina fundo `#04150F`, verde `#86D92F` e prata `#E6E9E2`.
+A logo corporativa atual da **Pixel Code permanece inalterada**.
 
 - [Apresentação em português](../README.pt-BR.md)
 - [Presentation in English](../README.md)
-- [Baixar APKs e conferir versões](https://github.com/srRodry/Zephyr-Mobile/releases)
-- [Desenvolvimento Research](https://github.com/srRodry/Zephyr-Mobile/tree/research/optimization-round3)
-- [Créditos e licenças dos componentes](../THIRD-PARTY-NOTICES.md)
+- [Lançamentos Research](https://github.com/srRodry/Zephyr-Mobile/releases)
+- [Fonte e geração da marca](../branding/README.md)
+- [Créditos e licenças](../THIRD-PARTY-NOTICES.md)
 
-A apresentação não usa o logotipo, convite de comunidade ou endereço de site do
-projeto de origem como se pertencessem ao Zephyr. Os créditos de origem ficam
-na seção própria. Pacotes Android, namespaces JNI, chaves, saves, histórico Git
-e avisos de licença não são elementos de publicidade e não devem ser removidos
-por uma substituição global de nomes.
+A mesma geometria gera os ícones Android (incluindo a versão monocromática), a marca no app,
+a capa do repositório e os recursos do site. O site oficial usa `website/anel/`; páginas e
+simulador anteriores são preservados no código para referência, sem apresentá-los como UI atual.
 
-A main recebe somente esta atualização documental/visual. O código dos builds
-Research continua nas branches e nos commits indicados em cada lançamento.
-O GitHub controla o vínculo “forked from” mostrado no cabeçalho: ele não é
-conteúdo do README e esta atualização não desconecta nem reescreve o histórico.
+Pacotes Android, namespaces JNI, chaves, saves, histórico Git e avisos de licença são
+preservados. O vínculo “forked from” é metadado do GitHub e não conteúdo do README.
+O código dos APKs Research permanece na branch de desenvolvimento e nos commits dos lançamentos.
