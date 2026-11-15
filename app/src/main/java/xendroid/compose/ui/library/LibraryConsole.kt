@@ -34,7 +34,6 @@ import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.onPreviewKeyEvent
-import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
@@ -59,7 +58,6 @@ import kotlin.math.roundToInt
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancelAndJoin
 import kotlinx.coroutines.flow.distinctUntilChanged
-import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.launch
 import androidx.compose.ui.semantics.clearAndSetSemantics
 
@@ -185,9 +183,10 @@ private fun ConsoleCoverflow(
     val screenDensity = LocalDensity.current
     val decay = remember(screenDensity) { splineBasedDecay<Float>(screenDensity) }
     val selectNow by rememberUpdatedState(onSelect)
+    val currentGames by rememberUpdatedState(games)
     LaunchedEffect(identities) {
         snapshotFlow { circularCoverIndex(position, games.size) }
-            .distinctUntilChanged().collect { selectNow(games[it]) }
+            .distinctUntilChanged().collect { selectNow(currentGames[it]) }
     }
     fun travel(target: Float) {
         val previous = motion
@@ -198,7 +197,7 @@ private fun ConsoleCoverflow(
                 Animatable(position).animateTo(target, spring(
                     dampingRatio = Spring.DampingRatioNoBouncy,
                     stiffness = Spring.StiffnessMediumLow)) { position = value }
-                selectNow(games[circularCoverIndex(position, games.size)])
+                selectNow(currentGames[circularCoverIndex(position, currentGames.size)])
             } finally { moving = false }
         }
     }
@@ -239,7 +238,7 @@ private fun ConsoleCoverflow(
                             dampingRatio = Spring.DampingRatioNoBouncy,
                             stiffness = Spring.StiffnessMediumLow)) { position = value / spacingPx }
                         val settled = circularCoverIndex(position, games.size)
-                        selectNow(games[settled])
+                        selectNow(currentGames[settled])
                         // Rebase only after rest: keep float precision for arbitrarily many circles.
                         position = settled.toFloat()
                     } finally { moving = false }
