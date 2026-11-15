@@ -167,8 +167,8 @@
     <string name="menu_shading_rate_full">Todo pixel</string>
     <string name="menu_shading_rate_note">Acima de 1 pixel, texturas e luz ficam mais grossas dentro das formas; as bordas continuam nítidas</string>
     <string name="menu_t_screenshot">Capturar tela</string>
-    <string name="menu_screenshot_note">A imagem do jogo, sem o menu e o HUD, salva em Imagens/Xendroid+</string>
-    <string name="host_screenshot_saved">Captura salva em Imagens/Xendroid+</string>
+    <string name="menu_screenshot_note">A imagem do jogo, sem o menu e o HUD, salva em Imagens/Zephyr-Mobile</string>
+    <string name="host_screenshot_saved">Captura salva em Imagens/Zephyr-Mobile</string>
     <string name="host_screenshot_failed">Não foi possível salvar a captura</string>
     <string name="xd_hud_charge">Carga</string>
     <string name="xd_hud_battery_time">Autonomia</string>

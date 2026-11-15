@@ -85,19 +85,8 @@ fun Modifier.zephyrSurface(shape: Shape = ZephyrPanelShape, emphasized: Boolean 
         }
 }
 
-/** An original Zephyr orbit around its own mark, never the Xbox identity. */
+/** Shared Anel geometry, without a second decorative ring or runtime animation. */
 @Composable
 fun ZephyrOrbitMark(size: Dp = 44.dp, modifier: Modifier = Modifier) {
-    val c = Xd.colors
-    Box(modifier.size(size), contentAlignment = Alignment.Center) {
-        Canvas(Modifier.matchParentSize()) {
-            val inset = 2.dp.toPx()
-            val arcSize = Size(this.size.width - inset * 2, this.size.height - inset * 2)
-            for (start in listOf(-78f, 102f)) {
-                drawArc(c.acc.copy(alpha = .7f), start, 128f, false,
-                    Offset(inset, inset), arcSize, style = Stroke(1.5.dp.toPx()))
-            }
-        }
-        Image(painterResource(R.drawable.zephyr_launcher_foreground), null, Modifier.size(size * .8f))
-    }
+    Image(painterResource(R.drawable.zephyr_brand_mark), null, modifier.size(size))
 }

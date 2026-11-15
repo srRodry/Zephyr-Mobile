@@ -81,7 +81,7 @@ android {
         ndk { abiFilters 'arm64-v8a' }
         // Release feed of the regular .fork package; "" disables the update check.
         buildConfigField 'String', 'UPDATE_REPOSITORY',
-            "\"${project.findProperty('xendroidUpdateRepo') ?: 'phforner0/Xendroid-Fork-main'}\""
+            "\"${project.findProperty('xendroidUpdateRepo') ?: 'srRodry/Zephyr-Mobile'}\""
         // C04: the read-only compatibility catalog. Off ("") until there is a publisher: an
         // https URL and its P-256 public keys as "keyId:<base64 X.509>,..." (see the status doc).
         buildConfigField 'String', 'CATALOG_URL', "\"${project.findProperty('xendroidCatalogUrl') ?: ''}\""

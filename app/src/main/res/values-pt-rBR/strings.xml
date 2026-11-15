@@ -693,7 +693,7 @@
     <string name="dg_share_all">Compartilhar todas as sessões</string>
     <string name="dg_no_session">Ainda não há sessão indexada para este jogo. Logs mais antigos, sem índice, continuam disponíveis em Compartilhar todas as sessões.</string>
     <string name="ab_credits_text">Zephyr-Mobile — emulação de Xbox 360 no Android. Baseado em XenDroid+ e Xenia.</string>
-    <string name="ab_creator">Criado por phforner0</string>
+    <string name="ab_creator">Desenvolvido pela Pixel Code</string>
     <string name="ab_no_device_info">Informações do aparelho indisponíveis (o emulador ainda não foi carregado).</string>
     <string name="ab_version">Versão %1$s</string>
     <string name="ab_credits">Créditos</string>

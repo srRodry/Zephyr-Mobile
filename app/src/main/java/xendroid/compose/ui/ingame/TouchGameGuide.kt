@@ -36,7 +36,7 @@ internal fun TouchGameGuide(
         verticalArrangement = Arrangement.spacedBy(10.dp),
     ) {
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-            Image(painterResource(R.drawable.zephyr_launcher_foreground), null, Modifier.size(32.dp))
+            Image(painterResource(R.drawable.zephyr_brand_mark), null, Modifier.size(32.dp))
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(2.dp)) {
                 Text(stringResource(R.string.zephyr_game_guide), style = XdText.h2, color = c.fg)
                 Text(

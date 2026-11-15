@@ -3941,7 +3941,7 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
 
     private fun toggleGpuLive(option: xendroid.compose.core.GpuLiveOption) = setGpuLive(option, if (gpuValue(option) != 0) 0 else 1)
 
-    /** The game's picture as its surface holds it (no menu, no HUD), saved to Pictures/Xendroid+. */
+    /** The game's picture as its surface holds it (no menu, no HUD), saved to Pictures/Zephyr-Mobile. */
     private fun takeScreenshot() {
         val view = surfaceView ?: return
         if (view.width <= 0 || view.height <= 0) return
@@ -3962,9 +3962,9 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
     private fun saveScreenshot(bitmap: android.graphics.Bitmap) {
         val stamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(java.util.Date())
         val values = android.content.ContentValues().apply {
-            put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, "Xendroid+_${activeTitleState.value ?: "game"}_$stamp.png")
+            put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, "Zephyr-Mobile_${activeTitleState.value ?: "game"}_$stamp.png")
             put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png")
-            put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Xendroid+")
+            put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Zephyr-Mobile")
             put(android.provider.MediaStore.Images.Media.IS_PENDING, 1)
         }
         val resolver = contentResolver

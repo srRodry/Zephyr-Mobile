@@ -167,8 +167,8 @@
     <string name="menu_shading_rate_full">Every pixel</string>
     <string name="menu_shading_rate_note">Above 1 pixel, textures and lighting get coarser inside shapes; edges stay sharp</string>
     <string name="menu_t_screenshot">Screenshot</string>
-    <string name="menu_screenshot_note">The game\'s picture, without the menu or the HUD, saved to Pictures/Xendroid+</string>
-    <string name="host_screenshot_saved">Screenshot saved to Pictures/Xendroid+</string>
+    <string name="menu_screenshot_note">The game\'s picture, without the menu or the HUD, saved to Pictures/Zephyr-Mobile</string>
+    <string name="host_screenshot_saved">Screenshot saved to Pictures/Zephyr-Mobile</string>
     <string name="host_screenshot_failed">Couldn\'t save the screenshot</string>
     <string name="xd_hud_charge">Charge</string>
     <string name="xd_hud_battery_time">Battery time</string>
