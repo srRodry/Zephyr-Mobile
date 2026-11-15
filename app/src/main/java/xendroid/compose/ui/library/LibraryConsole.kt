@@ -17,6 +17,7 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.geometry.Offset
@@ -145,7 +146,7 @@ private fun ConsoleCoverflow(
     val c = Xd.colors
     val index = games.indexOfFirst { it.stableId == game.stableId }.coerceAtLeast(0)
     fun advance(step: Int) { onSelect(games[Math.floorMod(index + step, games.size)]) }
-    BoxWithConstraints(modifier.testTag("library-coverflow").onPreviewKeyEvent {
+    BoxWithConstraints(modifier.clipToBounds().testTag("library-coverflow").onPreviewKeyEvent {
         when (padButtonOf(it)) {
             PadButton.LB -> { advance(-1); true }
             PadButton.RB -> { advance(1); true }
@@ -227,7 +228,7 @@ private fun ConsoleIdentity(
     val shape = RoundedCornerShape(topStart = 36.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 36.dp)
     Column(modifier.testTag("library-featured").then(if (landscape) Modifier.zephyrSurface(shape, true) else Modifier)
         .padding(if (landscape) 18.dp else 0.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        if (landscape) Box(Modifier.fillMaxWidth().heightIn(min = 70.dp, max = 110.dp).weight(.7f, fill = false)
+        if (landscape) Box(Modifier.fillMaxWidth().height(70.dp)
             .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 10.dp, bottomEnd = 10.dp, bottomStart = 10.dp))) {
             AsyncImage(art.model, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
             Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Color.Transparent, c.s1))))
@@ -241,7 +242,6 @@ private fun ConsoleIdentity(
                 LibraryStatusLine(game, data)
             }
         }
-        if (landscape) Spacer(Modifier.weight(.2f))
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             ConsolePlay(onPlay, !preparing, Modifier.weight(1f))
             if (!landscape) XdIconButton(if (data.favorite(game)) XdIcons.starFilled else XdIcons.star,

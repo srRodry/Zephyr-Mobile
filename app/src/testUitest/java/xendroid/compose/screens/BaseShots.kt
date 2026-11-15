@@ -69,7 +69,7 @@ class BaseShots {
         }
         if (pick != null) {
             // The default screen is now a centered stage; neighbours and arrows select only.
-            val target = hasContentDescription(pick) and hasAnyAncestor(hasTestTag("library-coverflow"))
+            val target = hasContentDescription(pick) and isSelected() and hasAnyAncestor(hasTestTag("library-coverflow"))
             repeat(14) {
                 if (compose.onAllNodes(target, useUnmergedTree = true).fetchSemanticsNodes().isEmpty()) {
                     compose.onNodeWithTag("library-next").performClick()
