@@ -280,6 +280,7 @@ fun XdSectionedScreen(
     val current = real.firstOrNull { it.id == selected } ?: real.firstOrNull()
     val history = rememberSectionHistory(selected, onSelect)
     val controller = Xd.controller
+    val focus = LocalFocusManager.current
     val rootFocus = remember { FocusRequester() }
     var guideVisible by remember { mutableStateOf(false) }
     // The same Zephyr layout is used regardless of input device. Gamepad navigation
@@ -287,7 +288,9 @@ fun XdSectionedScreen(
     val sharedModifier = if (controller) modifier
         .focusRequester(rootFocus)
         .onPreviewKeyEvent { event ->
-            when (val pad = padButtonOf(event)) {
+            val pad = padButtonOf(event)
+            if (pad != null && onPad?.invoke(pad) == true) return@onPreviewKeyEvent true
+            when (pad) {
                 PadButton.START -> { guideVisible = true; true }
                 PadButton.LB, PadButton.RB -> {
                     if (real.isNotEmpty()) {
@@ -297,8 +300,9 @@ fun XdSectionedScreen(
                     }
                     true
                 }
-                null -> false
-                else -> onPad?.invoke(pad) == true
+                PadButton.LT -> { repeat(PAGE_STEPS) { focus.moveFocus(FocusDirection.Up) }; true }
+                PadButton.RT -> { repeat(PAGE_STEPS) { focus.moveFocus(FocusDirection.Down) }; true }
+                else -> false
             }
         }
         .focusable() else modifier
@@ -429,15 +433,19 @@ fun XdSingleScreen(
 ) {
     val c = Xd.colors
     val controller = Xd.controller
+    val focus = LocalFocusManager.current
     val rootFocus = remember { FocusRequester() }
     var guideVisible by remember { mutableStateOf(false) }
     val sharedModifier = if (controller) modifier
         .focusRequester(rootFocus)
         .onPreviewKeyEvent { event ->
-            when (val pad = padButtonOf(event)) {
+            val pad = padButtonOf(event)
+            if (pad != null && onPad?.invoke(pad) == true) return@onPreviewKeyEvent true
+            when (pad) {
                 PadButton.START -> if (showNav) { guideVisible = true; true } else false
-                null -> false
-                else -> onPad?.invoke(pad) == true
+                PadButton.LT -> { repeat(PAGE_STEPS) { focus.moveFocus(FocusDirection.Up) }; true }
+                PadButton.RT -> { repeat(PAGE_STEPS) { focus.moveFocus(FocusDirection.Down) }; true }
+                else -> false
             }
         }
         .focusable() else modifier
@@ -452,7 +460,16 @@ fun XdSingleScreen(
                 val inner = Modifier.weight(1f).fillMaxWidth()
                 if (scroll) Column(inner.verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 24.dp), content = content)
                 else Column(inner.padding(start = 16.dp, end = 16.dp, top = 14.dp), content = content)
-                if (controller) CHints(hints ?: defaultHints(sections = false), scrim = false)
+                if (controller) {
+                    val shownHints = (hints ?: defaultHints(sections = false))
+                        .filter { showNav || it.buttons != "≡" }
+                        .map { hint ->
+                            if (showNav && hint.buttons == "≡" && hint.onClick == null)
+                                XdHint(hint.buttons, hint.label) { guideVisible = true }
+                            else hint
+                        }
+                    CHints(shownHints, scrim = false)
+                }
             }
         }
         when {
