@@ -201,6 +201,7 @@ jobs:
         ./gradlew --console=plain --build-cache --parallel \
           -Dorg.gradle.jvmargs="-Xmx4g -XX:MaxMetaspaceSize=1g -Dfile.encoding=UTF-8" \
           -PgitHash="$SHA" -PxendroidVersionCode="$((100000 + GITHUB_RUN_NUMBER))" $PACKAGE_ARGS :app:assembleRelease
+        python3 tools/test-edge30-policy.py --verify-android-target
         ccache -s || true
         df -h "$GITHUB_WORKSPACE" || true
 
