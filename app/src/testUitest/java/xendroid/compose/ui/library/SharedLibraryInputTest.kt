@@ -22,6 +22,7 @@ import xendroid.compose.shots.ShotApp
 import xendroid.compose.shots.app
 import xendroid.compose.ui.design.InputMode
 
+@OptIn(ExperimentalTestApi::class)
 @RunWith(AndroidJUnit4::class)
 @GraphicsMode(GraphicsMode.Mode.NATIVE)
 @Config(sdk = [34], application = ShotApp::class, qualifiers = Phone.LAND)

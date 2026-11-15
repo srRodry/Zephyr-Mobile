@@ -172,7 +172,7 @@ jobs:
 
     - name: Validate shared navigation before packaging
       run: |
-        ./gradlew :app:testUitestUnitTest --no-daemon --stacktrace \
+        bash ./gradlew :app:testUitestUnitTest --no-daemon --stacktrace \
           --tests 'xendroid.compose.screens.ControlsHubTest' \
           --tests 'xendroid.compose.screens.SettingsHubTest' \
           --tests 'xendroid.compose.ui.library.*' \
