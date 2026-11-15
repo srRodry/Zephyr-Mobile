@@ -743,7 +743,8 @@ fun CGuide(onDismiss: () -> Unit) {
         ) {
             Column(
                 Modifier.fillMaxHeight().widthIn(max = 320.dp).fillMaxWidth(0.86f)
-                    .background(Brush.verticalGradient(listOf(Color(0xFF151B18), Color(0xFF0D110F))))
+                    .clip(RoundedCornerShape(topEnd = 22.dp, bottomEnd = 22.dp))
+                    .background(Brush.verticalGradient(listOf(c.s2, c.s1, c.bg)))
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
                     .windowInsetsPadding(WindowInsets.safeDrawing.part(top = true, start = true, bottom = true))
                     .verticalScroll(rememberScrollState())
