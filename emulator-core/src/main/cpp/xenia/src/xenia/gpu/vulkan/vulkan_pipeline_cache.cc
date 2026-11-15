@@ -8,6 +8,7 @@
  */
 
 #include "xenia/gpu/vulkan/vulkan_pipeline_cache.h"
+#include "xenia/gpu/vulkan/vulkan_pipeline_cache_snapshot.h"
 
 #include <cctype>
 #include <chrono>
@@ -61,6 +62,14 @@ namespace shaders {
 #include "xenia/gpu/shaders/bytecode/vulkan_spirv/placeholder_color_ps.h"
 #include "xenia/gpu/shaders/bytecode/vulkan_spirv/ucode_interpreter_vs.h"
 }  // namespace shaders
+
+DEFINE_bool(
+    vulkan_pipeline_cache_save_snapshot, true,
+    "Serialize a private merged Vulkan pipeline cache on the save worker, "
+    "reducing contention with the active compiler cache on some drivers. "
+    "Uses temporary driver memory; disable for A/B comparison. "
+    "Does not change rendering or skip draws. No device FPS gain established.",
+    "Vulkan");
 
 DEFINE_bool(
     pipeline_storage_precreate, true,
@@ -3656,31 +3665,32 @@ bool VulkanPipelineCache::SaveVkPipelineCache() {
   const ui::vulkan::VulkanDevice::Functions& dfn = vulkan_device->functions();
   const VkDevice device = vulkan_device->device();
 
-  size_t cache_size = 0;
-  if (dfn.vkGetPipelineCacheData(device, vk_pipeline_cache_, &cache_size,
-                                 nullptr) == VK_SUCCESS &&
-      cache_size > 0) {
-    std::vector<uint8_t> cache_data(cache_size);
-    // If creation threads grew the cache between the two calls the driver
-    // returns VK_INCOMPLETE with partial data: skip this save, a later one runs.
-    if (dfn.vkGetPipelineCacheData(device, vk_pipeline_cache_, &cache_size,
-                                   cache_data.data()) == VK_SUCCESS) {
-      std::string description;
-      if (vk_pipeline_cache_store_->Save(cache_data.data(), cache_size,
-                                         description)) {
-        XELOGI("Saved {} bytes of VkPipelineCache data: {}", cache_size,
-               description);
-        return true;
-      } else {
-        XELOGE("VkPipelineCache {}: {}",
-               xe::path_to_utf8(vk_pipeline_cache_path_), description);
-      }
-    }
-  } else {
-    XELOGW("VkPipelineCache data unavailable for saving (size {})",
-           cache_size);
+  const uint64_t started_ms = xe::Clock::QueryHostUptimeMillis();
+  const bool use_snapshot = cvars::vulkan_pipeline_cache_save_snapshot;
+  std::vector<uint8_t> cache_data;
+  // Match the file store's envelope-inclusive bound before allocating the blob.
+  if (!ReadPipelineCacheForSave(
+          dfn, device, vk_pipeline_cache_, use_snapshot,
+          pipeline_cache_file::kDefaultMaxBytes - pipeline_cache_file::kEnvelopeSize,
+          cache_data)) {
+    XELOGW("VkPipelineCache extraction failed (snapshot={}); retry remains pending",
+           use_snapshot);
+    return false;
   }
-  return false;
+  const uint64_t extracted_ms = xe::Clock::QueryHostUptimeMillis();
+  std::string description;
+  if (!vk_pipeline_cache_store_->Save(cache_data.data(), cache_data.size(),
+                                      description)) {
+    XELOGE("VkPipelineCache {}: {}",
+           xe::path_to_utf8(vk_pipeline_cache_path_), description);
+    return false;
+  }
+  XELOGI("Saved {} bytes of VkPipelineCache data: {} "
+         "(snapshot={}, extract_ms={}, write_ms={})",
+         cache_data.size(), description, use_snapshot,
+         extracted_ms - started_ms,
+         xe::Clock::QueryHostUptimeMillis() - extracted_ms);
+  return true;
 }
 
 void VulkanPipelineCache::ShutdownShaderStorage() {

@@ -200,7 +200,7 @@ class SettingsProfilesTest {
         val asset = File("src/main/assets/${SettingsProfileStore.EXPERIMENTAL_ASSET}").readText()
         val parsed = SettingsProfiles.parse(asset, ProfileSource.EXPERIMENTAL, "Zephyr beta")
         assertTrue(parsed.skipped.toString(), parsed.skipped.isEmpty())
-        assertEquals(7, parsed.profiles.size)
+        assertEquals(11, parsed.profiles.size)
         parsed.profiles.forEach {
             assertTrue(it.profile.evidence.isEmpty())
             assertEquals(listOf("4D5309C9", "4D530AA4"), it.profile.titleIds)
@@ -210,10 +210,17 @@ class SettingsProfilesTest {
         assertEquals(2, memo.size)
         assertEquals(setOf("true", "false"), memo.map { it.profile.settings["GPU|texture_lookup_memo"] }.toSet())
         assertTrue(memo.all { it.profile.settings.size == 1 })
+        mapOf("snapshot" to "vulkan_pipeline_cache_save_snapshot",
+            "constants" to "vulkan_coalesce_float_constant_uploads").forEach { (id, key) ->
+            val pair = parsed.profiles.filter { it.profile.id.startsWith("zephyr-edge30-round4-$id-") }
+            assertEquals(2, pair.size)
+            assertEquals(setOf("true", "false"), pair.map { it.profile.settings["Vulkan|$key"] }.toSet())
+            assertTrue(pair.all { it.profile.settings.size == 1 })
+        }
         assertTrue(SettingsProfiles.parse(asset, ProfileSource.BUNDLED, "verified").profiles.isEmpty())
         val store = SettingsProfileStore({ null }, File(folder.root, "absent"),
             File(folder.root, "beta-records"), experimental = { asset })
-        assertEquals(7, store.load().profiles.size)
+        assertEquals(11, store.load().profiles.size)
     }
 
 }

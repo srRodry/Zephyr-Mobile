@@ -65,7 +65,7 @@ class VulkanPipelineCacheSaveThrottleTests(unittest.TestCase):
         self.assertNotIn("SaveVkPipelineCache();", maybe)
         self.assertIn("vk_pipeline_cache_save_cv_.notify_one();", maybe)
         self.assertIn("SaveVkPipelineCache()", worker)
-        self.assertIn("vkGetPipelineCacheData(", self.text)
+        self.assertIn("ReadPipelineCacheForSave(", self.text)
         self.assertIn("vk_pipeline_cache_store_->Save(", self.text)
 
     def test_cache_save_dirty_bit_is_only_cleared_after_success(self):

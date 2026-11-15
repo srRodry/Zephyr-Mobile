@@ -16,17 +16,17 @@ class SettingsSchemaTest {
     // 146 before the redesign, plus the 29 cvars of the core it shows now (docs/ui-redesign/README.md),
     // less APU|mute and GPU|readback_memexport, which the core never defined (ajustes-2.md).
     // Display|host_present_from_non_ui_thread is intentionally absent (forced true natively).
-    @Test fun total_entry_count_is_176() {
-        assertEquals(176, all.size)
+    @Test fun total_entry_count_is_180() {
+        assertEquals(180, all.size)
         assertEquals(
-            176,
+            180,
             all.count { it is Setting.Bool } + all.count { it is Setting.IntRange } +
                 all.count { it is Setting.ListChoice } + all.count { it is Setting.Action } + all.count { it is Setting.Text },
         )
     }
 
     @Test fun counts_by_type_match_verified_inventory() {
-        assertEquals(122, all.count { it is Setting.Bool })        // 103 + 18 new - 2 the core never had
+        assertEquals(126, all.count { it is Setting.Bool })        // 124 in the actual base schema + 2 round-4 controls
         assertEquals(20, all.count { it is Setting.IntRange })     // 14 + 6 new
         assertEquals(30, all.count { it is Setting.ListChoice })   // 27 + 3 new
         assertEquals(2, all.count { it is Setting.Action })
@@ -39,6 +39,8 @@ class SettingsSchemaTest {
         fun i(key: String, def: Int, min: Int, max: Int) = (SettingsSchema.byKey[key] as Setting.IntRange).let {
             assertEquals(key, def, it.default); assertEquals(key, min, it.min); assertEquals(key, max, it.max)
         }
+        b("Vulkan|vulkan_coalesce_float_constant_uploads", true)
+        b("Vulkan|vulkan_pipeline_cache_save_snapshot", true)
         b("GPU|texture_lookup_memo", true)
         i("Video|internal_display_resolution_x", 1280, 1, 1920)
         i("Video|internal_display_resolution_y", 720, 1, 1080)

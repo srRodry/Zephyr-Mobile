@@ -163,6 +163,8 @@ object SettingDescriptions {
         "vulkan_allow_present_mode_immediate" to "Allow immediate presentation for lowest latency, at the cost of possible tearing",
         "vulkan_allow_present_mode_mailbox" to "Allow mailbox presentation, giving low latency without tearing when the driver supports it. Off by default: on HyperOS the image could freeze after minutes of play with it",
         "vulkan_async_skip_draws" to "Drop draws whose shaders are still compiling instead of waiting; brief pop-in instead of stutter",
+        "vulkan_coalesce_float_constant_uploads" to "Packs adjacent shader constants in contiguous copies, preserving their exact bits and order. Reduces small CPU copies for dense constant maps. Disable for A/B comparison; restart between runs. No measured FPS gain on this device.",
+        "vulkan_pipeline_cache_save_snapshot" to "Saves a private copy of the Vulkan pipeline cache on the background worker. May reduce serialization contention with pipeline compilation; temporarily uses more driver memory. Disable for A/B comparison, restart the game between runs. Does not change image quality. Performance on this device has not been measured.",
         "texture_lookup_memo" to "Reuses exact texture-key and image-view lookups in bounded caches. Invalidated when a texture is evicted or recreated. Disable for A/B comparison or texture diagnostics; does not change texture quality. No measured FPS gain on this device.",
         "vulkan_cache_texture_descriptors" to "Reuse texture/sampler descriptor sets across unchanged draws; disable to debug texture corruption",
         "vulkan_dynamic_pipeline_state" to "Use dynamic state for cull/depth/blend to cut pipeline permutations and shader-compile stutter",

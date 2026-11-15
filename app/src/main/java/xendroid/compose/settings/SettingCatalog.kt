@@ -168,6 +168,8 @@ object SettingCatalog {
             e("Vulkan|vulkan_avoid_geometry_shaders", X, isNew = true),
             e("Vulkan|vulkan_depth_unorm24", X, isNew = true),
             e("Vulkan|vulkan_sparse_shared_memory", X),
+            e("Vulkan|vulkan_coalesce_float_constant_uploads", X, isNew = true),
+            e("Vulkan|vulkan_pipeline_cache_save_snapshot", X, isNew = true),
             e("Vulkan|vulkan_dynamic_pipeline_state", X),
             e("Vulkan|vulkan_async_skip_draws", X),
             e("Vulkan|vulkan_placeholder_pipelines", X),
