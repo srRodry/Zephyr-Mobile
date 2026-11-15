@@ -94,9 +94,10 @@ class ControlsHubTest {
         assertTrue(tools.isEmpty())
     }
 
-    @Config(qualifiers = Phone.LAND) @Test fun controllerKeepsOriginalOverview() {
+    @Config(qualifiers = Phone.LAND) @Test fun controllerUsesSharedEmeraldHub() {
         open(InputMode.CONTROLLER)
-        compose.onNodeWithTag("controls-touch-frame").assertDoesNotExist()
+        compose.onNodeWithTag("controls-touch-frame").assertExists()
+        compose.onNodeWithTag("controls-hub-home").assertExists()
         compose.onAllNodesWithText(Fixture.context.getString(R.string.xd_ctl_sec_overview)).onFirst().assertExists()
     }
 }
