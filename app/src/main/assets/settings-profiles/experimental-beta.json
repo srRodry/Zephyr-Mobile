@@ -128,6 +128,49 @@
         ]
       },
       "evidence": []
+    },
+    {
+      "titleIds": [
+        "454109AB"
+      ],
+      "requires": {
+        "gpuContains": [
+          "Adreno 730",
+          "Adreno (TM) 730"
+        ],
+        "manufacturers": [
+          "motorola"
+        ]
+      },
+      "evidence": [],
+      "id": "ao2dc-loading-baseline",
+      "name": "Army of Two — carregamento / referência",
+      "reason": "Investigação: carregamento prolongado em Army of Two The Devil's Cartel (454109AB). Desativa o descarte assíncrono de draws. Não é uma correção comprovada; usar como controle antes de outros testes.",
+      "settings": {
+        "Vulkan|vulkan_async_skip_draws": "false"
+      }
+    },
+    {
+      "titleIds": [
+        "454109AB"
+      ],
+      "requires": {
+        "gpuContains": [
+          "Adreno 730",
+          "Adreno (TM) 730"
+        ],
+        "manufacturers": [
+          "motorola"
+        ]
+      },
+      "evidence": [],
+      "id": "ao2dc-loading-page-state",
+      "name": "Army of Two — teste de memória GPU",
+      "reason": "Hipótese experimental: sincronização/visibilidade de memória escrita pela GPU. Usar somente após testar a referência, restaurando as configurações entre os testes. Pode custar desempenho; não há correção comprovada.",
+      "settings": {
+        "Vulkan|vulkan_async_skip_draws": "false",
+        "GPU|clear_memory_page_state": "true"
+      }
     }
   ]
 }
