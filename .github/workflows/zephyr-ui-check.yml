@@ -20,6 +20,12 @@ on:
       - 'tools/*signing*'
       - 'tools/test-a64-vector-select.py'
       - 'tools/test-round3-*.py'
+      - 'tools/test-shared-page-refresh.py'
+      - 'tools/test-army-quirk.py'
+      - 'tools/test-edge30-policy.py'
+      - 'emulator-core/src/main/cpp/xenia/src/xenia/gpu/shared_memory.*'
+      - 'emulator-core/src/main/cpp/xenia/src/xenia/game_quirks.*'
+      - 'emulator-core/src/main/cpp/xenia/src/xenia/base/zephyr_edge30_policy.h'
       - 'emulator-core/src/test/cpp/a64_permute_round3_test.cc'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/gpu/texture_cache.*'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/vfs/devices/disc_zarchive_device.cc'
@@ -167,6 +173,10 @@ jobs:
 
       - name: Check CPU 0 scheduler phase diagnostics
         run: python3 tools/test-scheduler-phase-stats.py
+      - name: Test shared-memory CPU upload refresh and Army title policy
+        run: |
+          python3 tools/test-shared-page-refresh.py
+          python3 tools/test-army-quirk.py
       - name: Test GPU completion timeline and exact fence collection policy
         run: python3 tools/test-gpu-completion-timeline.py
       - name: Compile Compose UI without packaging native libraries

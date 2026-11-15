@@ -306,11 +306,11 @@ class SharedMemory {
   // Pages of exports read back (RangeWrittenByGpu read_back).
   uint64_t* system_page_flags_preserve_exempt_ = nullptr;
 
-  // Set when GPU-written flags change, so an unchanged frame skips the copy.
+  // Set when valid OR GPU-written flags change (CPU uploads count too).
   bool gpu_written_data_dirty_ = false;
 
-  // Bitmap of dirty 64-entry chunks of valid_and_gpu_written, so localized GPU
-  // writes only copy the chunks that changed.
+  // Bitmap of dirty 64-entry chunks of both page masks, so localized CPU
+  // uploads and GPU writes refresh only the chunks that changed.
   uint32_t dirty_blocks_ = 0;
 
   unsigned num_system_page_flags_ = 0;

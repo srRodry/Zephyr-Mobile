@@ -476,6 +476,10 @@ void SharedMemory::MakeRangeValid(uint32_t start, uint32_t length,
       }
       // SystemPageFlagsBlock& block = system_page_flags_[i];
       system_page_flags_valid_[i] |= valid_bits;
+      // Refresh consumes BOTH valid and GPU-written flags. CPU uploads also
+      // change the result, including uploads outside any GPU-dirty chunk.
+      gpu_written_data_dirty_ = true;
+      dirty_blocks_ |= 1u << (i >> 6);
       if (written_by_gpu) {
         // In the same critical region as the GPU write, so a guest write
         // faulting in can't see the pages of an export read back as preserved.
@@ -489,9 +493,6 @@ void SharedMemory::MakeRangeValid(uint32_t start, uint32_t length,
           system_page_flags_preserve_exempt_[i] &= ~valid_bits;
         }
         system_page_flags_valid_and_gpu_written_[i] |= valid_bits;
-        // Mark the touched chunk dirty so the next copy picks it up.
-        gpu_written_data_dirty_ = true;
-        dirty_blocks_ |= 1u << (i >> 6);
       } else {
         system_page_flags_valid_and_gpu_written_[i] &= ~valid_bits;
       }

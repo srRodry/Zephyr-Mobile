@@ -64,7 +64,7 @@ jobs:
     - name: Build settings
       id: cfg
       env:
-        RESEARCH_ARM: ${{ github.ref_name == 'research/optimization-round3' && 'beta4-edge30' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
+        RESEARCH_ARM: ${{ github.ref_name == 'research/optimization-round3' && 'beta5-page-refresh' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
         sha=$(git rev-parse --short=8 HEAD)
@@ -151,7 +151,7 @@ jobs:
     - name: Build settings (candidate)
       id: cfg_candidate
       env:
-        RESEARCH_ARM: ${{ github.ref_name == 'research/optimization-round3' && 'beta4-edge30' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
+        RESEARCH_ARM: ${{ github.ref_name == 'research/optimization-round3' && 'beta5-page-refresh' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
         sha=$(git rev-parse --short=8 HEAD)
@@ -172,6 +172,8 @@ jobs:
 
     - name: Validate native optimization invariants
       run: |
+        python3 tools/test-shared-page-refresh.py
+        python3 tools/test-army-quirk.py
         python3 tools/test-edge30-policy.py
         python3 tools/test-round3-a64.py
         python3 tools/test-a64-vector-select.py
@@ -327,6 +329,9 @@ jobs:
             'native_target': 'armv8.2-a+fp16+dotprod+lse; tune cortex-x2; no SVE',
             'pipeline_workers_max': 2,
             'scheduler_diagnostics': False,
+            'rendering_validated_on_device': False,
+            'rendering_fix': 'track CPU uploads in page refresh dirty chunks',
+            'title_defaults': {'454107F8': {'GPU|clear_memory_page_state': True}},
         }
         pathlib.Path(os.environ['NAME'] + '.json').write_text(json.dumps(result, indent=2) + '\n')
         PYIDENTITY
@@ -362,8 +367,8 @@ jobs:
           fs.writeFileSync(checksums, digest + '  ' + apk + '\n');
           const body = [
             '<!-- update-summary:pt-BR',
-            '- Beta dedicada ao Edge 30 Ultra: compilação Cortex-X2/SM8475.',
-            '- Menor disputa de workers Vulkan e remoção da instrumentação do scheduler.',
+            '- Corrige rastreamento de páginas carregadas pela CPU na atualização da memória gráfica.',
+            '- Ativa atualização de páginas somente para Army of Two original; ajuste ainda precisa de teste no aparelho.',
             '-->',
             'Beta experimental; desempenho ainda não validado no aparelho.',
             'Pacote: xendroid.compose.zephyr.research',
@@ -382,7 +387,7 @@ jobs:
             if (error.status !== 404) throw error;
             release = (await github.rest.repos.createRelease({
               ...context.repo, tag_name: tag, target_commitish: context.sha,
-              name: 'Zephyr Edge 30 Ultra beta 4 — build ' + context.runNumber,
+              name: 'Zephyr Edge 30 Ultra beta 5 — build ' + context.runNumber,
               body, draft: true, prerelease: true
             })).data;
           }
