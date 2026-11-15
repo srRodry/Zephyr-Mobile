@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1280" height="420" viewBox="0 0 1280 420" role="img" aria-labelledby="title desc">
+<title id="title">Zephyr-Mobile · Pixel Code</title>
+<desc id="desc">Zephyr Z emblem in emerald and lime on a dark green console-inspired background. Pixel Code project.</desc>
+<defs>
+<linearGradient id="bg" x2="1" y2="1"><stop stop-color="#04110F"/><stop offset=".6" stop-color="#092C24"/><stop offset="1" stop-color="#041613"/></linearGradient>
+<linearGradient id="emerald"><stop stop-color="#44C88B"/><stop offset="1" stop-color="#87F16D"/></linearGradient>
+<radialGradient id="glow"><stop stop-color="#44C88B" stop-opacity=".18"/><stop offset="1" stop-color="#44C88B" stop-opacity="0"/></radialGradient>
+</defs>
+<rect width="1280" height="420" rx="24" fill="url(#bg)"/>
+<ellipse cx="280" cy="220" rx="460" ry="300" fill="url(#glow)"/>
+<path d="M-40 315 C200 170 370 450 740 270 S1130 100 1320 160" fill="none" stroke="#44C88B" stroke-opacity=".16" stroke-width="54"/>
+<path d="M-40 309 C230 170 380 450 740 265 S1130 95 1320 155" fill="none" stroke="#87F16D" stroke-opacity=".28"/>
+<path d="M0 85 C370 180 600 -75 1280 95" fill="none" stroke="#87F16D" stroke-opacity=".13"/>
+<rect x="30" y="30" width="1220" height="360" rx="18" fill="none" stroke="#87F16D" stroke-opacity=".2"/>
+<g transform="translate(40 15) scale(3.4)">
+<circle cx="54" cy="54" r="42" fill="#04110F" fill-opacity=".55" stroke="#44C88B" stroke-opacity=".5" stroke-width=".5"/>
+<path fill="#87F16D" d="M31 34L43 26H78L66 34ZM29 39H35L31 43H25ZM37 39H43L39 43H33ZM45 39H51L47 43H41Z"/>
+<path fill="#44C88B" d="M61 36H73L44 67L31 75L42 59Z"/>
+<path fill="#87F16D" d="M42 68H72L64 76H30Z"/>
+<path fill="#15573F" d="M73 34L81 28L53 61L43 65Z"/>
+<path fill="#39A98A" d="M53 62H78L69 69H46Z"/>
+<path fill="#15573F" d="M46 70H70L64 75H37Z"/>
+<path fill="#87F16D" d="M73 58H78L75 61H70ZM80 58H85L82 61H77Z"/>
+</g>
+<g font-family="Arial,Helvetica,sans-serif">
+<text x="430" y="113" fill="#87F16D" font-size="15" letter-spacing="5">EMERALD CURRENT</text>
+<text x="425" y="206" fill="#F3FFF7" font-size="79" font-weight="700" letter-spacing="-3">ZEPHYR</text>
+<text x="430" y="253" fill="#B8D4C8" font-size="31" letter-spacing="12">MOBILE</text>
+<path d="M430 281H1178" stroke="#87F16D" stroke-opacity=".22"/>
+<text x="430" y="320" fill="#B8D4C8" font-size="17" letter-spacing="1">XBOX 360 EMULATION · ANDROID · ARM64 · VULKAN</text>
+<rect x="1008" y="49" width="202" height="38" rx="19" fill="#081814" stroke="#C8AA70" stroke-opacity=".55"/>
+<text x="1109" y="74" text-anchor="middle" fill="#DCC89F" font-size="14" font-weight="700" letter-spacing="2">PIXEL CODE</text>
+<text x="430" y="357" fill="#77A393" font-size="13" letter-spacing="1">RESEARCH EDITION · MOTOROLA EDGE 30 ULTRA</text>
+</g>
+</svg>
