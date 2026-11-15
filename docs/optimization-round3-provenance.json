@@ -1,0 +1,83 @@
+{
+  "date": "2026-11-15",
+  "zephyr_base": "aad470ff5b8c29d625916a3268d9d67995f9ff26",
+  "upstream_snapshot": "e4003ba664d6e625d49ace3aa7c74c38d748f61b",
+  "target": "Motorola Edge 30 Ultra / Snapdragon 8+ Gen 1 / Adreno 730",
+  "sources": [
+    {
+      "repo": "hedge-dev/XenonRecomp",
+      "sha": "ddd128bcca99fe8bfbb99bea583c972351fa6ace",
+      "date": "2025-08-04T13:56:26Z",
+      "message": "Update outdated info in README. (#159)"
+    },
+    {
+      "repo": "rexglue/rexglue-sdk",
+      "sha": "ebac1cf0d04bab0042a5dd6148b34ab3953e9c0d",
+      "date": "2026-11-14T19:59:53Z",
+      "message": "Release v0.11.0"
+    },
+    {
+      "repo": "Buku313/Skate3-Mobile",
+      "sha": "e1b28c185d578c22e3a630f6f3b13ed123462a43",
+      "date": "2026-09-16T00:07:52Z",
+      "message": "site: broaden Android showcase and improve mod submissions"
+    },
+    {
+      "repo": "FH1-ReImagined/ForzaHorizon1-ReImagined",
+      "sha": "b07c423b128dc12935b1d81e0f49975f0af40860",
+      "date": "2026-11-15T13:36:10Z",
+      "message": "A hang log names where the load waits and which DLC package is the odd one, and the DLC docs describe the fan-made pack that hangs Single Player loads (#771) (#912)"
+    },
+    {
+      "repo": "Mainkill1/xemu",
+      "sha": "d1fed222e531f8cb544925595876aa2fc62810c9",
+      "date": "2026-11-02T03:52:33Z",
+      "message": "Merge pull request #351 from Mainkill1/fix/x3-boot-interface"
+    },
+    {
+      "repo": "xemu-project/xemu",
+      "sha": "4bdad199102b22ed0cfa998e9af6b35d76238b3e",
+      "date": "2026-11-03T01:05:51Z",
+      "message": "nv2a/vk: Select physical device that GL context was created with"
+    }
+  ],
+  "imports": [
+    {
+      "sha": "ae21c2ea5771c5d362e8cb2cb092170e0fd03a2a",
+      "upstream_url": "https://github.com/phforner0/Xendroid-Plus/commit/ae21c2ea5771c5d362e8cb2cb092170e0fd03a2a",
+      "author_date_message": "XeniOS\n2026-09-23T18:14:51+09:00\n[A64] Use REV32 and ZIP for byte-order permutes and merges\n\nPERMUTE by bytes (vperm) XORed every control byte with 3 to map PPC\nbyte indices onto the host's word-swapped layout, which needs the\ncontrol in a register and three extra instructions. Byte-reversing each\nword of the two tables with REV32 does the same and doubles as the copy\ninto v0/v1: register controls go from 7 to 5 instructions. Constant\ntables are swapped at emit time.\n\nConstant merge controls get dedicated forms: vmrghb/vmrglb become\nZIP1/ZIP2 plus REV32 with no control vector to load, vmrghh/vmrglh ZIP\nplus REV64.4S (2 instructions instead of 4), and vmrghw/vmrglw a single\nZIP1/ZIP2 (instead of 4).\n\nThe golden corpus covers vperm and every vmrg form.\n\nEvidence, guest-loop microbenchmark (512M-1B iterations, final\nregisters cross-checked): vperm latency -66.2%, throughput -75.2%. No\ntitle-level measurement.\n\nUpstream: has207/xenia-edge@968f1ef45921cff8794cbc0305bdf388c8dc3178\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n",
+      "adaptation": "PERMUTE_V128 only; existing word fast paths retained",
+      "license": "Existing Xenia BSD plus Xendroid+ AGPL-3.0-or-later contributions; notices retained"
+    },
+    {
+      "sha": "74c1ec87c866019bdcf0930658df561fd5831331",
+      "upstream_url": "https://github.com/phforner0/Xendroid-Plus/commit/74c1ec87c866019bdcf0930658df561fd5831331",
+      "author_date_message": "XeniOS\n2026-09-23T18:21:58+09:00\n[A64] Skip a same-register truncation that only compares read\n\nTRUNCATE_I32_I64 into the register its source already occupies emits\nmov wN, wN, whose only effect is clearing the upper half. That clearing\nis needed in general: an I32 value's upper half being zero is what lets\nZERO_EXTEND_I64_I32 elide its own move. It is not needed when every\nreader of the result is a compare, which reads it as a 32-bit operand,\nso skip the move in that case. Only compares are accepted because they\nare the readers this was checked for; a naive version that skipped the\nmove for every reader broke mulhwu.\n\nEvidence: -29,639 emitted host instructions (-1.2%) on the Halo 3 menu\ncorpus. A replayed Halo 3 function ran -1.38% and -1.45% in the two A/B\norderings, against a same-binary control of -0.39%/+0.11%.\n\nUpstream: has207/xenia-edge@882df3330f4c34270c4c851a34c3e4ce9b4ac6eb\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n",
+      "adaptation": "compare-only aliased truncation",
+      "license": "Existing Xenia BSD plus Xendroid+ AGPL-3.0-or-later contributions; notices retained"
+    },
+    {
+      "sha": "87739627598f6afc900b2f0e0066736751b77000",
+      "upstream_url": "https://github.com/phforner0/Xendroid-Plus/commit/87739627598f6afc900b2f0e0066736751b77000",
+      "author_date_message": "phforner0\n2026-10-11T18:27:31-03:00\nRemember the last texture found per key and the last view per texture\n\nThe texture of a fetch constant's key and the image view a draw samples it\nthrough were looked up in hash tables at every use, though the draws of a\nframe keep naming textures found shortly before and sample them the same\nway. With texture_lookup_memo (on; debug.xendroid.lookup_memo), a\ndirect-mapped memo by key sits in front of the texture table (an entry is\ndropped with its texture), and each texture remembers the arguments of its\nlast GetView and the view. Results are identical.\n\nCommand thread profiles (20 s, frame-time accounting off, POCO F7):\nGetView 2.5 -> 0.5% of the samples in Red Dead Redemption, 2.7 -> 0.7% in\nGTA IV; the texture table lookups 2.9 -> 2.6% and 3.8 -> 3.4% (the memo\nincluded). The frame rate change is within the run-to-run noise.\n\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n",
+      "adaptation": "exact texture/view memo including all destruction invalidations",
+      "license": "Existing Xenia BSD plus Xendroid+ AGPL-3.0-or-later contributions; notices retained"
+    },
+    {
+      "sha": "fc5283400b3cbd46fe0088c0025e035e4897daa6",
+      "upstream_url": "https://github.com/phforner0/Xendroid-Plus/commit/fc5283400b3cbd46fe0088c0025e035e4897daa6",
+      "author_date_message": "bomabomaboma\n2026-10-13T14:14:56-07:00\n[GPU] Avoid duplicate texture loads\n\nTextures now only get queued once when multiple fetch constants use them.\n\nUpstream: xenia-canary/xenia-canary@40cee11ab14cb9ad4286232dabfe3c69fc32b806\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n",
+      "adaptation": "texture upload queue deduplication",
+      "license": "Existing Xenia BSD plus Xendroid+ AGPL-3.0-or-later contributions; notices retained"
+    },
+    {
+      "sha": "273da4d8be6f054cc2aa8ff19d89ba15843c88af",
+      "upstream_url": "https://github.com/phforner0/Xendroid-Plus/commit/273da4d8be6f054cc2aa8ff19d89ba15843c88af",
+      "author_date_message": "Jakub Moravčík\n2026-10-15T18:50:20+02:00\n[VFS] Stop ZArchive logging and looking up every path twice\n\nResolvePath logged three info lines and ran an archive LookUp before the\nentry tree walk on every file open, and mounting logged a line per entry.\nThese were leftover debugging at the default log level; the tree walk\nalone gives the same result.\n\nCo-Authored-By: Claude Opus 5.5 (1M context) <noreply@anthropic.com>\nUpstream: has207/xenia-edge#306@bba6302e5432145851d7d78dd2e46a896096e25c\nCo-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>\n\n",
+      "adaptation": "ZAR redundant lookup and info-log removal",
+      "license": "Existing Xenia BSD plus Xendroid+ AGPL-3.0-or-later contributions; notices retained"
+    }
+  ],
+  "device_measurements": [],
+  "claim": "No new device FPS measurement. Tests establish bounded correctness and instruction counts, not title speedup."
+}

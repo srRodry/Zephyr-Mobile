@@ -119,6 +119,7 @@ object SettingsProfiles {
         "Vulkan|vulkan_in_pass_resolve", "Vulkan|vulkan_resolve_to_texture_promote",
         "Vulkan|vulkan_resolve_to_texture", "Vulkan|vulkan_resolve_to_texture_serve",
         "Vulkan|vulkan_disjoint_memexport_barriers", "GPU|spirv_structured_forward_jumps",
+        "GPU|texture_lookup_memo",
         "Vulkan|vulkan_cache_texture_descriptors", "Vulkan|vulkan_texture_descriptor_reuse_edge",
         "Display|postprocess_scaling_and_sharpening", "Display|postprocess_antialiasing",
         "Display|present_letterbox", "Display|postprocess_dither",

@@ -14,6 +14,10 @@ import subprocess
 
 SOURCES = (
     'emulator-core/src/main/cpp/xenia/src/xenia/cpu/backend/a64/a64_sequences.cc',
+    'emulator-core/src/main/cpp/xenia/src/xenia/cpu/backend/a64/a64_seq_vector.cc',
+    'emulator-core/src/main/cpp/xenia/src/xenia/gpu/texture_cache.cc',
+    'emulator-core/src/main/cpp/xenia/src/xenia/gpu/vulkan/vulkan_texture_cache.cc',
+    'emulator-core/src/main/cpp/xenia/src/xenia/vfs/devices/disc_zarchive_device.cc',
     'emulator-core/src/main/cpp/xenia/src/xenia/cpu/backend/a64/a64_code_cache.cc',
     'emulator-core/src/main/cpp/xenia/src/xenia/cpu/ppc/ppc_translator.cc',
     'emulator-core/src/main/cpp/emulator_xendroid.cpp',

@@ -200,16 +200,20 @@ class SettingsProfilesTest {
         val asset = File("src/main/assets/${SettingsProfileStore.EXPERIMENTAL_ASSET}").readText()
         val parsed = SettingsProfiles.parse(asset, ProfileSource.EXPERIMENTAL, "Zephyr beta")
         assertTrue(parsed.skipped.toString(), parsed.skipped.isEmpty())
-        assertEquals(5, parsed.profiles.size)
+        assertEquals(7, parsed.profiles.size)
         parsed.profiles.forEach {
             assertTrue(it.profile.evidence.isEmpty())
             assertEquals(listOf("4D5309C9", "4D530AA4"), it.profile.titleIds)
             assertEquals(ProfileSource.EXPERIMENTAL, it.source)
         }
+        val memo = parsed.profiles.filter { it.profile.id.startsWith("zephyr-edge30-round3-memo-") }
+        assertEquals(2, memo.size)
+        assertEquals(setOf("true", "false"), memo.map { it.profile.settings["GPU|texture_lookup_memo"] }.toSet())
+        assertTrue(memo.all { it.profile.settings.size == 1 })
         assertTrue(SettingsProfiles.parse(asset, ProfileSource.BUNDLED, "verified").profiles.isEmpty())
         val store = SettingsProfileStore({ null }, File(folder.root, "absent"),
             File(folder.root, "beta-records"), experimental = { asset })
-        assertEquals(5, store.load().profiles.size)
+        assertEquals(7, store.load().profiles.size)
     }
 
 }

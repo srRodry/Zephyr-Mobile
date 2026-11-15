@@ -796,6 +796,18 @@ class TextureCache {
   std::unordered_map<TextureKey, std::unique_ptr<Texture>, TextureKey::Hasher>
       textures_;
 
+  // FindOrCreateTexture's memo in front of textures_ (texture_lookup_memo),
+  // direct-mapped by the key. An entry is dropped with its texture.
+  struct TextureFindMemoEntry {
+    TextureKey key;
+    Texture* texture = nullptr;
+  };
+  static constexpr uint32_t kTextureFindMemoSizeLog2 = 9;
+  std::array<TextureFindMemoEntry, size_t(1) << kTextureFindMemoSizeLog2>
+      texture_find_memo_;
+  static uint32_t GetTextureFindMemoIndex(const TextureKey& key);
+  void ForgetTextureFindMemo(const Texture* texture);
+
   uint64_t textures_total_host_memory_usage_ = 0;
 
   Texture* texture_used_first_ = nullptr;

@@ -5,7 +5,7 @@ name: Zephyr performance beta APK
 
 on:
   push:
-    branches: [perf/edge30-beta1, integration/zephyr-beta2]
+    branches: [perf/edge30-beta1, integration/zephyr-beta2, research/optimization-round3]
     paths-ignore:
       - '**.md'
       - 'docs/**'
@@ -64,7 +64,7 @@ jobs:
     - name: Build settings
       id: cfg
       env:
-        RESEARCH_ARM: ${{ github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
+        RESEARCH_ARM: ${{ github.ref_name == 'research/optimization-round3' && 'beta3' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
         sha=$(git rev-parse --short=8 HEAD)
@@ -151,7 +151,7 @@ jobs:
     - name: Build settings (candidate)
       id: cfg_candidate
       env:
-        RESEARCH_ARM: ${{ github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
+        RESEARCH_ARM: ${{ github.ref_name == 'research/optimization-round3' && 'beta3' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
         sha=$(git rev-parse --short=8 HEAD)
@@ -170,6 +170,12 @@ jobs:
         echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
         echo "Building $package as $name.apk"
 
+    - name: Validate native optimization invariants
+      run: |
+        python3 tools/test-round3-a64.py
+        python3 tools/test-a64-vector-select.py
+        python3 tools/test-round3-cache.py
+
     - name: Validate shared navigation before packaging
       run: |
         bash ./gradlew :app:testUitestUnitTest --no-daemon --stacktrace \
@@ -178,7 +184,8 @@ jobs:
           --tests 'xendroid.compose.ui.library.*' \
           --tests 'xendroid.compose.ui.design.ZephyrPaletteTest' \
           --tests 'xendroid.compose.ui.design.EmeraldNavigationTest' \
-          --tests 'xendroid.compose.compatibility.SettingsProfilesTest'
+          --tests 'xendroid.compose.compatibility.SettingsProfilesTest' \
+          --tests 'xendroid.compose.settings.SettingsSchemaTest'
 
     - name: Build release APK
       env:

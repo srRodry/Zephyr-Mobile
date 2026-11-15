@@ -128,6 +128,56 @@
         ]
       },
       "evidence": []
+    },
+    {
+      "id": "zephyr-edge30-round3-memo-off",
+      "name": "Rodada 3 — memo de texturas desativado",
+      "titleIds": [
+        "4D5309C9",
+        "4D530AA4"
+      ],
+      "reason": "Comparação isolada do cache de consultas desta rodada. Não altera resolução, áudio, driver ou as otimizações ARM64. Reinicie o jogo, aqueça o cache e mantenha a mesma cena. Sem ganho de FPS medido neste aparelho. Restaure o perfil anterior antes de outra comparação.",
+      "settings": {
+        "GPU|texture_lookup_memo": "false"
+      },
+      "requires": {
+        "gpuContains": [
+          "Adreno (TM) 730",
+          "Adreno 730"
+        ],
+        "manufacturers": [
+          "motorola"
+        ],
+        "models": [
+          "motorola edge 30 ultra"
+        ]
+      },
+      "evidence": []
+    },
+    {
+      "id": "zephyr-edge30-round3-memo-on",
+      "name": "Rodada 3 — memo de texturas ativado",
+      "titleIds": [
+        "4D5309C9",
+        "4D530AA4"
+      ],
+      "reason": "Comparação isolada do cache de consultas desta rodada. Não altera resolução, áudio, driver ou as otimizações ARM64. Reinicie o jogo, aqueça o cache e mantenha a mesma cena. Sem ganho de FPS medido neste aparelho. Restaure o perfil anterior antes de outra comparação.",
+      "settings": {
+        "GPU|texture_lookup_memo": "true"
+      },
+      "requires": {
+        "gpuContains": [
+          "Adreno (TM) 730",
+          "Adreno 730"
+        ],
+        "manufacturers": [
+          "motorola"
+        ],
+        "models": [
+          "motorola edge 30 ultra"
+        ]
+      },
+      "evidence": []
     }
   ]
 }

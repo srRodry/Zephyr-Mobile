@@ -617,6 +617,11 @@ class VulkanTextureCache final : public TextureCache {
     Usage usage_ = Usage::kUndefined;
 
     std::unordered_map<ViewKey, VkImageView, ViewKey::Hasher> views_;
+    // GetView's memo (texture_lookup_memo): the arguments of the last call
+    // that returned a view, and the view - most textures are always sampled
+    // the same way.
+    VkImageView last_view_ = VK_NULL_HANDLE;
+    uint32_t last_view_arguments_ = 0;
 
     // For 3D textures sampled as 2D - cached 2D texture loaded from slice 0.
     // Uses a modified key (depth=1) with 3D tiling to read from guest memory.

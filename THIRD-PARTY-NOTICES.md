@@ -49,3 +49,25 @@ For this combined research build, distribute corresponding source under the
 applicable AGPL terms alongside the retained third-party notices.
 Source: https://github.com/srRodry/Zephyr-Mobile/tree/research/android-x360-gpu-candidate
 Upstream: https://github.com/phforner0/Xendroid-Plus/commit/4f0d10aa353e3be729862411df59827889de6cc9
+
+
+## Research round 3 — CPU, texture lookup and ZAR
+
+Adapted from phforner0/Xendroid-Plus, audited at
+`e4003ba664d6e625d49ace3aa7c74c38d748f61b`. The existing Xenia BSD notices and
+Xendroid+ AGPL-3.0-or-later contribution terms are retained. The full AGPL text
+is already bundled under `engine-licenses/xendroid-plus-AGPL-3.0.txt`.
+
+- XeniOS: `ae21c2ea5771c5d362e8cb2cb092170e0fd03a2a` (PERMUTE_V128 only;
+  Zephyr's pre-existing word-merge fast path retained) and
+  `74c1ec87c866019bdcf0930658df561fd5831331` (compare-only truncation).
+- phforner0: `87739627598f6afc900b2f0e0066736751b77000` (texture and view memo),
+  plus the deduplication commit pinned in the provenance manifest.
+- Jakub Moravčík: `273da4d8be6f054cc2aa8ff19d89ba15843c88af` (ZAR lookups/logs).
+
+Upstream co-authorship by Claude Opus 5.5 is recorded in the source commits and
+provenance manifest. This research also follows their references to
+has207/xenia-edge; no ownership of these upstream changes is claimed.
+Source, exact imported ranges, tests and limitations are in
+`docs/optimization-round3-research.md` and its provenance manifest. Distribute
+corresponding source for the exact combined APK under the applicable terms.

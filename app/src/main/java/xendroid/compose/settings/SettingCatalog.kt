@@ -178,6 +178,7 @@ object SettingCatalog {
             e("Vulkan|vulkan_resolve_to_texture", X),
             e("Vulkan|vulkan_resolve_to_texture_promote", X),
             e("Vulkan|vulkan_resolve_to_texture_serve", X),
+            e("GPU|texture_lookup_memo", X),
             e("Vulkan|vulkan_cache_texture_descriptors", X),
             e("Vulkan|vulkan_disjoint_memexport_barriers", X),
             e("GPU|spirv_structured_forward_jumps", X),

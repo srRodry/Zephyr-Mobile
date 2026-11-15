@@ -955,40 +955,51 @@ struct PERMUTE_V128
                I<OPCODE_PERMUTE, V128Op, V128Op, V128Op, V128Op>> {
   static void EmitByInt8(A64Emitter& e, const EmitArgType& i) {
     int d = i.dest.reg().getIdx();
-    // Copy src2 to v0, src3 to v1 (consecutive for 2-register TBL).
-    if (i.src2.is_constant) {
-      LoadV128Const(e, 0, i.src2.constant());
-    } else if (i.src2.reg().getIdx() != 0) {
-      e.orr(VReg(0).b16, VReg(i.src2.reg().getIdx()).b16,
-            VReg(i.src2.reg().getIdx()).b16);
-    }
-    if (i.src3.is_constant) {
-      LoadV128Const(e, 1, i.src3.constant());
-    } else if (i.src3.reg().getIdx() != 1) {
-      e.orr(VReg(1).b16, VReg(i.src3.reg().getIdx()).b16,
-            VReg(i.src3.reg().getIdx()).b16);
-    }
-    // Load control vector into v2, XOR each byte with 3 for endian swap.
-    int ctrl;
+    // rev32 of the tables replaces XORing the control with 3.
+    int zip_form = 0;
     if (i.src1.is_constant) {
-      LoadV128Const(e, 2, i.src1.constant());
-      ctrl = 2;
-    } else {
-      ctrl = i.src1.reg().getIdx();
-      if (ctrl == 0 || ctrl == 1) {
-        // Control conflicts with table registers, copy to v2.
-        e.orr(VReg(2).b16, VReg(ctrl).b16, VReg(ctrl).b16);
-        ctrl = 2;
+      vec128_t ctrl = i.src1.constant();
+      for (int k = 0; k < 16; k++) {
+        ctrl.u8[k] &= 0x1F;
       }
+      static const vec128_t kMrghbCtrl =
+          vec128b(0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23);
+      static const vec128_t kMrglbCtrl =
+          vec128b(8, 24, 9, 25, 10, 26, 11, 27, 12, 28, 13, 29, 14, 30, 15, 31);
+      zip_form = (ctrl == kMrghbCtrl) ? 1 : (ctrl == kMrglbCtrl) ? 2 : 0;
+      if (!zip_form) {
+        LoadV128Const(e, 2, ctrl);
+      }
+    } else {
+      e.movi(VReg(2).b16, 0x1F);
+      e.and_(VReg(2).b16, VReg(i.src1.reg().getIdx()).b16, VReg(2).b16);
     }
-    // XOR control bytes with 0x03 to remap PPC byte indices to LE,
-    // then mask to 5 bits (0-31) so TBL indices stay in range.
-    e.movi(VReg(3).b16, 0x03);
-    e.eor(VReg(3).b16, VReg(ctrl).b16, VReg(3).b16);
-    e.movi(VReg(2).b16, 0x1F);
-    e.and_(VReg(3).b16, VReg(3).b16, VReg(2).b16);
+    // Table register `idx` = the source with the bytes of each word reversed.
+    auto load_table = [&e](const V128Op& src, int idx) {
+      if (src.is_constant) {
+        const vec128_t& t = src.constant();
+        vec128_t swapped;
+        for (int k = 0; k < 16; k++) {
+          swapped.u8[k] = t.u8[k ^ 3];
+        }
+        LoadV128Const(e, idx, swapped);
+      } else {
+        e.rev32(VReg(idx).b16, VReg(src.reg().getIdx()).b16);
+      }
+    };
+    load_table(i.src2, 0);
+    load_table(i.src3, 1);
+    if (zip_form) {
+      if (zip_form == 1) {
+        e.zip1(VReg(d).b16, VReg(0).b16, VReg(1).b16);
+      } else {
+        e.zip2(VReg(d).b16, VReg(0).b16, VReg(1).b16);
+      }
+      e.rev32(VReg(d).b16, VReg(d).b16);
+      return;
+    }
     // TBL with 2-register table {v0, v1}.
-    e.tbl(VReg(d).b16, VReg(0).b16, 2, VReg(3).b16);
+    e.tbl(VReg(d).b16, VReg(0).b16, 2, VReg(2).b16);
   }
 
   static void EmitByInt16(A64Emitter& e, const EmitArgType& i) {
@@ -998,6 +1009,25 @@ struct PERMUTE_V128
     // PPC halfword index H maps to NEON u16 index (H&7)^1 (halfword swap
     // within 32-bit words). For src3 (indices >= 8), add 16 byte offset.
     vec128_t ctrl = i.src1.constant();
+    {
+      static const vec128_t kMrghhCtrl = vec128s(0, 8, 1, 9, 2, 10, 3, 11);
+      static const vec128_t kMrglhCtrl = vec128s(4, 12, 5, 13, 6, 14, 7, 15);
+      vec128_t masked = ctrl;
+      for (int k = 0; k < 8; k++) {
+        masked.u16[k] &= 0xF;
+      }
+      if (masked == kMrghhCtrl || masked == kMrglhCtrl) {
+        int a = SrcVReg(e, i.src2, 0);
+        int b = SrcVReg(e, i.src3, 1);
+        if (masked == kMrghhCtrl) {
+          e.zip1(VReg(d).h8, VReg(b).h8, VReg(a).h8);
+        } else {
+          e.zip2(VReg(d).h8, VReg(b).h8, VReg(a).h8);
+        }
+        e.rev64(VReg(d).s4, VReg(d).s4);
+        return;
+      }
+    }
     vec128_t tbl_ctrl = {};
     for (int k = 0; k < 8; k++) {
       uint16_t h = ctrl.u16[k] & 0xF;

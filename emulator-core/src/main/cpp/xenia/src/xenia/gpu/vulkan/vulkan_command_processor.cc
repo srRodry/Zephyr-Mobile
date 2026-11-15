@@ -75,6 +75,7 @@ DECLARE_bool(vulkan_texture_load_levels_to_image);
 DECLARE_int32(vulkan_skip_gpu_written_texture_loads);
 DECLARE_bool(readback_resolve_uma_read_watch);
 DECLARE_int32(readback_resolve_uma_read_watch_min_kb);
+DECLARE_bool(texture_lookup_memo);
 DECLARE_bool(texture_partial_reload);
 DECLARE_bool(texture_integer_num_format);
 DECLARE_bool(vulkan_direct_host_resolve);
@@ -496,6 +497,8 @@ void PollDebugPropertyOverrides(CommandProcessor& command_processor) {
   PollDebugPropertyOverride("debug.xendroid.partial_reload",
                             "texture_partial_reload",
                             cvars::texture_partial_reload);
+  PollDebugPropertyOverride("debug.xendroid.lookup_memo", "texture_lookup_memo",
+                            cvars::texture_lookup_memo);
   PollDebugPropertyOverride("debug.xendroid.texload_levels",
                             "vulkan_texture_load_levels_to_image",
                             cvars::vulkan_texture_load_levels_to_image);

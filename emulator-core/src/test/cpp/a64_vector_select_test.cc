@@ -93,7 +93,35 @@ static void RealPipeline(bool dead_no) {
       }
   assert(found);
 }
+static void TruncationReaders() {
+  using B = hir::HIRBuilder;
+  using V = hir::Value;
+  using Compare = V* (B::*)(V*,V*);
+  const Compare comparisons[] = {&B::CompareEQ,&B::CompareNE,&B::CompareSLT,&B::CompareSLE,
+    &B::CompareSGT,&B::CompareSGE,&B::CompareULT,&B::CompareULE,&B::CompareUGT,&B::CompareUGE};
+  for (auto comparison : comparisons) for (bool mixed : {false,true}) {
+    B b; b.MakeCurrent();
+    auto source=b.LoadContext(0,hir::INT64_TYPE);
+    auto narrow=b.Truncate(source,hir::INT32_TYPE);
+    auto rhs=b.LoadContext(8,hir::INT32_TYPE);
+    auto result=(b.*comparison)(narrow,rhs); b.StoreContext(16,result);
+    if(mixed)b.StoreContext(24,b.ZeroExtend(narrow,hir::INT64_TYPE));
+    b.Return();assert(b.Finalize());
+    assert(test_a64::TruncationOnlyReadAsWord(narrow->def)==!mixed);
+    for(int dest : {4,5}) {
+      test_a64::A64Emitter e;
+      test_a64::TRUNCATE_I32_I64::EmitArgType args;
+      args.dest=test_a64::I32Op(dest);args.src1=test_a64::I64Op(4);args.instr=narrow->def;
+      test_a64::TRUNCATE_I32_I64::Emit(e,args);
+      assert(e.getSize()==(!mixed && dest==4 ? 0u:4u));
+    }
+  }
+  B b; b.MakeCurrent();auto narrow=b.Truncate(b.LoadContext(0,hir::INT64_TYPE),hir::INT32_TYPE);
+  assert(!test_a64::TruncationOnlyReadAsWord(narrow->def));
+  std::puts("A64 truncation: 10 real HIR compare opcodes, mixed zero-extension users, no users, aliased/distinct destinations and 0/4-byte production encodings passed.");
+}
 int main() {
+  TruncationReaders();
   size_t checks = 0;
   // All 4^4 alias arrangements, including repeated sources and destination=mask.
   for (uint32_t d = 4; d < 8; ++d) for (uint32_t m = 4; m < 8; ++m)
