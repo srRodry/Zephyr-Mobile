@@ -111,9 +111,10 @@ class SettingsHubTest {
         compose.onNodeWithTag("settings-hub-category:storage").performScrollTo().assertExists()
     }
 
-    @Config(qualifiers = Phone.LAND) @Test fun controllerKeepsTheOriginalSummary() {
+    @Config(qualifiers = Phone.LAND) @Test fun controllerUsesSharedEmeraldHub() {
         open(InputMode.CONTROLLER)
-        compose.onNodeWithTag("settings-touch-frame").assertDoesNotExist()
+        compose.onNodeWithTag("settings-touch-frame").assertExists()
+        compose.onNodeWithTag("settings-hub-home").assertExists()
         compose.onAllNodesWithText(Fixture.context.getString(R.string.xd_set_summary)).onFirst().assertExists()
     }
 }
