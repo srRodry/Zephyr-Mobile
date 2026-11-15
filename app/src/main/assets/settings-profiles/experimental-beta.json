@@ -178,6 +178,106 @@
         ]
       },
       "evidence": []
+    },
+    {
+      "id": "zephyr-edge30-round4-snapshot-off",
+      "name": "Rodada 4 — cópia do cache Vulkan desativada",
+      "titleIds": [
+        "4D5309C9",
+        "4D530AA4"
+      ],
+      "reason": "Comparação de uma única opção da rodada 4, sem ganho medido neste aparelho. Restaure o perfil anterior antes de trocar; reinicie o jogo e repita a mesma cena com driver e caches iguais. Observe engasgos, estabilidade e temperatura.",
+      "settings": {
+        "Vulkan|vulkan_pipeline_cache_save_snapshot": "false"
+      },
+      "requires": {
+        "gpuContains": [
+          "Adreno (TM) 730",
+          "Adreno 730"
+        ],
+        "manufacturers": [
+          "motorola"
+        ],
+        "models": [
+          "motorola edge 30 ultra"
+        ]
+      },
+      "evidence": []
+    },
+    {
+      "id": "zephyr-edge30-round4-snapshot-on",
+      "name": "Rodada 4 — cópia do cache Vulkan ativada",
+      "titleIds": [
+        "4D5309C9",
+        "4D530AA4"
+      ],
+      "reason": "Comparação de uma única opção da rodada 4, sem ganho medido neste aparelho. Restaure o perfil anterior antes de trocar; reinicie o jogo e repita a mesma cena com driver e caches iguais. Observe engasgos, estabilidade e temperatura.",
+      "settings": {
+        "Vulkan|vulkan_pipeline_cache_save_snapshot": "true"
+      },
+      "requires": {
+        "gpuContains": [
+          "Adreno (TM) 730",
+          "Adreno 730"
+        ],
+        "manufacturers": [
+          "motorola"
+        ],
+        "models": [
+          "motorola edge 30 ultra"
+        ]
+      },
+      "evidence": []
+    },
+    {
+      "id": "zephyr-edge30-round4-constants-off",
+      "name": "Rodada 4 — cópia agrupada de constantes desativada",
+      "titleIds": [
+        "4D5309C9",
+        "4D530AA4"
+      ],
+      "reason": "Comparação de uma única opção da rodada 4, sem ganho medido neste aparelho. Restaure o perfil anterior antes de trocar; reinicie o jogo e repita a mesma cena com driver e caches iguais. Observe engasgos, estabilidade e temperatura.",
+      "settings": {
+        "Vulkan|vulkan_coalesce_float_constant_uploads": "false"
+      },
+      "requires": {
+        "gpuContains": [
+          "Adreno (TM) 730",
+          "Adreno 730"
+        ],
+        "manufacturers": [
+          "motorola"
+        ],
+        "models": [
+          "motorola edge 30 ultra"
+        ]
+      },
+      "evidence": []
+    },
+    {
+      "id": "zephyr-edge30-round4-constants-on",
+      "name": "Rodada 4 — cópia agrupada de constantes ativada",
+      "titleIds": [
+        "4D5309C9",
+        "4D530AA4"
+      ],
+      "reason": "Comparação de uma única opção da rodada 4, sem ganho medido neste aparelho. Restaure o perfil anterior antes de trocar; reinicie o jogo e repita a mesma cena com driver e caches iguais. Observe engasgos, estabilidade e temperatura.",
+      "settings": {
+        "Vulkan|vulkan_coalesce_float_constant_uploads": "true"
+      },
+      "requires": {
+        "gpuContains": [
+          "Adreno (TM) 730",
+          "Adreno 730"
+        ],
+        "manufacturers": [
+          "motorola"
+        ],
+        "models": [
+          "motorola edge 30 ultra"
+        ]
+      },
+      "evidence": []
     }
   ]
 }

@@ -19,6 +19,11 @@ on:
       - '.github/workflows/zephyr-ui-check.yml'
       - 'tools/*signing*'
       - 'tools/test-a64-vector-select.py'
+      - 'tools/test-packed-float-constants.py'
+      - 'emulator-core/src/test/cpp/packed_float_constants_test.cc'
+      - 'emulator-core/src/main/cpp/xenia/src/xenia/gpu/packed_float_constants.h'
+      - 'tools/test-pipeline-cache-snapshot.py'
+      - 'emulator-core/src/test/cpp/pipeline_cache_snapshot_test.cc'
       - 'tools/test-round3-*.py'
       - 'emulator-core/src/test/cpp/a64_permute_round3_test.cc'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/gpu/texture_cache.*'
@@ -152,6 +157,8 @@ jobs:
         run: |
           python3 tools/test-round3-a64.py
           python3 tools/test-round3-cache.py
+          python3 tools/test-pipeline-cache-snapshot.py
+          python3 tools/test-packed-float-constants.py
       - name: Test ARM64 logical masks and unchanged materialization fallbacks
         run: python3 tools/test-a64-logical-immediate.py
       - name: Test A64 perf map remains opt-in

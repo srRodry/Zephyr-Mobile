@@ -24,6 +24,8 @@ object SettingsSchema {
             b("Vulkan", "vulkan_allow_present_mode_fifo_relaxed", "Allow present mode: FIFO relaxed", true),
             b("Vulkan", "vulkan_async_skip_draws", "Async skip draws", true),
             b("Vulkan", "vulkan_placeholder_pipelines", "Placeholder pipelines", false),
+            b("Vulkan", "vulkan_coalesce_float_constant_uploads", "Coalesce shader constant uploads", true),
+            b("Vulkan", "vulkan_pipeline_cache_save_snapshot", "Save a private pipeline-cache snapshot", true),
             b("Vulkan", "vulkan_dynamic_pipeline_state", "Extended dynamic state", true),
             // A slider, not a dropdown: 0 = synchronous, 1..5 = explicit. The native cvar also
             // accepts -1 (auto), but a 0..5 slider is the intended UX.

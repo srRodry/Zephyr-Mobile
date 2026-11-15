@@ -35,6 +35,7 @@
 #include "xenia/base/profiling.h"
 #include "xenia/base/xxhash.h"
 #include "xenia/gpu/draw_util.h"
+#include "xenia/gpu/packed_float_constants.h"
 #include "xenia/gpu/subnative_coordinates.h"
 #include "xenia/gpu/gpu_flags.h"
 #include "xenia/gpu/gpu_live_options.h"
@@ -104,6 +105,13 @@ DECLARE_bool(spirv_texture_sign_specialization);
 DECLARE_bool(spirv_texture_sign_specialization_used);
 DECLARE_bool(spirv_texture_fetch_constants_decoded);
 DECLARE_bool(spirv_texture_exp_adjust_specialization);
+
+DEFINE_bool(
+    vulkan_coalesce_float_constant_uploads, true,
+    "Pack adjacent used shader float constants with one copy per contiguous "
+    "run instead of one per float4. Bit-exact, no shader or precision changes. "
+    "Disable for A/B comparison of CPU upload cost.",
+    "Vulkan");
 
 DEFINE_bool(vulkan_disjoint_memexport_barriers, false,
     "Experimental: omit shared-memory barriers only between guest draws with "
@@ -10882,20 +10890,10 @@ bool VulkanCommandProcessor::UpdateBindings(const VulkanShader* vertex_shader,
         std::memcpy(mapping, &regs[XE_GPU_REG_SHADER_CONSTANT_000_X],
                     sizeof(float) * 4 * 256);
       } else {
-        for (uint32_t i = 0; i < 4; ++i) {
-          uint64_t float_constant_map_entry =
-              current_float_constant_map_vertex_[i];
-          uint32_t float_constant_index;
-          while (xe::bit_scan_forward(float_constant_map_entry,
-                                      &float_constant_index)) {
-            float_constant_map_entry &= ~(1ull << float_constant_index);
-            std::memcpy(mapping,
-                        &regs[XE_GPU_REG_SHADER_CONSTANT_000_X + (i << 8) +
-                              (float_constant_index << 2)],
-                        sizeof(float) * 4);
-            mapping += sizeof(float) * 4;
-          }
-        }
+        CopyPackedFloatConstants(
+            mapping, &regs[XE_GPU_REG_SHADER_CONSTANT_000_X],
+            current_float_constant_map_vertex_,
+            cvars::vulkan_coalesce_float_constant_uploads);
       }
       current_constant_buffers_up_to_date_ |=
           UINT32_C(1) << SpirvShaderTranslator::kConstantBufferFloatVertex;
@@ -10914,20 +10912,10 @@ bool VulkanCommandProcessor::UpdateBindings(const VulkanShader* vertex_shader,
         return false;
       }
       buffer_info.range = VkDeviceSize(float_constants_size);
-      for (uint32_t i = 0; i < 4; ++i) {
-        uint64_t float_constant_map_entry =
-            current_float_constant_map_pixel_[i];
-        uint32_t float_constant_index;
-        while (xe::bit_scan_forward(float_constant_map_entry,
-                                    &float_constant_index)) {
-          float_constant_map_entry &= ~(1ull << float_constant_index);
-          std::memcpy(mapping,
-                      &regs[XE_GPU_REG_SHADER_CONSTANT_256_X + (i << 8) +
-                            (float_constant_index << 2)],
-                      sizeof(float) * 4);
-          mapping += sizeof(float) * 4;
-        }
-      }
+      CopyPackedFloatConstants(
+          mapping, &regs[XE_GPU_REG_SHADER_CONSTANT_256_X],
+          current_float_constant_map_pixel_,
+          cvars::vulkan_coalesce_float_constant_uploads);
       current_constant_buffers_up_to_date_ |=
           UINT32_C(1) << SpirvShaderTranslator::kConstantBufferFloatPixel;
     }
