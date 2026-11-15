@@ -44,8 +44,11 @@ foi realmente aplicado. Reiniciar o jogo após mudar. Os perfis não combinam aj
 não mudam áudio, não forçam clocks e não substituem a configuração 360p existente.
 
 Para a instrumentação existente de Vulkan, a linha `ZephyrMemexport` informa quantas
-barreiras disjuntas foram evitadas por frame no intervalo. Zero não é um ganho.
-Comparar com a mesma instrumentação nos dois braços. Usar os relatórios de sessão
+chamadas Use() foram puladas por independência de regiões no intervalo, por frame.
+Esse contador não é a diferença líquida de barreiras GPU: uma dependência pode ser
+ordenada mais tarde, e nem toda chamada original emitiria uma barreira. Não é uma
+medida de FPS ou de tempo de GPU economizado. Comparar os tempos de quadro com a
+mesma instrumentação nos dois braços. Usar os relatórios de sessão
 e `tools/compare-benchmarks.py`; pelo menos três rodadas A/B intercaladas, mesma cena,
 driver, resolução efetiva, patches, cache aquecido e temperatura inicial semelhante.
 Depois verificar 20–30 minutos para aquecimento, falhas e imagem. Não comparar uma

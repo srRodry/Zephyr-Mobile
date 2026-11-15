@@ -3888,8 +3888,8 @@ void VulkanCommandProcessor::IssueSwap(uint32_t frontbuffer_ptr,
           s.rb_uma_first_use / f, s.rb_uma_unread / f,
           s.rb_uma_bytes / f / 1024.0);
       if (cvars::vulkan_disjoint_memexport_barriers) {
-        XELOGI("ZephyrMemexport: disjoint barriers elided per frame={:.1f}",
-               shared_memory_->TakeDisjointBarriersElided() / f);
+        XELOGI("ZephyrMemexport: disjoint Use calls skipped per frame={:.1f}",
+               shared_memory_->TakeDisjointUseCallsSkipped() / f);
       }
       // What the replays sent to the driver per frame, and how much of the
       // state setting repeated what the command buffer already had.

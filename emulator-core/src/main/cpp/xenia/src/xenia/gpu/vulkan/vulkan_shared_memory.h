@@ -57,9 +57,9 @@ class VulkanSharedMemory : public SharedMemory {
   // Experimental: omit only barriers between provably disjoint guest draws.
   void UseForDisjointGuestDraw(const DisjointDrawRanges::Range* reads,
                               size_t read_count, DisjointDrawRanges::Range write);
-  uint64_t TakeDisjointBarriersElided() {
-    uint64_t result = disjoint_barriers_elided_;
-    disjoint_barriers_elided_ = 0;
+  uint64_t TakeDisjointUseCallsSkipped() {
+    uint64_t result = disjoint_use_calls_skipped_;
+    disjoint_use_calls_skipped_ = 0;
     return result;
   }
 
@@ -158,7 +158,7 @@ class VulkanSharedMemory : public SharedMemory {
 
   DisjointDrawRanges disjoint_draws_;
   bool disjoint_draws_active_ = false;
-  uint64_t disjoint_barriers_elided_ = 0;
+  uint64_t disjoint_use_calls_skipped_ = 0;
   Usage last_usage_;
   std::pair<uint32_t, uint32_t> last_written_range_;
 

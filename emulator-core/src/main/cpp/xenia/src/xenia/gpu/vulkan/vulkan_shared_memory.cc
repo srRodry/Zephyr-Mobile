@@ -84,7 +84,7 @@ bool VulkanSharedMemory::Initialize() {
   if (cvars::shared_memory_zero_copy && TryInitializeZeroCopy()) {
     disjoint_draws_.Clear();
   disjoint_draws_active_ = false;
-  disjoint_barriers_elided_ = 0;
+  disjoint_use_calls_skipped_ = 0;
   last_usage_ = Usage::kTransferDestination;
     last_written_range_ = std::make_pair<uint32_t, uint32_t>(0, 0);
     upload_buffer_pool_ = std::make_unique<ui::vulkan::VulkanUploadBufferPool>(
@@ -602,7 +602,7 @@ void VulkanSharedMemory::UseForDisjointGuestDraw(
   } else {
     // Keep the read-write stage/access scope until Use orders the whole group.
     // A later external use sees the union of every still-pending write.
-    if (last_written_range_.second) ++disjoint_barriers_elided_;
+    if (last_written_range_.second) ++disjoint_use_calls_skipped_;
     if (write.second) {
       const uint32_t start = std::min(last_written_range_.first, write.first);
       const uint32_t end = std::max(last_written_range_.first + last_written_range_.second,
