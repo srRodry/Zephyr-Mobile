@@ -4,6 +4,8 @@ package xendroid.compose.settings
  *  [Setting.desc] by the schema helpers. */
 object SettingDescriptions {
     val byName: Map<String, String> = mapOf(
+        "vulkan_disjoint_memexport_barriers" to "Experimental: reduces barriers only for non-overlapping vertex/index reads and memory exports. RAW/WAR/WAW hazards retain synchronization. Bypassed for host buffers and local-read attachments. Restart the game. No measured FPS gain on this device yet.",
+        "spirv_structured_forward_jumps" to "Experimental shader translation imported from Xendroid+. Replaces eligible forward dispatch jumps with structured control flow. Restart and warm shaders before comparing. Revert if geometry, effects or stability regress; no measured gain on this device yet.",
         // Redesign: the core's own cvars the app now shows; texts follow the core's descriptions.
         "internal_display_resolution_x" to "Width reported to the game in Custom display mode (e.g. 960 for 540p, 848 for 480p). This does not force lower internal rendering resolution; the game may ignore it. Core accepts 1 to 1920",
         "internal_display_resolution_y" to "Height reported to the game in Custom display mode (540 for 540p, 480 for 480p). Restart the title after changing it. Core accepts 1 to 1080",

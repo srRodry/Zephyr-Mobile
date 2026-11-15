@@ -82,7 +82,10 @@ bool VulkanSharedMemory::Initialize() {
   // fully-resident non-sparse allocation backed by guest RAM, so the normal
   // sparse/device-local paths below are skipped.
   if (cvars::shared_memory_zero_copy && TryInitializeZeroCopy()) {
-    last_usage_ = Usage::kTransferDestination;
+    disjoint_draws_.Clear();
+  disjoint_draws_active_ = false;
+  disjoint_barriers_elided_ = 0;
+  last_usage_ = Usage::kTransferDestination;
     last_written_range_ = std::make_pair<uint32_t, uint32_t>(0, 0);
     upload_buffer_pool_ = std::make_unique<ui::vulkan::VulkanUploadBufferPool>(
         vulkan_device, VK_BUFFER_USAGE_TRANSFER_SRC_BIT,
@@ -541,6 +544,8 @@ void VulkanSharedMemory::EndSubmission() { upload_buffer_pool_->FlushWrites(); }
 
 void VulkanSharedMemory::Use(Usage usage,
                              std::pair<uint32_t, uint32_t> written_range) {
+  disjoint_draws_active_ = false;
+  disjoint_draws_.Clear();
   written_range.first = std::min(written_range.first, kBufferSize);
   written_range.second =
       std::min(written_range.second, kBufferSize - written_range.first);
@@ -580,6 +585,32 @@ void VulkanSharedMemory::Use(Usage usage,
     }
   }
   last_written_range_ = written_range;
+}
+
+void VulkanSharedMemory::UseForDisjointGuestDraw(
+    const DisjointDrawRanges::Range* reads, size_t read_count,
+    DisjointDrawRanges::Range write) {
+  const Usage usage = write.second ? Usage::kGuestDrawReadWrite : Usage::kRead;
+  // Enter through Use even for a disjoint first export: an earlier transfer
+  // may have made memory available to reads, but not to shader writes.
+  if (!disjoint_draws_active_ ||
+      disjoint_draws_.NeedsBarrier(reads, read_count, write)) {
+    Use(usage, write);
+    if (usage != Usage::kGuestDrawReadWrite ||
+        disjoint_draws_.NeedsBarrier(reads, read_count, write)) return;
+    disjoint_draws_active_ = true;
+  } else {
+    // Keep the read-write stage/access scope until Use orders the whole group.
+    // A later external use sees the union of every still-pending write.
+    if (last_written_range_.second) ++disjoint_barriers_elided_;
+    if (write.second) {
+      const uint32_t start = std::min(last_written_range_.first, write.first);
+      const uint32_t end = std::max(last_written_range_.first + last_written_range_.second,
+                                    write.first + write.second);
+      last_written_range_ = {start, end - start};
+    }
+  }
+  disjoint_draws_.Add(reads, read_count, write);
 }
 
 bool VulkanSharedMemory::CopyToGuestMemory(uint32_t start, uint32_t length) {
