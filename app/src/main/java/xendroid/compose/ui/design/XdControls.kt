@@ -48,6 +48,7 @@ import androidx.compose.ui.composed
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
@@ -120,8 +121,11 @@ fun XdButton(
             .defaultMinSize(minHeight = height)
             .height(height)
             .clip(shape)
-            .background(bg)
-            .then(if (kind == XdButtonKind.GHOST) Modifier.border(1.dp, c.line2, shape) else Modifier)
+            .background(Brush.verticalGradient(if (kind == XdButtonKind.PRIMARY && !c.controller)
+                listOf(Color(0xFF28734A), bg, Color(0xFF0D3B2C)) else listOf(bg, bg)))
+            .then(if (kind == XdButtonKind.GHOST || kind == XdButtonKind.PRIMARY)
+                Modifier.border(1.dp, if (kind == XdButtonKind.PRIMARY) c.acc.copy(alpha = .65f) else c.line2, shape)
+                else Modifier)
             .clickable(interactionSource = source, indication = null, enabled = enabled, role = Role.Button, onClick = onClick)
             .alpha(if (enabled) 1f else 0.42f)
             .padding(horizontal = pad),

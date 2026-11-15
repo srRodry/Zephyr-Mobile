@@ -1,5 +1,6 @@
 package xendroid.compose.ui.library
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -83,6 +84,7 @@ import xendroid.compose.ui.design.XdStatusPill
 import xendroid.compose.ui.design.XdText
 import xendroid.compose.ui.design.ZephyrActionShape
 import xendroid.compose.ui.design.padButtonOf
+import xendroid.compose.ui.design.zephyrBackdrop
 import xendroid.compose.ui.design.part
 
 /** One library card's art: the cover file (or icon) and whether only the 64 px icon exists. */
@@ -116,13 +118,27 @@ fun LibraryTouch(
     detail: @Composable (Game) -> Unit,
     area: XdArea = XdArea.GAMES,
 ) {
+    var optionsExpanded by rememberSaveable { mutableStateOf(false) }
     val frameColors = Xd.colors
     val shown = remember(data, filter, query) { data.shown(filter, query) }
     val featured = shown.firstOrNull { it.stableId == selected?.stableId } ?: shown.firstOrNull()
     val focus = LocalFocusManager.current
     val openSelected: (Game) -> Unit = { game -> onSelect(game); onOpen(game) }
-    BoxWithConstraints(Modifier.fillMaxSize().background(frameColors.bg)) {
-        val portrait = maxHeight > maxWidth || maxWidth < 840.dp
+    val returnToStage: () -> Unit = {
+        optionsExpanded = false; onQuery(""); onFilter(LibraryFilter.All); focus.clearFocus()
+    }
+    BackHandler(enabled = optionsExpanded || query.isNotBlank() || filter != LibraryFilter.All,
+        onBack = returnToStage)
+    BoxWithConstraints(Modifier.fillMaxSize().zephyrBackdrop()) {
+        val viewportWidth = maxWidth
+        val portrait = maxHeight > viewportWidth || viewportWidth < 600.dp
+        if (!optionsExpanded && query.isBlank() && filter == LibraryFilter.All && featured != null) {
+            LibraryConsole(portrait, area, shown, featured, data, artOf, onSelect, preparing,
+                onPlay = { onSelect(featured); onPlay(featured) },
+                onOpen = { openSelected(featured) }, onFavorite = { onFavorite(featured) },
+                onBrowse = { optionsExpanded = true }, onMenu = onMenu, notices = notices)
+            return@BoxWithConstraints
+        }
         val listMode = portrait && density == CoverDensity.MEDIUM
         val main: @Composable (Modifier) -> Unit = { m ->
             LibraryPlane(m.windowInsetsPadding(WindowInsets.safeDrawing.part(top = !portrait,
@@ -138,8 +154,11 @@ fun LibraryTouch(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(stringResource(R.string.lib_title), Modifier.weight(1f), color = c.fg,
                                     style = XdText.h1.copy(fontSize = 26.sp, lineHeight = 30.sp))
+                                XdIconButton(XdIcons.chevL, stringResource(R.string.zephyr_console_stage),
+                                    returnToStage, modifier = Modifier.testTag("library-toggle-tools"))
                                 XdIconButton(XdIcons.more, stringResource(R.string.lib_more), onMenu)
                             }
+                            if (portrait || optionsExpanded || query.isNotBlank() || filter != LibraryFilter.All) {
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 XdSearchField(
                                     query,
@@ -182,6 +201,7 @@ fun LibraryTouch(
                                     views, density, onDensity)
                                 LibraryChoice(sortText(data.sort), LibrarySort.entries.map { it to sortText(it) }, data.sort, onSort)
                             }
+                            }
                             // Existing notices use dark semantic warning colors; preserve their readable surface.
                             CompositionLocalProvider(LocalXd provides frameColors) {
                                 Box(Modifier.fillMaxWidth().background(frameColors.bg)) { notices() }
@@ -210,7 +230,9 @@ fun LibraryTouch(
                                         )
                                         LibraryFeaturedGame(featured, artOf(featured), data, preparing,
                                             onPlay = { onSelect(featured); onPlay(featured) },
-                                            onOpen = { openSelected(featured) }, onFavorite = { onFavorite(featured) })
+                                            onOpen = { openSelected(featured) }, onFavorite = { onFavorite(featured) },
+                                            nearby = shown.filter { it.stableId != featured.stableId }.take(4).map { it to artOf(it) },
+                                            onSelectNearby = onSelect)
                                     } else if (!portrait) {
                                         Text(
                                             stringResource(R.string.zephyr_library_your_library),
@@ -230,7 +252,7 @@ fun LibraryTouch(
                         items(shown, key = { it.stableId }) { game ->
                             LibraryCard(game, data, artOf(game), picked = game.stableId == selected?.stableId,
                                 small = density == CoverDensity.SMALL, listMode = listMode,
-                                onClick = { if (portrait || game.stableId == selected?.stableId) openSelected(game) else onSelect(game) },
+                                onClick = { if (portrait || viewportWidth < 840.dp || game.stableId == selected?.stableId) openSelected(game) else onSelect(game) },
                                 onLongClick = { openSelected(game) }, onFocused = { if (!portrait) onSelect(game) },
                                 onPad = { b -> when (b) {
                                     PadButton.Y -> { onFavorite(game); true }
@@ -246,10 +268,12 @@ fun LibraryTouch(
         else Row(Modifier.fillMaxSize()) {
             BRail(area)
             main(Modifier.weight(1f))
+            if (viewportWidth >= 840.dp) {
             VerticalDivider(thickness = 1.dp, color = frameColors.line)
-            LibraryPlane(Modifier.width(300.dp).fillMaxHeight()
+            LibraryPlane(Modifier.width(if (viewportWidth < 960.dp) 260.dp else 300.dp).fillMaxHeight()
                 .windowInsetsPadding(WindowInsets.safeDrawing.part(top = true, end = true, bottom = true))) {
                 if (selected != null) detail(selected) else XdEmpty(stringResource(R.string.xd_lib_pick))
+            }
             }
         }
     }

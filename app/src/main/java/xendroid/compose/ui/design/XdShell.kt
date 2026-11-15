@@ -144,7 +144,7 @@ fun BTopBar(
     actions: (@Composable RowScope.() -> Unit)? = null,
 ) {
     val c = Xd.colors
-    Column(modifier.fillMaxWidth()) {
+    Column(modifier.fillMaxWidth().background(c.bg.copy(alpha = .72f))) {
         Box(Modifier.fillMaxWidth()) {
             if (art != null) {
                 AsyncImage(art, null, Modifier.matchParentSize().blur(30.dp), contentScale = ContentScale.Crop, alpha = 0.32f)
@@ -290,7 +290,7 @@ fun XdSectionedScreen(
         return
     }
     val c = Xd.colors
-    BoxWithConstraints(modifier.fillMaxSize().background(c.bg)) {
+    BoxWithConstraints(modifier.fillMaxSize().zephyrBackdrop()) {
         val portrait = maxHeight > maxWidth
         if (portrait) {
             Column(Modifier.fillMaxSize()) {
@@ -415,7 +415,7 @@ fun XdSingleScreen(
         }
         return
     }
-    BoxWithConstraints(modifier.fillMaxSize().background(c.bg)) {
+    BoxWithConstraints(modifier.fillMaxSize().zephyrBackdrop()) {
         val portrait = maxHeight > maxWidth
         val body: @Composable (Modifier) -> Unit = { m ->
             Column(m.windowInsetsPadding(WindowInsets.safeDrawing.part(top = !portrait || !showNav, start = portrait, end = true, bottom = portrait && showNav))) {
@@ -440,9 +440,9 @@ fun XdSingleScreen(
 @Composable
 fun CBackground(art: Any?, modifier: Modifier = Modifier) {
     val c = Xd.colors
-    Box(modifier.fillMaxSize().background(Brush.verticalGradient(listOf(Color(0xFF070908), Color(0xFF020303))))) {
+    Box(modifier.fillMaxSize().zephyrBackdrop()) {
         Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(c.dyn.copy(alpha = 0.62f), Color.Transparent), radius = 1400f)))
-        if (art != null) AsyncImage(art, null, Modifier.fillMaxSize().blur(48.dp), contentScale = ContentScale.Crop, alpha = 0.45f)
+        if (art != null) AsyncImage(art, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = 0.12f)
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(
             0f to Color.Black.copy(alpha = 0.42f), 0.26f to Color.Transparent, 0.58f to Color.Transparent, 1f to Color.Black.copy(alpha = 0.78f))))
     }

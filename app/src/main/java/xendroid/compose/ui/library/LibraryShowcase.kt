@@ -1,5 +1,7 @@
 package xendroid.compose.ui.library
 
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -16,7 +18,15 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
+import androidx.compose.ui.graphics.Brush
+import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.zIndex
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -41,7 +51,7 @@ import xendroid.compose.ui.design.*
 internal fun LibraryPlane(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val colors = Xd.colors
     CompositionLocalProvider(LocalXd provides colors, LocalXdButtonShape provides ZephyrActionShape) {
-        Box(modifier.background(colors.bg)) { content() }
+        Box(modifier.zephyrBackdrop()) { content() }
     }
 }
 
@@ -54,11 +64,20 @@ internal fun LibraryArtwork(game: Game, art: CoverArt, modifier: Modifier = Modi
         // The library card is a cover slot. Even when the game only exposes its embedded
         // title image, let the artwork own the complete slot instead of floating as a tiny icon.
         // Crop preserves the source aspect ratio; it never stretches the image to fit.
-        AsyncImage(
+        if (art.smart && maxWidth > 80.dp) {
+            // A 64 px embedded icon is not a cover: show an honest title card, never enlarged initials.
+            Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(c.s3, c.bg)))
+                .padding(10.dp), verticalArrangement = Arrangement.SpaceBetween) {
+                AsyncImage(art.model, null, Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Fit)
+                Text(game.name, color = c.fg, style = XdText.label,
+                    maxLines = 3, overflow = TextOverflow.Ellipsis)
+            }
+        } else AsyncImage(
             art.model,
             null,
             Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
+            contentScale = if (art.smart) ContentScale.Fit else ContentScale.Crop,
         )
         if (favorite) Icon(XdIcons.starFilled, null,
             Modifier.align(Alignment.TopEnd).padding(4.dp).size(18.dp)
@@ -100,51 +119,57 @@ internal fun LibraryFeatureIdentity(
 internal fun LibraryFeaturedGame(
     game: Game, art: CoverArt, data: LibraryData, preparing: Boolean,
     onPlay: () -> Unit, onOpen: () -> Unit, onFavorite: () -> Unit,
+    nearby: List<Pair<Game, CoverArt>> = emptyList(),
+    onSelectNearby: (Game) -> Unit = {},
 ) {
     val c = Xd.colors
-    val shape = ZephyrPanelShape
-    Row(
-        Modifier.fillMaxWidth().testTag("library-featured")
-            .clip(shape).background(c.s1).border(1.dp, c.line2, shape).padding(12.dp),
-        horizontalArrangement = Arrangement.spacedBy(12.dp),
-        verticalAlignment = Alignment.Top,
-    ) {
-        LibraryArtwork(game, art, Modifier.width(112.dp), data.favorite(game))
-        Column(
-            Modifier.weight(1f).testTag("library-featured-identity"),
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-        ) {
-            Text(
-                game.name,
-                style = XdText.h1.copy(fontSize = 22.sp, lineHeight = 26.sp),
-                color = c.fg,
-                maxLines = 2,
-                overflow = TextOverflow.Ellipsis,
-            )
-            Text(formatLabel(game.format), style = XdText.small, color = c.fg2)
-            LibraryStatusLine(game, data)
-            XdButton(
-                stringResource(R.string.lib_play),
-                onPlay,
-                Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("library-featured-play"),
-                kind = XdButtonKind.PRIMARY,
-                icon = XdIcons.play,
-                enabled = !preparing,
-            )
+    Column(Modifier.fillMaxWidth().testTag("library-featured")
+        .zephyrSurface(emphasized = true).padding(16.dp),
+        verticalArrangement = Arrangement.spacedBy(14.dp)) {
+        // All covers are real entries, bounded to four neighbours. Decorative arcs carry no data.
+        BoxWithConstraints(Modifier.fillMaxWidth().height(232.dp), contentAlignment = Alignment.Center) {
+            Canvas(Modifier.fillMaxSize()) {
+                val w = size.width * .86f
+                val h = 40.dp.toPx()
+                val topLeft = Offset((size.width - w) / 2, size.height - h)
+                drawOval(Brush.radialGradient(listOf(c.acc.copy(alpha = .16f), Color.Transparent),
+                    center = Offset(size.width / 2, size.height - h / 2), radius = w / 2), topLeft, Size(w, h))
+                drawOval(Color(0xFF06150F), topLeft + Offset(0f, 5.dp.toPx()), Size(w, h))
+                drawOval(c.acc.copy(alpha = .55f), topLeft, Size(w, h), style = Stroke(1.5.dp.toPx()))
+                drawOval(c.acc.copy(alpha = .16f), topLeft + Offset(w * .12f, h * .18f),
+                    Size(w * .76f, h * .64f), style = Stroke(1.dp.toPx()))
+            }
+            val coverWidth = (maxWidth * .42f).coerceIn(110.dp, 154.dp)
+            nearby.take(4).forEachIndexed { index, (neighbour, neighbourArt) ->
+                val side = if (index % 2 == 0) -1 else 1
+                val depth = index / 2 + 1
+                LibraryArtwork(neighbour, neighbourArt,
+                    Modifier.align(Alignment.Center).offset(x = coverWidth * (side * (.55f + depth * .12f)), y = 12.dp)
+                        .width(coverWidth * (.76f - depth * .08f))
+                        .graphicsLayer { rotationY = side * -22f; alpha = .94f - depth * .08f }
+                        .zIndex(-depth.toFloat())
+                        .clickable(role = Role.Button) { onSelectNearby(neighbour) }
+                        .semantics { contentDescription = neighbour.name })
+            }
+            LibraryArtwork(game, art, Modifier.width(coverWidth).zIndex(1f)
+                .shadow(18.dp, RoundedCornerShape(4.dp), ambientColor = c.acc, spotColor = c.acc)
+                .border(1.dp, c.acc.copy(alpha = .85f), RoundedCornerShape(4.dp)), data.favorite(game))
+        }
+        Column(Modifier.fillMaxWidth().testTag("library-featured-identity"), verticalArrangement = Arrangement.spacedBy(7.dp)) {
+            Text(game.name, style = XdText.heroSm, color = c.fg, maxLines = 2, overflow = TextOverflow.Ellipsis)
+            Row(horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                Text(formatLabel(game.format), style = XdText.small, color = c.fg2)
+                LibraryStatusLine(game, data)
+            }
+            XdButton(stringResource(R.string.lib_play), onPlay,
+                Modifier.fillMaxWidth().heightIn(min = 52.dp).testTag("library-featured-play"),
+                kind = XdButtonKind.PRIMARY, size = XdButtonSize.LG, icon = XdIcons.play, enabled = !preparing)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
-                XdButton(
-                    stringResource(R.string.xd_lib_sheet),
-                    onOpen,
+                XdButton(stringResource(R.string.xd_lib_sheet), onOpen,
                     Modifier.weight(1f).heightIn(min = 48.dp).testTag("library-featured-open"),
-                    kind = XdButtonKind.GHOST,
-                    icon = XdIcons.chevR,
-                )
-                XdIconButton(
-                    if (data.favorite(game)) XdIcons.starFilled else XdIcons.star,
-                    stringResource(R.string.lib_favorites),
-                    onFavorite,
-                    on = data.favorite(game),
-                )
+                    kind = XdButtonKind.GHOST, icon = XdIcons.chevR)
+                XdIconButton(if (data.favorite(game)) XdIcons.starFilled else XdIcons.star,
+                    stringResource(R.string.lib_favorites), onFavorite, on = data.favorite(game))
             }
         }
     }
@@ -171,7 +196,12 @@ internal fun LibraryShowcase(
                 val c = Xd.colors
                 var focused by remember { mutableStateOf(false) }
                 val shape = ZephyrActionShape
-                Column(Modifier.width(tileWidth).border(if (picked || focused) 2.dp else 1.dp,
+                val elevation by animateFloatAsState(if (picked || focused) 1f else .88f, label = "cover-selection")
+                Column(Modifier.width(tileWidth).graphicsLayer {
+                    scaleX = elevation; scaleY = elevation
+                    rotationY = if (picked || focused) 0f else -8f
+                    transformOrigin = androidx.compose.ui.graphics.TransformOrigin(.5f, 1f)
+                }.border(if (picked || focused) 2.dp else 1.dp,
                     if (picked || focused) c.acc else Color.Transparent, shape)
                     .clip(shape).onFocusChanged { focused = it.isFocused; if (it.isFocused) onSelect(game) }
                     .onPreviewKeyEvent { event ->

@@ -1,6 +1,13 @@
 package xendroid.compose.screens
 
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.test.isSelected
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
+import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasText
 import androidx.compose.ui.test.performScrollTo
@@ -46,26 +53,30 @@ import xendroid.compose.ui.library.LibraryUiState
 class BaseShots {
     @get:Rule val compose = createComposeRule()
 
-    private fun library(mode: InputMode, pick: String? = null, openFeatured: Boolean = false) {
+    private fun library(mode: InputMode, pick: String? = null, openFeatured: Boolean = false, fontScale: Float = 1f) {
         val container = AppContainer(Fixture.context)
         val vm = Fixture.library(container)
         val compress = container.gameCompressViewModelFactory().create(GameCompressViewModel::class.java)
         var sheetsOpened = 0
         var openedTitle: String? = null
         compose.app(mode) {
+            val currentDensity = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(currentDensity.density, fontScale)) {
             GameLibraryScreen(vm, {}, {}, {}, {}, {}, { _, _, _, _ -> }, { _, _ -> }, { _, _ -> }, { _, _ -> }, {}, {}, {}, compress,
                 onOpenGame = { game, _ -> sheetsOpened++; openedTitle = game.name },
                 gameSettings = { id -> remember(id) { container.gameSettingsViewModelFactory(id).create(GameSettingsViewModel::class.java) } })
+            }
         }
         if (pick != null) {
-            // Non-opening selection is a wide-layout interaction now: the horizontal shelf drives
-            // the persistent detail panel. Phone list taps intentionally open the game sheet.
-            compose.onNodeWithTag("library-grid").performScrollToNode(hasTestTag("library-showcase"))
-            compose.onNodeWithTag("library-showcase").performScrollToNode(hasContentDescription(pick))
-            val cover = compose.onNode(
-                hasContentDescription(pick) and hasAnyAncestor(hasTestTag("library-showcase")),
-                useUnmergedTree = true,
-            )
+            // The default screen is now a centered stage; neighbours and arrows select only.
+            val target = hasContentDescription(pick) and isSelected() and hasAnyAncestor(hasTestTag("library-coverflow"))
+            repeat(14) {
+                if (compose.onAllNodes(target, useUnmergedTree = true).fetchSemanticsNodes().isEmpty()) {
+                    compose.onNodeWithTag("library-next").performClick()
+                    compose.waitForIdle()
+                }
+            }
+            val cover = compose.onNode(target, useUnmergedTree = true)
             cover.performClick()
             compose.waitForIdle()
             cover.assertIsSelected()
@@ -78,7 +89,6 @@ class BaseShots {
         Fixture.settle()
         compose.waitForIdle()
         if (openFeatured) {
-            compose.onNodeWithTag("library-grid").performScrollToNode(hasTestTag("library-featured"))
             compose.onNodeWithTag("library-featured-identity").assertExists()
             if (pick != null) {
                 compose.onNode(hasText(pick) and hasAnyAncestor(hasTestTag("library-featured-identity")),
@@ -115,7 +125,7 @@ class BaseShots {
 
     @Config(qualifiers = Phone.LAND) @Test fun libraryLand() { library(InputMode.TOUCH, pick = "Forza Horizon"); compose.shot("base/depois-biblioteca-paisagem") }
     @Config(qualifiers = Phone.PORT) @Test fun libraryPortSelect() { library(InputMode.TOUCH); compose.shot("base/depois-biblioteca-retrato-selecao") }
-    @Config(qualifiers = Phone.PORT) @Test fun libraryPort() { library(InputMode.TOUCH); compose.shot("base/depois-biblioteca-retrato") }
+    @Config(qualifiers = Phone.PORT) @Test fun libraryPort() { library(InputMode.TOUCH, pick = "Forza Horizon"); compose.shot("base/depois-biblioteca-retrato") }
     @Config(qualifiers = Phone.LAND) @Test fun libraryController() { library(InputMode.CONTROLLER); compose.shot("base/depois-biblioteca-controle") }
     @Config(qualifiers = Phone.PORT) @Test fun libraryControllerPort() { library(InputMode.CONTROLLER); compose.shot("base/depois-biblioteca-controle-retrato") }
 
@@ -179,16 +189,48 @@ class BaseShots {
 
     @Config(qualifiers = Phone.PORT) @Test fun libraryPhoneAvoidsDuplicateShelf() {
         library(InputMode.TOUCH)
-        compose.onNodeWithTag("library-search").assertExists()
-        compose.onNodeWithTag("library-grid").performScrollToNode(hasTestTag("library-featured"))
-        compose.onNodeWithTag("library-featured").assertExists()
+        compose.onNodeWithTag("library-search").assertDoesNotExist()
+        compose.onNodeWithTag("library-grid").assertDoesNotExist()
+        compose.onNodeWithTag("library-coverflow").assertIsDisplayed()
+        compose.onNodeWithTag("library-featured-play").assertIsDisplayed()
         compose.onNodeWithTag("library-showcase").assertDoesNotExist()
     }
 
     @Config(qualifiers = Phone.LAND) @Test fun libraryWideKeepsSelectorShelf() {
         library(InputMode.TOUCH)
-        compose.onNodeWithTag("library-grid").performScrollToNode(hasTestTag("library-showcase"))
-        compose.onNodeWithTag("library-showcase").assertExists()
+        compose.onNodeWithTag("library-coverflow").assertIsDisplayed()
+        compose.onNodeWithTag("library-grid").assertDoesNotExist()
+        compose.onNodeWithTag("library-featured-play").assertIsDisplayed()
+    }
+
+    @Config(qualifiers = Phone.LAND) @Test fun landscapeSearchToolsRemainReachable() {
+        library(InputMode.TOUCH)
+        compose.onNodeWithTag("library-search").assertDoesNotExist()
+        compose.onNodeWithTag("library-toggle-tools").performClick()
+        compose.onNodeWithTag("library-search").assertExists()
+        compose.onNodeWithTag("library-toggle-tools").performClick()
+        compose.onNodeWithTag("library-search").assertDoesNotExist()
+        compose.onNodeWithTag("library-console").assertIsDisplayed()
+    }
+
+    @Config(qualifiers = Phone.PORT) @Test fun consoleSelectionSupportsArrowsAndSwipe() {
+        library(InputMode.TOUCH)
+        fun selectedTitle(title: String) = compose.onNode(hasContentDescription(title) and isSelected() and
+            hasAnyAncestor(hasTestTag("library-coverflow")), useUnmergedTree = true)
+        selectedTitle("Alan Wake").assertExists()
+        compose.onNodeWithTag("library-next").performClick()
+        selectedTitle("Blue Dragon").assertExists()
+        compose.onNodeWithTag("library-previous").performClick()
+        selectedTitle("Alan Wake").assertExists()
+        compose.onNodeWithTag("library-coverflow").performTouchInput { swipeLeft() }
+        selectedTitle("Blue Dragon").assertExists()
+    }
+
+    @Config(qualifiers = Phone.PORT) @Test fun consoleLargeTextKeepsActionsReachable() {
+        library(InputMode.TOUCH, fontScale = 1.4f)
+        compose.onNodeWithTag("library-featured-play").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("library-featured-open").performScrollTo().assertIsDisplayed()
+        compose.shot("base/console-fonte-ampliada")
     }
 
     @Config(qualifiers = Phone.PORT) @Test fun sheetCoverOnlyLeadsOverview() {
@@ -221,6 +263,7 @@ class BaseShots {
 
     @Config(qualifiers = Phone.PORT) @Test fun libraryRecentFilterIsReachableByTouch() {
         library(InputMode.TOUCH)
+        compose.onNodeWithTag("library-toggle-tools").performClick()
         compose.onNodeWithTag("library-grid").performScrollToNode(hasTestTag("library-filter-recent"))
         compose.onNodeWithTag("library-filter-recent").performClick()
         compose.waitForIdle()

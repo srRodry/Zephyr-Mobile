@@ -1,0 +1,46 @@
+name: Zephyr Emerald interface
+on:
+  push:
+    branches: [feature/zephyr-emerald-interface]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: zephyr-emerald-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  design:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          packages: platform-tools
+          log-accepted-android-sdk-licenses: false
+      - name: Install pinned Android tools
+        run: sdkmanager --install 'platforms;android-35' 'build-tools;35.0.0' 'ndk;29.0.14206865' 'cmake;3.30.3'
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Render orientations and verify navigation
+        run: |
+          bash ./gradlew :app:testUitestUnitTest --no-daemon --stacktrace -Pscreenshots="$PWD/app/build/emerald-shots" \
+            --tests 'xendroid.compose.ui.design.EmeraldNavigationTest' \
+            --tests 'xendroid.compose.ui.design.ZephyrPaletteTest' \
+            --tests 'xendroid.compose.screens.BaseShots' \
+            --tests 'xendroid.compose.screens.SettingsHubTest' \
+            --tests 'xendroid.compose.screens.ControlsHubTest'
+      - name: Upload rendered interface and reports
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v4
+        with:
+          name: zephyr-emerald-interface
+          path: |
+            app/build/emerald-shots/
+            app/build/reports/tests/testUitestUnitTest/
+            app/build/test-results/testUitestUnitTest/
+          if-no-files-found: warn
+          retention-days: 14
