@@ -1,191 +1,44 @@
 name: Site
-
-# Builds the official site (website/: landing page, documentation and the
-# interface simulator) and publishes it to GitHub Pages.
-# - Pushes to main that touch the site or the sources it reads, a finished
-#   "Xendroid+" run on main (which may have published a release), a daily run
-#   (releases published or edited by hand) and manual runs build and deploy.
-# - Pull requests build and test the site without deploying.
-# The site reads the repository and the public releases API; the run's own
-# read-only GITHUB_TOKEN is the only credential, and nothing in the site
-# reaches the browser with it. Pages must use "GitHub Actions" as its source
-# (Settings -> Pages). The checkout and path lists mirror sparsePaths in
-# website/site.config.mjs; the site build fails when they drift apart.
 on:
   push:
     branches: [main]
-    paths:
-      - 'website/**'
-      - 'README.md'
-      - 'README.pt-BR.md'
-      - 'BUILD.md'
-      - 'GAME_COMPAT.md'
-      - 'THIRD-PARTY-NOTICES.md'
-      - 'local.properties.example'
-      - 'app/build.gradle'
-      - 'app/src/main/**'
-      - 'emulator-core/build.gradle'
-      - 'emulator-core/src/main/assets/**'
-      - 'emulator-core/src/main/java/**'
-      - 'emulator-core/src/main/cpp/*.cpp'
-      - 'emulator-core/src/main/cpp/*.h'
-      - 'emulator-core/src/main/cpp/xenia/LICENSE'
-      - 'emulator-core/src/main/cpp/xenia/src/xenia/**'
-      - 'emulator-core/src/main/cpp/xenia/assets/game-compatibility/**'
-      - 'patches/xenia-canary/patches/**'
-      - 'docs/**'
-      - 'performance-tests/**'
-      - 'tools/**'
-      - '.github/**'
+    paths: ['website/**', 'docs/assets/**', '.github/workflows/pages.yml']
   pull_request:
     branches: [main]
-    paths:
-      - 'website/**'
-      - 'README.md'
-      - 'README.pt-BR.md'
-      - 'BUILD.md'
-      - 'GAME_COMPAT.md'
-      - 'THIRD-PARTY-NOTICES.md'
-      - 'local.properties.example'
-      - 'app/build.gradle'
-      - 'app/src/main/**'
-      - 'emulator-core/build.gradle'
-      - 'emulator-core/src/main/assets/**'
-      - 'emulator-core/src/main/java/**'
-      - 'emulator-core/src/main/cpp/*.cpp'
-      - 'emulator-core/src/main/cpp/*.h'
-      - 'emulator-core/src/main/cpp/xenia/LICENSE'
-      - 'emulator-core/src/main/cpp/xenia/src/xenia/**'
-      - 'emulator-core/src/main/cpp/xenia/assets/game-compatibility/**'
-      - 'patches/xenia-canary/patches/**'
-      - 'docs/**'
-      - 'performance-tests/**'
-      - 'tools/**'
-      - '.github/**'
-  # Releases are published by the "Xendroid+" workflow with the run's token,
-  # which starts no other workflow; its completion does.
-  workflow_run:
-    workflows: ['Xendroid+']
-    types: [completed]
-    branches: [main]
-  schedule:
-    - cron: '41 6 * * *'
+    paths: ['website/**', 'docs/assets/**', '.github/workflows/pages.yml']
   workflow_dispatch:
-
 permissions:
   contents: read
-
 concurrency:
   group: pages-${{ github.event.pull_request.number || 'main' }}
-  # A deploy in progress always finishes; a newer pull request push replaces
-  # its running check.
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
-
 jobs:
   build:
-    name: Build and test
+    name: Build Anel site
+    permissions:
+      contents: read
+      pages: write
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
-    # After a "Xendroid+" run, only a successful one can have published a release.
-    if: github.event_name != 'workflow_run' || github.event.workflow_run.conclusion == 'success'
-    outputs:
-      deploy: ${{ steps.target.outputs.deploy }}
-
-    defaults:
-      run:
-        working-directory: website
-
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        # Full history without file contents: the site compares the main
-        # branch with the commit of the latest release and dates each page's
-        # review; contents are fetched only for the paths below.
-        fetch-depth: 0
-        sparse-checkout-cone-mode: false
-        sparse-checkout: |
-          /website/
-          /README.md
-          /README.pt-BR.md
-          /BUILD.md
-          /GAME_COMPAT.md
-          /THIRD-PARTY-NOTICES.md
-          /local.properties.example
-          /app/build.gradle
-          /app/src/main/
-          /emulator-core/build.gradle
-          /emulator-core/src/main/assets/
-          /emulator-core/src/main/java/
-          /emulator-core/src/main/cpp/*.cpp
-          /emulator-core/src/main/cpp/*.h
-          /emulator-core/src/main/cpp/xenia/LICENSE
-          /emulator-core/src/main/cpp/xenia/src/xenia/
-          /emulator-core/src/main/cpp/xenia/assets/game-compatibility/
-          /patches/xenia-canary/patches/
-          /docs/
-          /performance-tests/
-          /tools/
-          /.github/
-
-    - name: Deploy target
-      id: target
-      working-directory: .
-      env:
-        EVENT: ${{ github.event_name }}
-        REF: ${{ github.ref }}
-        DEFAULT_REF: refs/heads/${{ github.event.repository.default_branch }}
-      run: |
-        if [ "$EVENT" != pull_request ] && [ "$REF" = "$DEFAULT_REF" ]; then
-          echo "deploy=true" >> "$GITHUB_OUTPUT"
-        else
-          echo "deploy=false" >> "$GITHUB_OUTPUT"
-        fi
-
-    - name: Pages settings
-      id: pages
-      if: steps.target.outputs.deploy == 'true'
-      uses: actions/configure-pages@v5
-
-    - name: Node
-      uses: actions/setup-node@v4
-      with:
-        node-version: 22
-        cache: npm
-        cache-dependency-path: website/package-lock.json
-
-    - name: Python (screenshots to WebP)
-      uses: actions/setup-python@v5
-      with:
-        python-version: '3.12'
-
-    - name: Dependencies
-      run: |
-        npm ci
-        python -m pip install --disable-pip-version-check 'pillow==12.3.0'
-        npx playwright install --with-deps chromium
-
-    - name: Build, check and test
-      env:
-        GITHUB_TOKEN: ${{ github.token }}
-        SITE_REPO: ${{ github.repository }}
-        # The published address and path (a custom domain changes both).
-        SITE_URL: ${{ steps.pages.outputs.base_url }}
-        SITE_BASE_PATH: ${{ steps.pages.outputs.base_path }}
-      run: npm run ci
-
-    - name: Upload
-      if: steps.target.outputs.deploy == 'true'
-      uses: actions/upload-pages-artifact@v3
-      with:
-        path: website/dist
-
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Build static site
+        run: python website/anel/build.py
+      - name: Validate JavaScript
+        run: node --check website/anel/site.js
+      - name: Configure Pages
+        if: github.event_name != 'pull_request'
+        uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        if: github.event_name != 'pull_request'
+        with:
+          path: website/dist
   deploy:
-    name: Deploy
     needs: build
-    if: needs.build.outputs.deploy == 'true'
+    if: github.event_name != 'pull_request'
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
     permissions:
       pages: write
       id-token: write
@@ -193,6 +46,6 @@ jobs:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}
     steps:
-    - name: Deploy to GitHub Pages
-      id: deployment
-      uses: actions/deploy-pages@v4
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
