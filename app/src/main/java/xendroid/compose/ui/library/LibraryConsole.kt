@@ -75,6 +75,7 @@ internal fun LibraryConsole(
             }
             notices()
             BoxWithConstraints(Modifier.weight(1f).fillMaxWidth().testTag("library-console")) {
+                val sceneWidth = maxWidth
                 val enlarged = LocalDensity.current.fontScale > 1.15f
                 if (portrait) {
                     // At large font sizes content may scroll; the play action never loses its target.
@@ -93,7 +94,7 @@ internal fun LibraryConsole(
                         ConsoleCoverflow(games, game, data, artOf, onSelect,
                             Modifier.weight(1f).fillMaxHeight())
                         ConsoleIdentity(game, data, artOf(game), preparing, onPlay, onOpen, onFavorite,
-                            Modifier.width(if (enlarged) 270.dp else (maxWidth * .32f).coerceIn(220.dp, 300.dp))
+                            Modifier.width(if (enlarged) 270.dp else (sceneWidth * .32f).coerceIn(220.dp, 300.dp))
                                 .fillMaxHeight().verticalScroll(rememberScrollState()), true)
                     }
                 }

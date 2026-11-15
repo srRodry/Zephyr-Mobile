@@ -64,11 +64,20 @@ internal fun LibraryArtwork(game: Game, art: CoverArt, modifier: Modifier = Modi
         // The library card is a cover slot. Even when the game only exposes its embedded
         // title image, let the artwork own the complete slot instead of floating as a tiny icon.
         // Crop preserves the source aspect ratio; it never stretches the image to fit.
-        AsyncImage(
+        if (art.smart && maxWidth > 80.dp) {
+            // A 64 px embedded icon is not a cover: show an honest title card, never enlarged initials.
+            Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(c.s3, c.bg)))
+                .padding(10.dp), verticalArrangement = Arrangement.SpaceBetween) {
+                AsyncImage(art.model, null, Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)),
+                    contentScale = ContentScale.Fit)
+                Text(game.name, color = c.fg, style = XdText.label,
+                    maxLines = 3, overflow = TextOverflow.Ellipsis)
+            }
+        } else AsyncImage(
             art.model,
             null,
             Modifier.fillMaxSize(),
-            contentScale = ContentScale.Crop,
+            contentScale = if (art.smart) ContentScale.Fit else ContentScale.Crop,
         )
         if (favorite) Icon(XdIcons.starFilled, null,
             Modifier.align(Alignment.TopEnd).padding(4.dp).size(18.dp)

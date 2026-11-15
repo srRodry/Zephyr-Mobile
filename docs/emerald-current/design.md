@@ -1,72 +1,52 @@
 # Zephyr · Emerald Current
 
-## Direção
+## Composição de console
 
-Uma interface de console portátil com marca própria: preto esmeralda, verde
-luminoso, lâminas curvas e capas em perspectiva. As referências enviadas em
-14/11/2026 orientam a composição, não são screenshots do aplicativo nem prova
-de disponibilidade das funções e métricas ali ilustradas.
+A biblioteca inicial foi reconstruída a partir da composição das referências:
+um palco único, capa selecionada dominante, até quatro vizinhas em perspectiva,
+reflexo no piso e ações vinculadas à seleção. O Z original continua sendo a marca
+do Zephyr. As imagens conceito são referências visuais; não são capturas do app.
 
-O emblema continua sendo o Z original do Zephyr, acompanhado por dois arcos
-abertos. Não adota a esfera Xbox como marca do produto. O fundo desenha uma
-corrente curva discreta, em vez de preencher a leitura com fibra de carbono,
-linhas de HUD e partículas. Painéis usam cantos alternados, reflexo diagonal
-estático e luz nas bordas. O refinamento aprofunda o vidro esmeralda, reforça
-a lâmina selecionada e ilumina o palco das capas, sem animações permanentes.
-A capa principal recebe sombra verde; as vizinhas preservam mais cor e
-perspectiva. As ações principais usam três níveis de verde para criar volume.
-
-## Composição adaptativa
-
-| Condição | Navegação | Biblioteca | Detalhes |
+| Condição | Navegação | Biblioteca inicial | Ações |
 |---|---|---|---|
-| Retrato | Marca e quatro lâminas acima do conteúdo | Destaque central com até quatro capas reais vizinhas, seguido da biblioteca completa | Ações no destaque e ficha por toque |
-| Paisagem a partir de 840 dp | Lâminas na lateral | Vitrine em primeiro plano; busca/filtros expansíveis pelo ícone de busca | Painel persistente de 260–300 dp |
-| Paisagem de 600–839 dp | Lateral | Conteúdo ocupa a largura restante | Toque abre ficha; não comprime uma terceira coluna |
-| Janela abaixo de 600 dp | Navegação superior | Composição compacta | Conteúdo rolável |
+| Retrato | Marca e quatro lâminas curvas no topo | Palco central; seletor compacto abaixo das ações | Título, jogar e ficha abaixo do palco |
+| Paisagem a partir de 600 dp | Lâminas laterais e marca no cabeçalho | Palco ocupa toda a área restante à esquerda das ações | Vidro integrado com arte, título, jogar e ficha |
+| Fonte ampliada | Rótulos de navegação roláveis | Conteúdo vertical rolável | Ações permanecem alcançáveis |
+| Busca, filtros e lista completa | Botão de busca abre a biblioteca detalhada | Mantém os filtros, ordenação e vistas existentes | O mesmo botão retorna ao palco quando não há busca/filtro ativo |
 
-Tamanhos são calculados pela área real da janela, não pelo modelo do aparelho.
-A navegação de Configurações e Controles preserva seu histórico e seus destinos.
-Diálogos mantêm posição inferior em retrato e central em paisagem. Capas ao
-redor do destaque podem ser tocadas para selecionar outro título; não iniciam
-a emulação. A lista e o carrossel existentes também mantêm seleção e detalhes.
+A tela inicial não repete a grade completa nem o painel técnico persistente.
+A ficha do jogo mantém informações, configurações, tempo e histórico existentes.
+Selecionar capas, tocar nas setas, deslizar ou usar LB/RB altera a seleção sem
+iniciar a emulação. Somente a ação Jogar inicia o fluxo de execução.
+As bibliotecas com menos de cinco títulos não duplicam capas para preencher o palco.
 
-## Tokens
+## Materiais e identidade
 
-| Papel | Cor |
-|---|---|
-| Fundo | `#04110F` |
-| Painel | `#0B231E` |
-| Superfície elevada | `#113128` |
-| Ação | `#15573F` |
-| Destaque | `#87F16D` |
-| Texto principal | `#E9F8F0` |
-| Texto secundário | `#C0D9CE` |
-| Texto auxiliar | `#A7C4B7` |
+Lâminas usam curvas assimétricas contínuas. Fundo com fitas largas esmeralda,
+bordas finas iluminadas e iluminação localizada. O palco tem elipses sobrepostas,
+reflexos discretos e capas com perspectiva, sombra, borda e bisel. As capas vêm
+das entradas reais da biblioteca; o código não inclui capas substitutas geradas.
 
-Contraste calculado mínimo entre textos/destaque e as superfícies opacas: 5,53:1.
-Cores semânticas de erro e compatibilidade continuam independentes da marca.
-O modo controle conserva a adaptação de atmosfera por capa, com o mesmo
-vocabulário de superfícies e geometria. O fundo de arte fica menos intenso e
-não utiliza mais o blur grande daquele frame.
+O botão Jogar tem um bisel luminoso e área central verde escura sob o texto
+branco. As outras ações mantêm alvos de pelo menos 48 dp. A seleção usa posição,
+tamanho e estado semântico, além da cor.
 
-## Movimento e custo
+## Custo e limites
 
-- A corrente de fundo e os painéis são vetores/gradientes com `drawWithCache`.
-- O emblema orbital é estático; não há temporizadores, partículas ou rotação infinita.
-- O carrossel anima escala apenas quando a seleção muda.
-- O palco usa no máximo cinco capas e a lista permanece lazy.
-- Não adiciona consultas de CPU/GPU, sensores nem FPS ilustrativos.
-- Não altera resolução, cache do núcleo, assinatura ou comportamento do jogo.
+- Fundo, palco e biséis usam geometria/gradientes; não há bitmap de tela inteira.
+- O palco monta no máximo cinco capas e seus reflexos.
+- O seletor compacto permanece lazy.
+- Não há temporizadores, partículas, blur em tela inteira ou rotação infinita.
+- Não adiciona métricas de CPU/GPU/FPS ilustrativas à interface.
+- Não altera resolução, cache do núcleo, assinatura ou comportamento dos jogos.
 
-Não houve medição de custo no Edge 30 Ultra; o desenho reduz efeitos contínuos
-por construção, mas isso não é prova de ganho de desempenho.
+Sombras, transparências e reflexos têm custo de composição. Não houve medição
+física no Edge 30 Ultra; não se presume ganho de desempenho.
 
 ## Verificação
 
-O workflow `Zephyr Emerald interface` compila a interface Kotlin e executa os
-testes reais de biblioteca, ficha do jogo, Configurações e Controles. Produz
-capturas Roborazzi em retrato, paisagem e fonte ampliada (1,4×), além dos
-relatórios de teste. As capas e dados dessas capturas vêm das fixtures do projeto,
-não de uma sessão real do usuário. O resultado de cada execução deve ser
-consultado no GitHub; este documento não presume aprovação antecipada.
+O workflow Zephyr Emerald interface compila a interface e verifica biblioteca,
+ficha, Configurações, Controles, navegação e fonte ampliada. Capturas Roborazzi
+mostram o código real, usando capas e dados de exemplo das fixtures. A validação
+funcional e a inspeção visual são etapas distintas: testes aprovados não provam
+fidelidade estética ao conceito. O APK de distribuição não é gerado por esse workflow.

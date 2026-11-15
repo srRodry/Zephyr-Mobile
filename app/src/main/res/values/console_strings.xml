@@ -3,4 +3,5 @@
     <string name="zephyr_console_previous">Previous game</string>
     <string name="zephyr_console_next">Next game</string>
     <string name="zephyr_console_browse">Browse all games</string>
+    <string name="zephyr_console_stage">Return to stage</string>
 </resources>

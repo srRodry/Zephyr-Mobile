@@ -1,5 +1,6 @@
 package xendroid.compose.ui.library
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -123,6 +124,11 @@ fun LibraryTouch(
     val featured = shown.firstOrNull { it.stableId == selected?.stableId } ?: shown.firstOrNull()
     val focus = LocalFocusManager.current
     val openSelected: (Game) -> Unit = { game -> onSelect(game); onOpen(game) }
+    val returnToStage: () -> Unit = {
+        optionsExpanded = false; onQuery(""); onFilter(LibraryFilter.All); focus.clearFocus()
+    }
+    BackHandler(enabled = optionsExpanded || query.isNotBlank() || filter != LibraryFilter.All,
+        onBack = returnToStage)
     BoxWithConstraints(Modifier.fillMaxSize().zephyrBackdrop()) {
         val viewportWidth = maxWidth
         val portrait = maxHeight > viewportWidth || viewportWidth < 600.dp
@@ -148,8 +154,8 @@ fun LibraryTouch(
                             Row(verticalAlignment = Alignment.CenterVertically) {
                                 Text(stringResource(R.string.lib_title), Modifier.weight(1f), color = c.fg,
                                     style = XdText.h1.copy(fontSize = 26.sp, lineHeight = 30.sp))
-                                XdIconButton(XdIcons.search, stringResource(R.string.lib_search),
-                                    { optionsExpanded = !optionsExpanded }, modifier = Modifier.testTag("library-toggle-tools"))
+                                XdIconButton(XdIcons.chevL, stringResource(R.string.zephyr_console_stage),
+                                    returnToStage, modifier = Modifier.testTag("library-toggle-tools"))
                                 XdIconButton(XdIcons.more, stringResource(R.string.lib_more), onMenu)
                             }
                             if (portrait || optionsExpanded || query.isNotBlank() || filter != LibraryFilter.All) {

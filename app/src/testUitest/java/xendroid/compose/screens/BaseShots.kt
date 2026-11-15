@@ -1,6 +1,12 @@
 package xendroid.compose.screens
 
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.CompositionLocalProvider
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Density
+import androidx.compose.ui.test.isSelected
+import androidx.compose.ui.test.performTouchInput
+import androidx.compose.ui.test.swipeLeft
 import androidx.compose.ui.test.assertIsDisplayed
 import androidx.compose.ui.test.assertIsSelected
 import androidx.compose.ui.test.hasText
@@ -47,16 +53,19 @@ import xendroid.compose.ui.library.LibraryUiState
 class BaseShots {
     @get:Rule val compose = createComposeRule()
 
-    private fun library(mode: InputMode, pick: String? = null, openFeatured: Boolean = false) {
+    private fun library(mode: InputMode, pick: String? = null, openFeatured: Boolean = false, fontScale: Float = 1f) {
         val container = AppContainer(Fixture.context)
         val vm = Fixture.library(container)
         val compress = container.gameCompressViewModelFactory().create(GameCompressViewModel::class.java)
         var sheetsOpened = 0
         var openedTitle: String? = null
         compose.app(mode) {
+            val currentDensity = LocalDensity.current
+            CompositionLocalProvider(LocalDensity provides Density(currentDensity.density, fontScale)) {
             GameLibraryScreen(vm, {}, {}, {}, {}, {}, { _, _, _, _ -> }, { _, _ -> }, { _, _ -> }, { _, _ -> }, {}, {}, {}, compress,
                 onOpenGame = { game, _ -> sheetsOpened++; openedTitle = game.name },
                 gameSettings = { id -> remember(id) { container.gameSettingsViewModelFactory(id).create(GameSettingsViewModel::class.java) } })
+            }
         }
         if (pick != null) {
             // The default screen is now a centered stage; neighbours and arrows select only.
@@ -202,6 +211,26 @@ class BaseShots {
         compose.onNodeWithTag("library-toggle-tools").performClick()
         compose.onNodeWithTag("library-search").assertDoesNotExist()
         compose.onNodeWithTag("library-console").assertIsDisplayed()
+    }
+
+    @Config(qualifiers = Phone.PORT) @Test fun consoleSelectionSupportsArrowsAndSwipe() {
+        library(InputMode.TOUCH)
+        fun selectedTitle(title: String) = compose.onNode(hasContentDescription(title) and isSelected() and
+            hasAnyAncestor(hasTestTag("library-coverflow")), useUnmergedTree = true)
+        selectedTitle("Alan Wake").assertExists()
+        compose.onNodeWithTag("library-next").performClick()
+        selectedTitle("Blue Dragon").assertExists()
+        compose.onNodeWithTag("library-previous").performClick()
+        selectedTitle("Alan Wake").assertExists()
+        compose.onNodeWithTag("library-coverflow").performTouchInput { swipeLeft() }
+        selectedTitle("Blue Dragon").assertExists()
+    }
+
+    @Config(qualifiers = Phone.PORT) @Test fun consoleLargeTextKeepsActionsReachable() {
+        library(InputMode.TOUCH, fontScale = 1.4f)
+        compose.onNodeWithTag("library-featured-play").performScrollTo().assertIsDisplayed()
+        compose.onNodeWithTag("library-featured-open").performScrollTo().assertIsDisplayed()
+        compose.shot("base/console-fonte-ampliada")
     }
 
     @Config(qualifiers = Phone.PORT) @Test fun sheetCoverOnlyLeadsOverview() {
