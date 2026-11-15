@@ -161,3 +161,31 @@ cache ilimitado. Não prometer correção de black screen sem o relatório de fa
 - https://docs.mesa3d.org/drivers/freedreno.html
 
 Revisões e decisões exatas: `optimization-round3-provenance.json`.
+
+
+## Complemento da verificação — Pinyon Shift Android
+
+Na revisão adicional de 15/11/2026 foi localizado um projeto distinto do
+ReImagined: `deivid22srk/pinyon-shift-android`, branch `android-port`.
+Seu ANDROID.md relata APK ARM64 em CI, Turnip carregado no aparelho e desenho
+da introdução e menus. Também descreve falhas na apresentação resolve
+`k_16_16_16_16` e na transição após `NetDll_socket`, com correções locais.
+Esses relatos não comprovam corrida jogável, desempenho sustentado nem
+compatibilidade com o Edge 30 Ultra. Não há teste automatizado em aparelho no CI.
+
+A arquitetura traduz o executável antecipadamente com ShiftGlue e usa o
+renderizador específico `rexgpu-fh1`. Portanto, é uma linha de investigação
+para um port dedicado de Forza, não uma substituição direta do JIT geral.
+A correção de resolve só deve ser transportada se houver equivalência de formato,
+layout EDRAM e sintoma no Vulkan do Zephyr; o relato de socket não autoriza
+atribuir nosso crash ao mesmo motivo. Nenhum código desse projeto foi importado.
+
+Fonte primária consultada:
+https://github.com/deivid22srk/pinyon-shift-android/blob/android-port/ANDROID.md
+
+Verificação de integração do commit `96042dbd`, Actions run `43723079645`:
+o job Android ARM64 release translation-unit integration concluiu com sucesso;
+a compilação Compose e os testes de transferência/configuração também passaram.
+Os testes finais de navegação ainda estavam em execução nesta verificação.
+Isso confirma compilação dos objetos selecionados, não link/assinatura do APK
+nem funcionamento do jogo no telefone.
