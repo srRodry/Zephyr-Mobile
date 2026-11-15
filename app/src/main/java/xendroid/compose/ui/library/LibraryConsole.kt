@@ -182,8 +182,8 @@ private fun ConsoleCoverflow(
     var moving by remember(identities) { mutableStateOf(false) }
     var motion by remember { mutableStateOf<Job?>(null) }
     val scope = rememberCoroutineScope()
-    val density = LocalDensity.current
-    val decay = remember(density) { splineBasedDecay<Float>(density) }
+    val screenDensity = LocalDensity.current
+    val decay = remember(screenDensity) { splineBasedDecay<Float>(screenDensity) }
     val selectNow by rememberUpdatedState(onSelect)
     LaunchedEffect(identities) {
         snapshotFlow { circularCoverIndex(position, games.size) }
@@ -219,7 +219,7 @@ private fun ConsoleCoverflow(
         }
     }, contentAlignment = Alignment.Center) {
         val coverWidth = minOf(maxHeight * .60f, maxWidth * .39f)
-        val spacingPx = with(density) { (coverWidth * .73f).toPx() }.coerceAtLeast(1f)
+        val spacingPx = with(screenDensity) { (coverWidth * .73f).toPx() }.coerceAtLeast(1f)
         val drag = rememberDraggableState { delta -> position -= delta / spacingPx }
         val dragModifier = Modifier.fillMaxSize().draggable(
             state = drag, orientation = Orientation.Horizontal, enabled = games.size > 1,
