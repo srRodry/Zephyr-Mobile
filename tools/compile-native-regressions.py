@@ -21,6 +21,7 @@ SOURCES = (
     'emulator-core/src/main/cpp/xenia/src/xenia/cpu/backend/a64/a64_code_cache.cc',
     'emulator-core/src/main/cpp/xenia/src/xenia/cpu/ppc/ppc_translator.cc',
     'emulator-core/src/main/cpp/emulator_xendroid.cpp',
+    'emulator-core/src/main/cpp/xendroid_emu.cpp',
     'emulator-core/src/main/cpp/xenia/src/xenia/gpu/vulkan/vulkan_pipeline_cache.cc',
     'emulator-core/src/main/cpp/xenia/src/xenia/gpu/vulkan/vulkan_command_processor.cc',
     'emulator-core/src/main/cpp/xenia/src/xenia/gpu/vulkan/vulkan_shared_memory.cc',

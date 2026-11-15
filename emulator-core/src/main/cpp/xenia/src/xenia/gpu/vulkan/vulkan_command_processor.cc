@@ -31,6 +31,7 @@
 #include "xenia/base/frame_stats.h"
 #include "xenia/base/logging.h"
 #include "xenia/base/math.h"
+#include "xenia/base/zephyr_edge30_policy.h"
 #include "xenia/base/memory.h"
 #include "xenia/base/profiling.h"
 #include "xenia/base/xxhash.h"
@@ -2191,7 +2192,8 @@ bool VulkanCommandProcessor::SetupContext() {
   }
   // Per-resolve GPU timestamps, ring-buffered per submission; only meaningful
   // alongside the per-submission pair above.
-  if (frame_timestamp_mapping_ && cvars::log_gpu_frame_time_breakdown_passes) {
+  if (frame_timestamp_mapping_ && xe::edge30::DetailedGpuTiming(
+          cvars::log_gpu_frame_time_breakdown_passes)) {
     VkQueryPoolCreateInfo resolve_ts_pool_info = {
         VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO};
     resolve_ts_pool_info.queryType = VK_QUERY_TYPE_TIMESTAMP;
@@ -2221,7 +2223,8 @@ bool VulkanCommandProcessor::SetupContext() {
     }
   }
   // Per-render-pass timestamps, bucketed by framebuffer extent.
-  if (frame_timestamp_mapping_ && cvars::log_gpu_frame_time_breakdown_passes) {
+  if (frame_timestamp_mapping_ && xe::edge30::DetailedGpuTiming(
+          cvars::log_gpu_frame_time_breakdown_passes)) {
     VkQueryPoolCreateInfo pass_ts_pool_info = {
         VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO};
     pass_ts_pool_info.queryType = VK_QUERY_TYPE_TIMESTAMP;

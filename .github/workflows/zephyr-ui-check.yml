@@ -266,6 +266,8 @@ jobs:
       # Configure the same Release CMake variant as the experimental APK, then
       # build object targets only. No assemble/package/signing/release task.
       - name: Configure Android ARM64 Release without packaging
-        run: bash ./gradlew -PxendroidReleaseDebuggable ':emulator-core:configureCMakeRelease[arm64-v8a]' --no-daemon --stacktrace
+        run: bash ./gradlew -PzephyrEdge30Ultra -PxendroidReleaseDebuggable ':emulator-core:configureCMakeRelease[arm64-v8a]' --no-daemon --stacktrace
+      - name: Verify Edge30 worker, completion and compiler target policy
+        run: python3 tools/test-edge30-policy.py --verify-android-target
       - name: Compile production CPU, GPU and JNI regression objects
         run: python3 tools/compile-native-regressions.py --jobs 2

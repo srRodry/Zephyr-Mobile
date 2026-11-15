@@ -23,6 +23,7 @@
 #include "xenia/base/shader_compile_counter.h"
 #include "xenia/base/logging.h"
 #include "xenia/base/math.h"
+#include "xenia/base/zephyr_edge30_policy.h"
 #include "xenia/base/platform.h"
 #include "xenia/base/profiling.h"
 #include "xenia/base/xxhash.h"
@@ -544,15 +545,8 @@ bool VulkanPipelineCache::Initialize() {
       xe::threading::Event::CreateManualResetEvent(true);
   assert_not_null(creation_completion_event_);
   if (cvars::vulkan_pipeline_creation_threads != 0) {
-    size_t creation_thread_count;
-    if (cvars::vulkan_pipeline_creation_threads < 0) {
-      creation_thread_count =
-          std::max(logical_processor_count * 3 / 4, uint32_t(1));
-    } else {
-      creation_thread_count =
-          std::min(uint32_t(cvars::vulkan_pipeline_creation_threads),
-                   logical_processor_count);
-    }
+    const size_t creation_thread_count = xe::edge30::PipelineWorkers(
+        cvars::vulkan_pipeline_creation_threads, logical_processor_count);
     creation_threads_shutdown_ = false;
     for (size_t i = 0; i < creation_thread_count; ++i) {
       std::unique_ptr<xe::threading::Thread> creation_thread =
@@ -1544,12 +1538,8 @@ void VulkanPipelineCache::TranslateShadersForStorage(
   if (cvars::vulkan_pipeline_creation_threads != 0) {
     uint32_t logical_processor_count =
         std::max(uint32_t(1), xe::threading::logical_processor_count());
-    if (cvars::vulkan_pipeline_creation_threads < 0) {
-      thread_count = std::max(logical_processor_count * 3 / 4, uint32_t(1));
-    } else {
-      thread_count = std::min(uint32_t(cvars::vulkan_pipeline_creation_threads),
-                              logical_processor_count);
-    }
+    thread_count = xe::edge30::PipelineWorkers(
+        cvars::vulkan_pipeline_creation_threads, logical_processor_count);
     thread_count = std::min(thread_count, translations_to_do.size());
   }
 

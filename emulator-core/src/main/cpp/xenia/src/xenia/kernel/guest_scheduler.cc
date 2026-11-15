@@ -26,6 +26,7 @@
 #include "xenia/base/clock.h"
 #include "xenia/base/logging.h"
 #include "xenia/base/math.h"
+#include "xenia/base/zephyr_edge30_policy.h"
 #include "xenia/base/mutex.h"
 #include "xenia/cpu/backend/backend.h"
 #include "xenia/cpu/ppc/ppc_context.h"
@@ -70,6 +71,10 @@ DEFINE_uint32(
 
 namespace xe {
 namespace kernel {
+
+static bool CollectSchedulerStats() {
+  return xe::edge30::SchedulerStats(cvars::guest_scheduler_stats);
+}
 
 #if XE_PLATFORM_ANDROID || XE_PLATFORM_xendroid
 // Optional scheduling experiment for ARM big.LITTLE devices. This runs once
@@ -798,7 +803,9 @@ void GuestScheduler::SwitchTo(XThread* next) {
     }
     cpus_[t_current_cpu].quantum_deadline_tick = links.quantum_deadline_tick;
   }
-  stats_.switches.fetch_add(1, std::memory_order_relaxed);
+  if (CollectSchedulerStats()) {
+    stats_.switches.fetch_add(1, std::memory_order_relaxed);
+  }
   XThread::SetCurrentThread(next);
   next->guest_object<X_KTHREAD>()->thread_state = KTHREAD_STATE_RUNNING;
   // A flag raised while this fiber was off-CPU is stale, the dispatcher
@@ -1054,7 +1061,7 @@ void GuestScheduler::RunBlockingHostCallOffloaded(
   EnsureIoWorker();
   BlockingCall call;
   call.fn = &fn;
-  call.queued_ns = Clock::host_tick_count_raw();
+  call.queued_ns = CollectSchedulerStats() ? Clock::host_tick_count_raw() : 0;
   {
     std::lock_guard<std::mutex> lock(io_lock_);
     io_queue_.push(&call);
@@ -1088,18 +1095,20 @@ void GuestScheduler::IoWorkerLoop() {
       xe::threading::Wait(io_event_.get(), false);
       continue;
     }
-    uint64_t started = Clock::host_tick_count_raw();
+    const bool collect_stats = CollectSchedulerStats() && call->queued_ns != 0;
+    const uint64_t started = collect_stats ? Clock::host_tick_count_raw() : 0;
     (*call->fn)();
-    uint64_t finished = Clock::host_tick_count_raw();
-    // Raw ticks, converted only at report time.
-    uint64_t queued_for = started - call->queued_ns;
-    stats_.io_calls.fetch_add(1, std::memory_order_relaxed);
-    stats_.io_queue_ns.fetch_add(queued_for, std::memory_order_relaxed);
-    stats_.io_run_ns.fetch_add(finished - started, std::memory_order_relaxed);
-    uint64_t prev_max = stats_.io_queue_max_ns.load(std::memory_order_relaxed);
-    while (queued_for > prev_max &&
-           !stats_.io_queue_max_ns.compare_exchange_weak(
-               prev_max, queued_for, std::memory_order_relaxed)) {
+    if (collect_stats) {
+      const uint64_t finished = Clock::host_tick_count_raw();
+      const uint64_t queued_for = started - call->queued_ns;
+      stats_.io_calls.fetch_add(1, std::memory_order_relaxed);
+      stats_.io_queue_ns.fetch_add(queued_for, std::memory_order_relaxed);
+      stats_.io_run_ns.fetch_add(finished - started, std::memory_order_relaxed);
+      uint64_t prev_max = stats_.io_queue_max_ns.load(std::memory_order_relaxed);
+      while (queued_for > prev_max &&
+             !stats_.io_queue_max_ns.compare_exchange_weak(
+                 prev_max, queued_for, std::memory_order_relaxed)) {
+      }
     }
     call->done.store(true, std::memory_order_release);
     // Wake the parked caller instead of leaving it to the backoff timer.
@@ -1352,7 +1361,9 @@ void GuestScheduler::BlockCurrentThread(uint64_t deadline_ms,
 
 void GuestScheduler::RereadyBlocked(int cpu_index, bool poked) {
   uint32_t wake_mask = 0;
-  stats_.repolls.fetch_add(1, std::memory_order_relaxed);
+  if (CollectSchedulerStats()) {
+    stats_.repolls.fetch_add(1, std::memory_order_relaxed);
+  }
   // Missed-wake tripwire, logged after the lock is released.
   uint64_t rescued = 0;
   bool warn = false;
@@ -1432,7 +1443,9 @@ void GuestScheduler::RereadyBlocked(int cpu_index, bool poked) {
       }
       links.blocked = false;
       links.queued = true;
-      stats_.rereadied.fetch_add(1, std::memory_order_relaxed);
+      if (CollectSchedulerStats()) {
+        stats_.rereadied.fetch_add(1, std::memory_order_relaxed);
+      }
       // Its current guest CPU, not the one it blocked on, since
       // KeSetAffinityThread may have moved it while blocked.
       int target = CpuOf(t);
@@ -1451,7 +1464,9 @@ void GuestScheduler::RereadyBlocked(int cpu_index, bool poked) {
     cpu.next_timed_repoll_ms = next_due;
     cpu.has_blocked.store(kept_head != nullptr, std::memory_order_relaxed);
     if (rescued) {
-      stats_.backstop_rescues.fetch_add(rescued, std::memory_order_relaxed);
+      if (CollectSchedulerStats()) {
+        stats_.backstop_rescues.fetch_add(rescued, std::memory_order_relaxed);
+      }
       backstop_rescue_count_ += rescued;
     }
     if (!backstop_rescue_window_ms_) {
@@ -1507,7 +1522,7 @@ void GuestScheduler::RunLoop(int cpu_index) {
     bool poked = cpu.repoll_now.exchange(false, std::memory_order_relaxed);
     if (poked || now >= cpu.next_timed_repoll_ms) {
       cpu0_phase_stats_.Measure(
-          cpu_index == 0 && cvars::guest_scheduler_stats,
+          cpu_index == 0 && CollectSchedulerStats(),
           SchedulerPhaseStats::Kind::kRepoll,
           [&]() { RereadyBlocked(cpu_index, poked); });
     }
@@ -1542,7 +1557,7 @@ void GuestScheduler::RunLoop(int cpu_index) {
       }
       cpu.exited_thread = nullptr;
       cpu0_phase_stats_.Measure(
-          cpu_index == 0 && cvars::guest_scheduler_stats,
+          cpu_index == 0 && CollectSchedulerStats(),
           SchedulerPhaseStats::Kind::kFiber, [&]() { SwitchTo(next); });
       if (cpu.exited_thread) {
         // On the idle fiber with the exited fiber parked on its final yield, so
@@ -1574,7 +1589,7 @@ void GuestScheduler::RunLoop(int cpu_index) {
     if (!have_blocked) {
       if (dispatched_any_.load()) {
         cpu0_phase_stats_.Measure(
-            cpu_index == 0 && cvars::guest_scheduler_stats,
+            cpu_index == 0 && CollectSchedulerStats(),
             SchedulerPhaseStats::Kind::kIdle,
             [&]() { xe::threading::Wait(cpu.ready_event.get(), false); });
         cpu.parked.store(false);
@@ -1582,7 +1597,7 @@ void GuestScheduler::RunLoop(int cpu_index) {
       }
       // Nothing has ever run, so poll instead of sleeping forever and say so.
       cpu0_phase_stats_.Measure(
-          cpu_index == 0 && cvars::guest_scheduler_stats,
+          cpu_index == 0 && CollectSchedulerStats(),
           SchedulerPhaseStats::Kind::kIdle, [&]() {
             xe::threading::Wait(cpu.ready_event.get(), false,
                                 std::chrono::seconds(1));
@@ -1601,24 +1616,28 @@ void GuestScheduler::RunLoop(int cpu_index) {
     uint64_t due = cpu.next_timed_repoll_ms;
     uint64_t sleep_ms = due > now ? due - now : 0;
     cpu0_phase_stats_.Measure(
-        cpu_index == 0 && cvars::guest_scheduler_stats,
+        cpu_index == 0 && CollectSchedulerStats(),
         SchedulerPhaseStats::Kind::kIdle, [&]() {
           xe::threading::Wait(cpu.ready_event.get(), false,
                               std::chrono::milliseconds(sleep_ms));
         });
     cpu.parked.store(false);
-    stats_.idle_wakes.fetch_add(1, std::memory_order_relaxed);
+    if (CollectSchedulerStats()) {
+      stats_.idle_wakes.fetch_add(1, std::memory_order_relaxed);
+    }
   }
   XELOGI("GuestScheduler: CPU {} dispatch loop exited (shutting_down={})",
          cpu_index, shutting_down_.load());
 }
 
 void GuestScheduler::NoteForcedPreempt() {
-  stats_.forced_preempts.fetch_add(1, std::memory_order_relaxed);
+  if (CollectSchedulerStats()) {
+    stats_.forced_preempts.fetch_add(1, std::memory_order_relaxed);
+  }
 }
 
 void GuestScheduler::ReportStatsIfDue() {
-  if (!cvars::guest_scheduler_stats) {
+  if (!CollectSchedulerStats()) {
     return;
   }
   uint64_t now_ms = Clock::QueryHostUptimeMillis();

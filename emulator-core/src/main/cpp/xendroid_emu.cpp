@@ -23,6 +23,7 @@
 #include "xenia/apu/nop/nop_audio_system.h"
 #include "xenia/base/cvar.h"
 #include "xenia/base/logging.h"
+#include "xenia/base/zephyr_edge30_policy.h"
 #include "xenia/base/profiling.h"
 #include "xenia/config.h"
 #include "xenia/emulator.h"
@@ -330,6 +331,12 @@ bool EmulatorApp::OnInitialize() {
         config::LoadGameConfigForFile(
             std::filesystem::absolute(std::filesystem::u8path(game_path)));
     }
+
+#if ZEPHYR_EDGE30_ULTRA
+    XELOGI("Edge30 dedicated beta: SM8475/X2-tuned ARMv8.2 FP16/DotProd/LSE; "
+           "pipeline workers capped at 2; scheduler diagnostics and detailed "
+           "GPU pass timing compiled out; Android controls core placement");
+#endif
 
     // The settings away from the core's defaults, first in the log (global config
     // and this game's own), so a log alone says what the run was set to; the run

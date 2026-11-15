@@ -64,14 +64,14 @@ jobs:
     - name: Build settings
       id: cfg
       env:
-        RESEARCH_ARM: ${{ github.ref_name == 'research/optimization-round3' && 'beta3' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
+        RESEARCH_ARM: ${{ github.ref_name == 'research/optimization-round3' && 'beta4-edge30' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
         sha=$(git rev-parse --short=8 HEAD)
         variant=test
         name="Zephyr-Performance_${RESEARCH_ARM}_$sha"
         package=xendroid.compose.zephyr.research
-        package_args="-PxendroidReleaseIdSuffix=.zephyr.research -PxendroidReleaseDebuggable -PxendroidUpdateRepo=srRodry/Zephyr-Mobile"
+        package_args="-PzephyrEdge30Ultra -PxendroidReleaseIdSuffix=.zephyr.research -PxendroidReleaseDebuggable -PxendroidUpdateRepo=srRodry/Zephyr-Mobile"
         {
           echo "sha=$sha"
           echo "variant=$variant"
@@ -151,14 +151,14 @@ jobs:
     - name: Build settings (candidate)
       id: cfg_candidate
       env:
-        RESEARCH_ARM: ${{ github.ref_name == 'research/optimization-round3' && 'beta3' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
+        RESEARCH_ARM: ${{ github.ref_name == 'research/optimization-round3' && 'beta4-edge30' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
         sha=$(git rev-parse --short=8 HEAD)
         variant=test
         name="Zephyr-Performance_${RESEARCH_ARM}_$sha"
         package=xendroid.compose.zephyr.research
-        package_args="-PxendroidReleaseIdSuffix=.zephyr.research -PxendroidReleaseDebuggable -PxendroidUpdateRepo=srRodry/Zephyr-Mobile"
+        package_args="-PzephyrEdge30Ultra -PxendroidReleaseIdSuffix=.zephyr.research -PxendroidReleaseDebuggable -PxendroidUpdateRepo=srRodry/Zephyr-Mobile"
         {
           echo "sha=$sha"
           echo "variant=$variant"
@@ -172,6 +172,7 @@ jobs:
 
     - name: Validate native optimization invariants
       run: |
+        python3 tools/test-edge30-policy.py
         python3 tools/test-round3-a64.py
         python3 tools/test-a64-vector-select.py
         python3 tools/test-round3-cache.py
@@ -321,6 +322,10 @@ jobs:
             'profiles': 'settings-profiles/experimental-beta.json',
             'experiment_default': 'off',
             'performance_validated_on_device': False,
+            'target_device': 'Motorola Edge 30 Ultra / SM8475 / Adreno 730',
+            'native_target': 'armv8.2-a+fp16+dotprod+lse; tune cortex-x2; no SVE',
+            'pipeline_workers_max': 2,
+            'scheduler_diagnostics': False,
         }
         pathlib.Path(os.environ['NAME'] + '.json').write_text(json.dumps(result, indent=2) + '\n')
         PYIDENTITY
@@ -356,8 +361,8 @@ jobs:
           fs.writeFileSync(checksums, digest + '  ' + apk + '\n');
           const body = [
             '<!-- update-summary:pt-BR',
-            '- Atualização do Zephyr Research com melhorias ARM64, texturas e carregamento.',
-            '- Canal de atualizações integrado ao aplicativo.',
+            '- Beta dedicada ao Edge 30 Ultra: compilação Cortex-X2/SM8475.',
+            '- Menor disputa de workers Vulkan e remoção da instrumentação do scheduler.',
             '-->',
             'Beta experimental; desempenho ainda não validado no aparelho.',
             'Pacote: xendroid.compose.zephyr.research',
@@ -376,7 +381,7 @@ jobs:
             if (error.status !== 404) throw error;
             release = (await github.rest.repos.createRelease({
               ...context.repo, tag_name: tag, target_commitish: context.sha,
-              name: 'Zephyr Research beta ' + context.runNumber,
+              name: 'Zephyr Edge 30 Ultra beta 4 — build ' + context.runNumber,
               body, draft: true, prerelease: true
             })).data;
           }
