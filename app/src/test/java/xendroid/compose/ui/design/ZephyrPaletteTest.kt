@@ -2,6 +2,7 @@ package xendroid.compose.ui.design
 
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.luminance
+import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
 
@@ -29,6 +30,10 @@ class ZephyrPaletteTest {
         readable(c.onAction, c.action)
         readable(c.onAcc, c.acc)
         assertTrue("Action and focus must have separate roles", c.action != c.acc)
+    }
+
+    @Test fun connectingAGamepadDoesNotReplaceTheEmeraldPalette() {
+        assertEquals(XdColors.Touch.copy(controller = true), XdColors.Controller)
     }
 
     @Test fun controllerBaseLabelsRemainReadableOnCompositedSurfaces() {

@@ -32,8 +32,8 @@ import xendroid.compose.shots.shot
 class EmeraldNavigationTest {
     @get:Rule val compose = createComposeRule()
 
-    private fun screen(fontScale: Float = 1f) {
-        compose.app(InputMode.TOUCH) {
+    private fun screen(fontScale: Float = 1f, mode: InputMode = InputMode.TOUCH) {
+        compose.app(mode) {
             val density = LocalDensity.current
             CompositionLocalProvider(LocalDensity provides Density(density.density, fontScale)) {
                 XdSingleScreen("Sistema", area = XdArea.SETTINGS) {
@@ -72,5 +72,23 @@ class EmeraldNavigationTest {
             useUnmergedTree = true).assertIsDisplayed()
         compose.onNodeWithText("Gerenciar drivers").assertIsDisplayed().performClick()
         compose.shot("emerald/sistema-fonte-ampliada")
+    }
+
+    @Test @Config(qualifiers = Phone.PORT)
+    fun controllerPortraitRetainsSharedNavigationAndAction() {
+        screen(mode = InputMode.CONTROLLER)
+        compose.onNodeWithTag("zephyr-navigation-portrait").assertIsDisplayed()
+        compose.onNodeWithTag("zephyr-navigation-landscape").assertDoesNotExist()
+        compose.onNodeWithText("Gerenciar drivers").assertIsDisplayed().performClick()
+        compose.shot("emerald/sistema-controle-retrato")
+    }
+
+    @Test @Config(qualifiers = Phone.LAND)
+    fun controllerLandscapeRetainsSharedNavigationAndAction() {
+        screen(mode = InputMode.CONTROLLER)
+        compose.onNodeWithTag("zephyr-navigation-landscape").assertIsDisplayed()
+        compose.onNodeWithTag("zephyr-navigation-portrait").assertDoesNotExist()
+        compose.onNodeWithText("Gerenciar drivers").assertIsDisplayed().performClick()
+        compose.shot("emerald/sistema-controle-paisagem")
     }
 }

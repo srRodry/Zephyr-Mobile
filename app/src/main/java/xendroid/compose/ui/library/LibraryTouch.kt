@@ -1,7 +1,10 @@
 package xendroid.compose.ui.library
 
+import android.view.KeyEvent as AndroidKeyEvent
+
 import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.combinedClickable
@@ -41,6 +44,7 @@ import androidx.compose.ui.platform.LocalFocusManager
 import xendroid.compose.ui.design.LocalXd
 import xendroid.compose.ui.design.XdColors
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -49,8 +53,12 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.key.onPreviewKeyEvent
+import androidx.compose.ui.input.key.KeyEventType
+import androidx.compose.ui.input.key.type
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.selected
@@ -61,6 +69,7 @@ import androidx.compose.ui.unit.sp
 import xendroid.compose.R
 import xendroid.compose.data.Game
 import xendroid.compose.ui.design.BTopAreaBar
+import xendroid.compose.ui.design.CGuide
 import xendroid.compose.ui.design.BRail
 import xendroid.compose.ui.design.GameCover
 import xendroid.compose.ui.design.PadButton
@@ -129,7 +138,50 @@ fun LibraryTouch(
     }
     BackHandler(enabled = optionsExpanded || query.isNotBlank() || filter != LibraryFilter.All,
         onBack = returnToStage)
-    BoxWithConstraints(Modifier.fillMaxSize().zephyrBackdrop()) {
+
+    // A connected pad changes navigation only, not the Emerald stage or orientation.
+    val controller = Xd.controller
+    val controllerFocus = remember { FocusRequester() }
+    var stageFocused by remember { mutableStateOf(false) }
+    var guideOpen by remember { mutableStateOf(false) }
+    val stageActive = !optionsExpanded && query.isBlank() && filter == LibraryFilter.All && featured != null
+    LaunchedEffect(controller, stageActive, guideOpen) {
+        if (controller && stageActive && !guideOpen) runCatching { controllerFocus.requestFocus() }
+    }
+    val controllerKeys = if (controller) Modifier
+        .focusRequester(controllerFocus)
+        .onFocusChanged { stageFocused = it.isFocused }
+        .onPreviewKeyEvent { e ->
+            if (e.type != KeyEventType.KeyDown) return@onPreviewKeyEvent false
+            val pad = padButtonOf(e)
+            val repeated = e.nativeKeyEvent.repeatCount > 0
+            when {
+                repeated && pad in listOf(PadButton.START, PadButton.SELECT, PadButton.X, PadButton.Y) -> true
+                pad == PadButton.START -> { guideOpen = true; true }
+                pad == PadButton.SELECT -> { optionsExpanded = true; true }
+                !stageActive -> false
+                pad == PadButton.X -> { featured?.let(openSelected); true }
+                pad == PadButton.Y -> { featured?.let(onFavorite); true }
+                pad == PadButton.LB || pad == PadButton.RB ||
+                    (stageFocused && e.nativeKeyEvent.keyCode in listOf(
+                        AndroidKeyEvent.KEYCODE_DPAD_LEFT, AndroidKeyEvent.KEYCODE_DPAD_RIGHT)) -> {
+                    if (shown.isNotEmpty()) {
+                        val i = shown.indexOfFirst { it.stableId == featured?.stableId }.coerceAtLeast(0)
+                        val left = pad == PadButton.LB || e.nativeKeyEvent.keyCode == AndroidKeyEvent.KEYCODE_DPAD_LEFT
+                        onSelect(shown[Math.floorMod(i + if (left) -1 else 1, shown.size)])
+                    }
+                    true
+                }
+                stageFocused && e.nativeKeyEvent.keyCode in listOf(
+                    AndroidKeyEvent.KEYCODE_DPAD_CENTER, AndroidKeyEvent.KEYCODE_ENTER) -> {
+                    if (!preparing && !repeated) featured?.let(onPlay)
+                    true
+                }
+                else -> false
+            }
+        }
+        .focusable() else Modifier
+    BoxWithConstraints(Modifier.fillMaxSize().zephyrBackdrop().then(controllerKeys)) {
         val viewportWidth = maxWidth
         val portrait = maxHeight > viewportWidth || viewportWidth < 600.dp
         if (!optionsExpanded && query.isBlank() && filter == LibraryFilter.All && featured != null) {
@@ -277,6 +329,7 @@ fun LibraryTouch(
             }
         }
     }
+    if (guideOpen) CGuide { guideOpen = false }
 }
 
 @OptIn(ExperimentalFoundationApi::class)

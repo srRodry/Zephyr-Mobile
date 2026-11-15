@@ -142,7 +142,7 @@ fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit, links: SettingsLin
     val panel = remember { SettingsPanelState(SettingLevelStore.read(context)) }
     var pinned by remember { mutableStateOf(PinnedSettings.read(context)) }
     val onPinned: (List<String>) -> Unit = { pinned = it; PinnedSettings.write(context, it) }
-    val startSection = if (Xd.controller) SettingsSectionIds.SUMMARY else SettingsSectionIds.HOME
+    val startSection = SettingsSectionIds.HOME
     var section by rememberSaveable { mutableStateOf(initialSection ?: startSection) }
     var overridingOf by remember { mutableStateOf<Setting?>(null) }
     var tomlOpen by remember { mutableStateOf(false) }
@@ -156,15 +156,12 @@ fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit, links: SettingsLin
             onOpenDrivers = links.onDrivers, onShowOverriding = { overridingOf = it }, onJump = jump)
     }
     val sections = buildList {
-        if (!Xd.controller) {
-            add(XdSection(SettingsSectionIds.HOME, stringResource(R.string.zephyr_settings_home), XdIcons.gear) {})
-            SettingsHubCategory.entries.filter { it.sectionIds.size > 1 }.forEach { category ->
-                add(XdSection(category.destination, stringResource(category.titleRes), category.icon()) {})
-            }
+        add(XdSection(SettingsSectionIds.HOME, stringResource(R.string.zephyr_settings_home), XdIcons.gear) {})
+        SettingsHubCategory.entries.filter { it.sectionIds.size > 1 }.forEach { category ->
+            add(XdSection(category.destination, stringResource(category.titleRes), category.icon()) {})
         }
-        add(XdSection(SettingsSectionIds.SUMMARY, stringResource(R.string.xd_set_summary), XdIcons.home, group = groupGeneral,
-            heading = if (Xd.controller) stringResource(R.string.xd_set_summary) else null) {
-            if (!Xd.controller && panel.query.isBlank()) {
+        add(XdSection(SettingsSectionIds.SUMMARY, stringResource(R.string.xd_set_summary), XdIcons.home, group = groupGeneral) {
+            if (panel.query.isBlank()) {
                 XdEditorialHeading(stringResource(R.string.zephyr_ui2_settings_title), stringResource(R.string.xd_set_subtitle))
             }
             // Round 2: the Summary searches every tab, the results by tab.
@@ -220,7 +217,7 @@ fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit, links: SettingsLin
     XdSectionedScreen(
         title = stringResource(R.string.xd_set_title),
         sections = sections,
-        selected = if (Xd.controller && sections.none { it.id == section }) SettingsSectionIds.SUMMARY else section,
+        selected = section,
         onSelect = { section = it },
         area = XdArea.SETTINGS,
         subtitle = stringResource(R.string.xd_set_subtitle),

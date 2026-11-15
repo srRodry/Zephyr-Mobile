@@ -1,7 +1,14 @@
 package xendroid.compose.screens
 
-import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.test.*
+import androidx.activity.OnBackPressedDispatcher
+import androidx.activity.compose.LocalOnBackPressedDispatcherOwner
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
+import androidx.compose.runtime.CompositionLocalProvider
+import xendroid.compose.ui.design.LocalInputMode
+import xendroid.compose.ui.theme.xendroidTheme
 import androidx.compose.ui.test.junit4.createComposeRule
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
@@ -27,6 +34,8 @@ import xendroid.compose.ui.keymap.KeymapViewModel
 @Config(sdk = [34], application = ShotApp::class)
 class ControlsHubTest {
     @get:Rule val compose = createComposeRule()
+    private lateinit var backDispatcher: OnBackPressedDispatcher
+    private var inputMode by mutableStateOf(InputMode.TOUCH)
     private val tools = mutableListOf<String>()
     private fun open(mode: InputMode = InputMode.TOUCH, initial: String? = null): SettingsViewModel {
         val container = AppContainer(Fixture.context)
@@ -34,11 +43,17 @@ class ControlsHubTest {
         val keymap = container.keymapViewModelFactory().create(KeymapViewModel::class.java)
         Fixture.settleUntil { global.ready.value || global.error.value != null }
         assertTrue(global.ready.value)
+        inputMode = mode
         compose.app(mode) {
+            backDispatcher = LocalOnBackPressedDispatcherOwner.current!!.onBackPressedDispatcher
+            CompositionLocalProvider(LocalInputMode provides inputMode) {
+                xendroidTheme(mode = inputMode) {
             CompositionLocalProvider(LocalInputDevicesPreview provides InputDevicesNow()) {
                 ControlsScreen(global, keymap, {}, ControlsLinks(
                     onKeymap = { tools += "keymap" }, onEditor = { tools += "editor" },
                     onTest = { tools += "test" }, onPhone = { tools += "phone" }), initial)
+            }
+                }
             }
         }
         Fixture.settle(); compose.waitForIdle()
@@ -94,9 +109,32 @@ class ControlsHubTest {
         assertTrue(tools.isEmpty())
     }
 
-    @Config(qualifiers = Phone.LAND) @Test fun controllerKeepsOriginalOverview() {
-        open(InputMode.CONTROLLER)
-        compose.onNodeWithTag("controls-touch-frame").assertDoesNotExist()
-        compose.onAllNodesWithText(Fixture.context.getString(R.string.xd_ctl_sec_overview)).onFirst().assertExists()
+    @Config(qualifiers = Phone.LAND) @Test fun controllerUsesSharedEmeraldHub() {
+        val vm = open(InputMode.CONTROLLER)
+        val before = vm.values.value.mapValues { it.value.raw }
+        compose.onNodeWithTag("controls-touch-frame").assertExists()
+        compose.onNodeWithTag("controls-hub-home").assertExists()
+        destination(ControlsSections.STATUS)
+        compose.onNodeWithTag("controls-hub-content:input-status").assertExists()
+        compose.onNodeWithTag("controls-hub-back").performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("controls-hub-home").assertExists()
+        destination("go-test")
+        assertEquals(listOf("test"), tools)
+        assertEquals(before, vm.values.value.mapValues { it.value.raw })
+    }
+
+    @Config(qualifiers = Phone.PORT) @Test fun switchingInputKeepsStatusAndSystemBackReturnsHome() {
+        val vm = open(initial = ControlsSections.STATUS)
+        val before = vm.values.value.mapValues { it.value.raw }
+        for (mode in listOf(InputMode.CONTROLLER, InputMode.TOUCH)) {
+            compose.runOnIdle { inputMode = mode }
+            compose.waitForIdle()
+            compose.onNodeWithTag("controls-hub-content:input-status").assertExists()
+        }
+        compose.runOnIdle { backDispatcher.onBackPressed() }
+        compose.waitForIdle()
+        compose.onNodeWithTag("controls-hub-home").assertExists()
+        assertEquals(before, vm.values.value.mapValues { it.value.raw })
     }
 }

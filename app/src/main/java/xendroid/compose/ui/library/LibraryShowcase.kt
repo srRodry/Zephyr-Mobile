@@ -65,10 +65,18 @@ internal fun LibraryArtwork(game: Game, art: CoverArt, modifier: Modifier = Modi
         // title image, let the artwork own the complete slot instead of floating as a tiny icon.
         // Crop preserves the source aspect ratio; it never stretches the image to fit.
         if (art.smart && maxWidth > 80.dp) {
-            // A 64 px embedded icon is not a cover: show an honest title card, never enlarged initials.
-            Column(Modifier.fillMaxSize().background(Brush.verticalGradient(listOf(c.s3, c.bg)))
-                .padding(10.dp), verticalArrangement = Arrangement.SpaceBetween) {
-                AsyncImage(art.model, null, Modifier.size(48.dp).clip(RoundedCornerShape(8.dp)),
+            // Embedded title art gets a complete editorial card, not an empty cover slot.
+            val iconSize = minOf(maxWidth * .58f, 104.dp)
+            AsyncImage(art.model, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = .24f)
+            Box(Modifier.matchParentSize().background(Brush.verticalGradient(
+                listOf(c.s3.copy(alpha = .45f), c.s1.copy(alpha = .78f), c.bg))))
+            Box(Modifier.matchParentSize().background(Brush.radialGradient(
+                listOf(c.acc.copy(alpha = .20f), Color.Transparent))))
+            Column(Modifier.fillMaxSize().padding(12.dp), verticalArrangement = Arrangement.SpaceBetween) {
+                Text(formatLabel(game.format), color = c.fg2, style = XdText.tiny)
+                AsyncImage(art.model, null,
+                    Modifier.align(Alignment.CenterHorizontally).size(iconSize)
+                        .clip(RoundedCornerShape(12.dp)).border(1.dp, c.acc.copy(alpha = .5f), RoundedCornerShape(12.dp)),
                     contentScale = ContentScale.Fit)
                 Text(game.name, color = c.fg, style = XdText.label,
                     maxLines = 3, overflow = TextOverflow.Ellipsis)

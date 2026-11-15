@@ -2,6 +2,7 @@ package xendroid.compose.ui.design
 
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.focusable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
@@ -278,19 +279,44 @@ fun XdSectionedScreen(
     val real = sections.filter { it.goTo == null && it.content != null }
     val current = real.firstOrNull { it.id == selected } ?: real.firstOrNull()
     val history = rememberSectionHistory(selected, onSelect)
-    if (Xd.controller) {
-        CSectioned(title, sections, current, history, modifier, subtitle, onBack, lead, headIcon, art, actions, hints, overlay, onPad)
-        return
+    val controller = Xd.controller
+    val focus = LocalFocusManager.current
+    val rootFocus = remember { FocusRequester() }
+    var guideVisible by remember { mutableStateOf(false) }
+    // The same Zephyr layout is used regardless of input device. Gamepad navigation
+    // only supplies shortcuts and explicit focus; it does not swap screen hierarchies.
+    val sharedModifier = if (controller) modifier
+        .focusRequester(rootFocus)
+        .onPreviewKeyEvent { event ->
+            val pad = padButtonOf(event)
+            if (pad != null && onPad?.invoke(pad) == true) return@onPreviewKeyEvent true
+            when (pad) {
+                PadButton.START -> { guideVisible = true; true }
+                PadButton.LB, PadButton.RB -> {
+                    if (real.isNotEmpty()) {
+                        val i = real.indexOfFirst { it.id == current?.id }.coerceAtLeast(0)
+                        val d = if (pad == PadButton.LB) -1 else 1
+                        history.pick(real[Math.floorMod(i + d, real.size)].id)
+                    }
+                    true
+                }
+                PadButton.LT -> { repeat(PAGE_STEPS) { focus.moveFocus(FocusDirection.Up) }; true }
+                PadButton.RT -> { repeat(PAGE_STEPS) { focus.moveFocus(FocusDirection.Down) }; true }
+                else -> false
+            }
+        }
+        .focusable() else modifier
+    LaunchedEffect(controller, current?.id, guideVisible) {
+        if (controller && !guideVisible) runCatching { rootFocus.requestFocus() }
     }
     if (touchFrame != null) {
-        Box(modifier.fillMaxSize()) {
+        Box(sharedModifier.fillMaxSize()) {
             touchFrame(current, history)
             overlay?.invoke(this)
         }
-        return
-    }
+    } else {
     val c = Xd.colors
-    BoxWithConstraints(modifier.fillMaxSize().zephyrBackdrop()) {
+    BoxWithConstraints(sharedModifier.fillMaxSize().zephyrBackdrop()) {
         val portrait = maxHeight > maxWidth
         if (portrait) {
             Column(Modifier.fillMaxSize()) {
@@ -331,6 +357,8 @@ fun XdSectionedScreen(
         }
         overlay?.invoke(this)
     }
+    }
+    if (guideVisible) CGuide(onDismiss = { guideVisible = false })
 }
 
 @OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
@@ -404,18 +432,27 @@ fun XdSingleScreen(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val c = Xd.colors
-    if (Xd.controller) {
-        CFrame(modifier, art = null, hints = hints ?: defaultHints(sections = false), onPad = onPad, overlay = overlay) { _ ->
-            Column(Modifier.fillMaxSize()) {
-                CHead(title, subtitle, onBack, lead = null, headIcon = headIcon, actions = actions)
-                val body = Modifier.weight(1f).fillMaxWidth()
-                if (scroll) Column(body.verticalScroll(rememberScrollState()).padding(start = 22.dp, end = 22.dp, top = 8.dp, bottom = 18.dp), content = content)
-                else Column(body.padding(start = 22.dp, end = 22.dp, top = 8.dp), content = content)
+    val controller = Xd.controller
+    val focus = LocalFocusManager.current
+    val rootFocus = remember { FocusRequester() }
+    var guideVisible by remember { mutableStateOf(false) }
+    val sharedModifier = if (controller) modifier
+        .focusRequester(rootFocus)
+        .onPreviewKeyEvent { event ->
+            val pad = padButtonOf(event)
+            if (pad != null && onPad?.invoke(pad) == true) return@onPreviewKeyEvent true
+            when (pad) {
+                PadButton.START -> if (showNav) { guideVisible = true; true } else false
+                PadButton.LT -> { repeat(PAGE_STEPS) { focus.moveFocus(FocusDirection.Up) }; true }
+                PadButton.RT -> { repeat(PAGE_STEPS) { focus.moveFocus(FocusDirection.Down) }; true }
+                else -> false
             }
         }
-        return
+        .focusable() else modifier
+    LaunchedEffect(controller, guideVisible) {
+        if (controller && !guideVisible) runCatching { rootFocus.requestFocus() }
     }
-    BoxWithConstraints(modifier.fillMaxSize().zephyrBackdrop()) {
+    BoxWithConstraints(sharedModifier.fillMaxSize().zephyrBackdrop()) {
         val portrait = maxHeight > maxWidth
         val body: @Composable (Modifier) -> Unit = { m ->
             Column(m.windowInsetsPadding(WindowInsets.safeDrawing.part(top = !portrait || !showNav, start = portrait, end = true, bottom = portrait && showNav))) {
@@ -423,6 +460,16 @@ fun XdSingleScreen(
                 val inner = Modifier.weight(1f).fillMaxWidth()
                 if (scroll) Column(inner.verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 24.dp), content = content)
                 else Column(inner.padding(start = 16.dp, end = 16.dp, top = 14.dp), content = content)
+                if (controller) {
+                    val shownHints = (hints ?: defaultHints(sections = false))
+                        .filter { showNav || it.buttons != "≡" }
+                        .map { hint ->
+                            if (showNav && hint.buttons == "≡" && hint.onClick == null)
+                                XdHint(hint.buttons, hint.label) { guideVisible = true }
+                            else hint
+                        }
+                    CHints(shownHints, scrim = false)
+                }
             }
         }
         when {
@@ -432,6 +479,7 @@ fun XdSingleScreen(
         }
         overlay?.invoke(this)
     }
+    if (guideVisible && showNav) CGuide(onDismiss = { guideVisible = false })
 }
 
 // ---------------------------------------------------------------- C: controller frame
@@ -721,7 +769,8 @@ fun CGuide(onDismiss: () -> Unit) {
         ) {
             Column(
                 Modifier.fillMaxHeight().widthIn(max = 320.dp).fillMaxWidth(0.86f)
-                    .background(Brush.verticalGradient(listOf(Color(0xFF151B18), Color(0xFF0D110F))))
+                    .clip(RoundedCornerShape(topEnd = 22.dp, bottomEnd = 22.dp))
+                    .background(Brush.verticalGradient(listOf(c.s2, c.s1, c.bg)))
                     .clickable(interactionSource = remember { MutableInteractionSource() }, indication = null) {}
                     .windowInsetsPadding(WindowInsets.safeDrawing.part(top = true, start = true, bottom = true))
                     .verticalScroll(rememberScrollState())

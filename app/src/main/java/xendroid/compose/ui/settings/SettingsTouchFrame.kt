@@ -1,5 +1,6 @@
 package xendroid.compose.ui.settings
 
+import androidx.activity.compose.BackHandler
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -74,6 +75,8 @@ internal fun SettingsTouchFrame(
             else -> history.pick(SettingsSectionIds.HOME)
         }
     }
+    // System Back and the mapped gamepad cancel use the same route as the toolbar.
+    BackHandler(enabled = !home, onBack = back)
     BoxWithConstraints(Modifier.fillMaxSize().background(c.bg).testTag("settings-touch-frame")) {
         val compact = maxHeight > maxWidth || maxWidth < 840.dp
         val body: @Composable (Modifier) -> Unit = { modifier ->

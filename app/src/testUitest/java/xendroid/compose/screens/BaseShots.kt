@@ -4,6 +4,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.isSelected
 import androidx.compose.ui.test.performTouchInput
 import androidx.compose.ui.test.swipeLeft
@@ -223,7 +224,12 @@ class BaseShots {
         compose.onNodeWithTag("library-previous").performClick()
         selectedTitle("Alan Wake").assertExists()
         compose.onNodeWithTag("library-coverflow").performTouchInput { swipeLeft() }
-        selectedTitle("Blue Dragon").assertExists()
+        compose.waitForIdle()
+        // A fling may cross several titles. The settled cover and its identity must agree.
+        val settled = compose.onNode(isSelected() and hasAnyAncestor(hasTestTag("library-coverflow")),
+            useUnmergedTree = true).fetchSemanticsNode().config[SemanticsProperties.ContentDescription].single()
+        compose.onNode(hasText(settled) and hasAnyAncestor(hasTestTag("library-featured-identity")),
+            useUnmergedTree = true).assertExists()
     }
 
     @Config(qualifiers = Phone.PORT) @Test fun consoleLargeTextKeepsActionsReachable() {

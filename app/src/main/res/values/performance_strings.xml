@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="zephyr_perf_experimental">Experimental beta — performance not validated on your device</string>
+</resources>

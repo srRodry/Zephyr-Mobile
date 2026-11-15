@@ -1,0 +1,133 @@
+{
+  "format": "xendroid-settings-profiles",
+  "version": 1,
+  "profiles": [
+    {
+      "id": "zephyr-edge30-beta1-reference",
+      "name": "Referência — experimentos novos desligados",
+      "titleIds": [
+        "4D5309C9",
+        "4D530AA4"
+      ],
+      "reason": "Referência da beta. Preserva resolução, driver, áudio e opções existentes. Revise overrides próprios na prévia.",
+      "settings": {
+        "Vulkan|vulkan_disjoint_memexport_barriers": "false",
+        "GPU|spirv_structured_forward_jumps": "false"
+      },
+      "requires": {
+        "gpuContains": [
+          "Adreno (TM) 730",
+          "Adreno 730"
+        ],
+        "manufacturers": [
+          "motorola"
+        ],
+        "models": [
+          "motorola edge 30 ultra"
+        ]
+      },
+      "evidence": []
+    },
+    {
+      "id": "zephyr-edge30-beta1-barriers",
+      "name": "Teste 1 — barreiras Vulkan por região",
+      "titleIds": [
+        "4D5309C9",
+        "4D530AA4"
+      ],
+      "reason": "Experimento sem ganho comprovado no aparelho: evita barreiras apenas entre regiões independentes. Restaure o perfil anterior antes de testar outra opção. Reinicie o jogo. Reverter se houver imagem incorreta ou falha.",
+      "settings": {
+        "Vulkan|vulkan_disjoint_memexport_barriers": "true"
+      },
+      "requires": {
+        "gpuContains": [
+          "Adreno (TM) 730",
+          "Adreno 730"
+        ],
+        "manufacturers": [
+          "motorola"
+        ],
+        "models": [
+          "motorola edge 30 ultra"
+        ]
+      },
+      "evidence": []
+    },
+    {
+      "id": "zephyr-edge30-beta1-jumps",
+      "name": "Teste 2 — shaders estruturados",
+      "titleIds": [
+        "4D5309C9",
+        "4D530AA4"
+      ],
+      "reason": "Experimento sem ganho comprovado no aparelho. Reinicie e aqueça o cache antes de comparar. Restaure o perfil anterior antes de testar outra opção; reverter se houver regressão visual ou de estabilidade.",
+      "settings": {
+        "GPU|spirv_structured_forward_jumps": "true"
+      },
+      "requires": {
+        "gpuContains": [
+          "Adreno (TM) 730",
+          "Adreno 730"
+        ],
+        "manufacturers": [
+          "motorola"
+        ],
+        "models": [
+          "motorola edge 30 ultra"
+        ]
+      },
+      "evidence": []
+    },
+    {
+      "id": "zephyr-edge30-beta1-pipelines",
+      "name": "Teste 3 — compilação com duas threads",
+      "titleIds": [
+        "4D5309C9",
+        "4D530AA4"
+      ],
+      "reason": "Experimento: menor disputa com CPU do jogo, mas pode aumentar compilação e pop-in. Restaure antes de testar outra opção. Compare caches aquecidos; nenhum ganho medido no aparelho.",
+      "settings": {
+        "Vulkan|vulkan_pipeline_creation_threads": "2"
+      },
+      "requires": {
+        "gpuContains": [
+          "Adreno (TM) 730",
+          "Adreno 730"
+        ],
+        "manufacturers": [
+          "motorola"
+        ],
+        "models": [
+          "motorola edge 30 ultra"
+        ]
+      },
+      "evidence": []
+    },
+    {
+      "id": "zephyr-edge30-beta1-descriptors",
+      "name": "Teste 4 — reuso de descritores upstream",
+      "titleIds": [
+        "4D5309C9",
+        "4D530AA4"
+      ],
+      "reason": "Experimento sem ganho comprovado: reuso por gate em lugar do hash. Restaure antes do próximo teste. Conferir texturas, sombras e transparências.",
+      "settings": {
+        "Vulkan|vulkan_texture_descriptor_reuse_edge": "true",
+        "Vulkan|vulkan_cache_texture_descriptors": "true"
+      },
+      "requires": {
+        "gpuContains": [
+          "Adreno (TM) 730",
+          "Adreno 730"
+        ],
+        "manufacturers": [
+          "motorola"
+        ],
+        "models": [
+          "motorola edge 30 ultra"
+        ]
+      },
+      "evidence": []
+    }
+  ]
+}
