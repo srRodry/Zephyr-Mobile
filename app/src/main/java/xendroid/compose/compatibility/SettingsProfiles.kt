@@ -44,7 +44,7 @@ data class SettingsProfileFile(val format: String, val version: Int, val profile
 
 /** Where a profile came from: shipped in the app, a file on the phone, or (15b, only when the
  *  build names a community server and the player searched it) shared by another player. */
-enum class ProfileSource { BUNDLED, LOCAL, COMMUNITY }
+enum class ProfileSource { BUNDLED, LOCAL, COMMUNITY, EXPERIMENTAL }
 
 data class LoadedProfile(val profile: SettingsProfile, val source: ProfileSource, val origin: String)
 
@@ -118,6 +118,7 @@ object SettingsProfiles {
         "Vulkan|vulkan_dynamic_pipeline_state", "Vulkan|vulkan_pipeline_creation_threads",
         "Vulkan|vulkan_in_pass_resolve", "Vulkan|vulkan_resolve_to_texture_promote",
         "Vulkan|vulkan_resolve_to_texture", "Vulkan|vulkan_resolve_to_texture_serve",
+        "Vulkan|vulkan_disjoint_memexport_barriers", "GPU|spirv_structured_forward_jumps",
         "Vulkan|vulkan_cache_texture_descriptors", "Vulkan|vulkan_texture_descriptor_reuse_edge",
         "Display|postprocess_scaling_and_sharpening", "Display|postprocess_antialiasing",
         "Display|present_letterbox", "Display|postprocess_dither",

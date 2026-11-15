@@ -196,4 +196,20 @@ class SettingsProfilesTest {
         assertTrue(parsed.skipped.isEmpty())
         parsed.profiles.forEach { assertTrue(it.profile.evidence.isNotEmpty()) }
     }
+    @Test fun betaExperimentsAreSeparateFromVerifiedRecommendations() {
+        val asset = File("src/main/assets/${SettingsProfileStore.EXPERIMENTAL_ASSET}").readText()
+        val parsed = SettingsProfiles.parse(asset, ProfileSource.EXPERIMENTAL, "Zephyr beta")
+        assertTrue(parsed.skipped.toString(), parsed.skipped.isEmpty())
+        assertEquals(5, parsed.profiles.size)
+        parsed.profiles.forEach {
+            assertTrue(it.profile.evidence.isEmpty())
+            assertEquals(listOf("4D5309C9", "4D530AA4"), it.profile.titleIds)
+            assertEquals(ProfileSource.EXPERIMENTAL, it.source)
+        }
+        assertTrue(SettingsProfiles.parse(asset, ProfileSource.BUNDLED, "verified").profiles.isEmpty())
+        val store = SettingsProfileStore({ null }, File(folder.root, "absent"),
+            File(folder.root, "beta-records"), experimental = { asset })
+        assertEquals(5, store.load().profiles.size)
+    }
+
 }
