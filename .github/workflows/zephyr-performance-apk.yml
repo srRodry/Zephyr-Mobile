@@ -177,6 +177,7 @@ jobs:
           --tests 'xendroid.compose.screens.SettingsHubTest' \
           --tests 'xendroid.compose.ui.library.*' \
           --tests 'xendroid.compose.ui.design.ZephyrPaletteTest' \
+          --tests 'xendroid.compose.ui.design.EmeraldNavigationTest' \
           --tests 'xendroid.compose.compatibility.SettingsProfilesTest'
 
     - name: Build release APK

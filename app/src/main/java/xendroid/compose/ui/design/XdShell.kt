@@ -428,18 +428,23 @@ fun XdSingleScreen(
     content: @Composable ColumnScope.() -> Unit,
 ) {
     val c = Xd.colors
-    if (Xd.controller) {
-        CFrame(modifier, art = null, hints = hints ?: defaultHints(sections = false), onPad = onPad, overlay = overlay) { _ ->
-            Column(Modifier.fillMaxSize()) {
-                CHead(title, subtitle, onBack, lead = null, headIcon = headIcon, actions = actions)
-                val body = Modifier.weight(1f).fillMaxWidth()
-                if (scroll) Column(body.verticalScroll(rememberScrollState()).padding(start = 22.dp, end = 22.dp, top = 8.dp, bottom = 18.dp), content = content)
-                else Column(body.padding(start = 22.dp, end = 22.dp, top = 8.dp), content = content)
+    val controller = Xd.controller
+    val rootFocus = remember { FocusRequester() }
+    var guideVisible by remember { mutableStateOf(false) }
+    val sharedModifier = if (controller) modifier
+        .focusRequester(rootFocus)
+        .onPreviewKeyEvent { event ->
+            when (val pad = padButtonOf(event)) {
+                PadButton.START -> if (showNav) { guideVisible = true; true } else false
+                null -> false
+                else -> onPad?.invoke(pad) == true
             }
         }
-        return
+        .focusable() else modifier
+    LaunchedEffect(controller, guideVisible) {
+        if (controller && !guideVisible) runCatching { rootFocus.requestFocus() }
     }
-    BoxWithConstraints(modifier.fillMaxSize().zephyrBackdrop()) {
+    BoxWithConstraints(sharedModifier.fillMaxSize().zephyrBackdrop()) {
         val portrait = maxHeight > maxWidth
         val body: @Composable (Modifier) -> Unit = { m ->
             Column(m.windowInsetsPadding(WindowInsets.safeDrawing.part(top = !portrait || !showNav, start = portrait, end = true, bottom = portrait && showNav))) {
@@ -447,6 +452,7 @@ fun XdSingleScreen(
                 val inner = Modifier.weight(1f).fillMaxWidth()
                 if (scroll) Column(inner.verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 24.dp), content = content)
                 else Column(inner.padding(start = 16.dp, end = 16.dp, top = 14.dp), content = content)
+                if (controller) CHints(hints ?: defaultHints(sections = false), scrim = false)
             }
         }
         when {
@@ -456,6 +462,7 @@ fun XdSingleScreen(
         }
         overlay?.invoke(this)
     }
+    if (guideVisible && showNav) CGuide(onDismiss = { guideVisible = false })
 }
 
 // ---------------------------------------------------------------- C: controller frame

@@ -8,6 +8,8 @@ preservada. A integração não representa uma nova medição de FPS no Edge 30 
 
 Correções adicionais:
 
+- As telas sem seções também usam o shell Emerald compartilhado, incluindo drivers,
+  perfis e fluxos auxiliares; guias não abrem em fluxos modais sem navegação.
 - A seção de estado dos controles continua disponível ao alternar o modo de entrada.
 - Voltar do Android e cancelamento do gamepad seguem a mesma rota do botão da tela,
   incluindo retorno à página inicial de um deep link sem histórico.
