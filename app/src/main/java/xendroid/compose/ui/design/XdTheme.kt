@@ -74,10 +74,10 @@ data class XdColors(
         // Zephyr-Mobile: dark green surfaces, deep green actions and restrained lime highlights.
         // Keep semantic compatibility colors independent of branding.
         val Touch = XdColors(
-            bg = Color(0xFF04110F), s1 = Color(0xFF0B231E), s2 = Color(0xFF113128), s3 = Color(0xFF193E33),
-            s4 = Color(0xFF21473B), sheet = Color(0xFF0B231E),
+            bg = Color(0xFF04110F), s1 = Color(0xFF0D2C25), s2 = Color(0xFF143D31), s3 = Color(0xFF1D4C3C),
+            s4 = Color(0xFF285E49), sheet = Color(0xFF0B231E),
             line = Color(0xFF2F594B), line2 = Color(0xFF4D806A),
-            fg = Color(0xFFE9F8F0), fg2 = Color(0xFFC0D9CE), fg3 = Color(0xFFA7C4B7),
+            fg = Color(0xFFE9F8F0), fg2 = Color(0xFFC0D9CE), fg3 = Color(0xFFB5D2C3),
             acc = Color(0xFF87F16D), onAcc = Color(0xFF081D13), dyn = Color(0xFF113128), controller = false,
         )
         // Input method never changes the visual identity: both modes share Emerald tokens.

@@ -5,6 +5,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.input.key.Key
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createComposeRule
@@ -32,6 +33,7 @@ class SharedLibraryInputTest {
         Game("/games/forza.iso", "Forza Horizon", GameFormat.ISO),
         Game("/games/halo.iso", "Halo 3", GameFormat.ISO),
     )
+    private var libraryGames = games
     private var preparing by mutableStateOf(false)
     private val played = mutableListOf<Game>()
     private val favorites = mutableListOf<Game>()
@@ -40,7 +42,7 @@ class SharedLibraryInputTest {
         compose.app(InputMode.CONTROLLER) {
             var selected by remember { mutableStateOf<Game?>(null) }
             LibraryTouch(
-                data = LibraryData(games, emptySet(), emptyMap(), emptyMap(), emptyList(), LibrarySort.NAME_ASC),
+                data = LibraryData(libraryGames, emptySet(), emptyMap(), emptyMap(), emptyList(), LibrarySort.NAME_ASC),
                 filter = LibraryFilter.All, onFilter = {}, query = "", onQuery = {},
                 density = CoverDensity.MEDIUM, onDensity = {}, onSort = {},
                 selected = selected, onSelect = { selected = it }, artOf = { CoverArt("", false) },
@@ -78,5 +80,33 @@ class SharedLibraryInputTest {
         compose.waitForIdle()
         press(Key.Enter)
         assertEquals(listOf(games[0]), played)
+    }
+
+    @Test fun circularSwipeKeepsOneSelectionAndDoesNotLaunch() {
+        libraryGames = games + Game("/games/rdr.iso", "Red Dead Redemption", GameFormat.ISO)
+        open()
+        compose.onNodeWithTag("library-coverflow").performTouchInput { swipeLeft(durationMillis = 700) }
+        compose.waitForIdle()
+        compose.onAllNodes(isSelected() and hasAnyAncestor(hasTestTag("library-coverflow")),
+            useUnmergedTree = true).assertCountEquals(1)
+        assertEquals(emptyList<Game>(), played)
+        fun selectedTitle() = compose.onNode(isSelected() and hasAnyAncestor(hasTestTag("library-coverflow")),
+            useUnmergedTree = true).fetchSemanticsNode().config[SemanticsProperties.ContentDescription]
+        val beforeCircle = selectedTitle()
+        // A complete circle returns to the same title; the next step advances again.
+        repeat(3) { compose.onNodeWithTag("library-next").performClick(); compose.waitForIdle() }
+        assertEquals(beforeCircle, selectedTitle())
+        compose.onNodeWithTag("library-next").performClick(); compose.waitForIdle()
+        org.junit.Assert.assertNotEquals(beforeCircle, selectedTitle())
+    }
+
+    @Test fun singleGameHasOneAccessibleCoverAndSwipeDoesNotLaunch() {
+        libraryGames = listOf(games.first())
+        open()
+        compose.onNodeWithTag("library-coverflow").performTouchInput { swipeLeft() }
+        compose.waitForIdle()
+        compose.onAllNodes(isSelected() and hasAnyAncestor(hasTestTag("library-coverflow")),
+            useUnmergedTree = true).assertCountEquals(1)
+        assertEquals(emptyList<Game>(), played)
     }
 }

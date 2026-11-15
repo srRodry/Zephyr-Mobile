@@ -4,7 +4,13 @@ import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
-import androidx.compose.foundation.gestures.detectHorizontalDragGestures
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.splineBasedDecay
+import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.gestures.draggable
+import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyRow
 import androidx.compose.foundation.lazy.items
@@ -48,6 +54,14 @@ import xendroid.compose.R
 import xendroid.compose.data.Game
 import xendroid.compose.ui.design.*
 import kotlin.math.abs
+import kotlin.math.floor
+import kotlin.math.roundToInt
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.cancelAndJoin
+import kotlinx.coroutines.flow.distinctUntilChanged
+import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
+import androidx.compose.ui.semantics.clearAndSetSemantics
 
 /** The default library is a single console stage. Browsing tools are a separate, reversible view. */
 @Composable
@@ -154,28 +168,85 @@ private fun Modifier.consoleAtmosphere(): Modifier = drawWithCache {
     }
 }
 
-/** Five bounded covers, centered on selection; swipe, neighbouring covers and shoulders select only. */
+/** Bounded rendering of an unbounded circular sequence; drag, coast, then settle on one game. */
 @Composable
 private fun ConsoleCoverflow(
     games: List<Game>, game: Game, data: LibraryData, artOf: (Game) -> CoverArt,
     onSelect: (Game) -> Unit, modifier: Modifier,
 ) {
+    if (games.isEmpty()) return
     val c = Xd.colors
+    val identities = games.map { it.stableId }
     val index = games.indexOfFirst { it.stableId == game.stableId }.coerceAtLeast(0)
-    fun advance(step: Int) { onSelect(games[Math.floorMod(index + step, games.size)]) }
+    var position by remember(identities) { mutableFloatStateOf(index.toFloat()) }
+    var moving by remember(identities) { mutableStateOf(false) }
+    var motion by remember { mutableStateOf<Job?>(null) }
+    val scope = rememberCoroutineScope()
+    val density = LocalDensity.current
+    val decay = remember(density) { splineBasedDecay<Float>(density) }
+    val selectNow by rememberUpdatedState(onSelect)
+    LaunchedEffect(identities) {
+        snapshotFlow { circularCoverIndex(position, games.size) }
+            .distinctUntilChanged().collect { selectNow(games[it]) }
+    }
+    fun travel(target: Float) {
+        val previous = motion
+        motion = scope.launch {
+            previous?.cancelAndJoin()
+            moving = true
+            try {
+                Animatable(position).animateTo(target, spring(
+                    dampingRatio = Spring.DampingRatioNoBouncy,
+                    stiffness = Spring.StiffnessMediumLow)) { position = value }
+                selectNow(games[circularCoverIndex(position, games.size)])
+            } finally { moving = false }
+        }
+    }
+    LaunchedEffect(index, moving, identities) {
+        if (!moving && circularCoverIndex(position, games.size) != index) {
+            travel(nearestCoverPosition(position, index, games.size))
+        }
+    }
+    fun advance(step: Int) {
+        if (games.size > 1) travel(position.roundToInt() + step.toFloat())
+    }
+    DisposableEffect(identities) { onDispose { motion?.cancel() } }
     BoxWithConstraints(modifier.clipToBounds().testTag("library-coverflow").onPreviewKeyEvent {
         when (padButtonOf(it)) {
             PadButton.LB -> { advance(-1); true }
             PadButton.RB -> { advance(1); true }
             else -> false
         }
-    }.pointerInput(games, game.stableId) {
-        var drag = 0f
-        detectHorizontalDragGestures(onDragStart = { drag = 0f },
-            onDragEnd = { if (abs(drag) > 40.dp.toPx()) advance(if (drag < 0f) 1 else -1) },
-            onHorizontalDrag = { change, amount -> change.consume(); drag += amount })
     }, contentAlignment = Alignment.Center) {
         val coverWidth = minOf(maxHeight * .60f, maxWidth * .39f)
+        val spacingPx = with(density) { (coverWidth * .73f).toPx() }.coerceAtLeast(1f)
+        val drag = rememberDraggableState { delta -> position -= delta / spacingPx }
+        val dragModifier = Modifier.fillMaxSize().draggable(
+            state = drag, orientation = Orientation.Horizontal, enabled = games.size > 1,
+            startDragImmediately = moving,
+            onDragStarted = {
+                motion?.cancelAndJoin()
+                moving = true
+            },
+            onDragStopped = { velocity ->
+                motion = scope.launch {
+                    try {
+                        val pixels = Animatable(position * spacingPx)
+                        pixels.animateDecay(-velocity.coerceIn(-10000f, 10000f), decay) {
+                            position = value / spacingPx
+                        }
+                        pixels.animateTo(position.roundToInt() * spacingPx, spring(
+                            dampingRatio = Spring.DampingRatioNoBouncy,
+                            stiffness = Spring.StiffnessMediumLow)) { position = value / spacingPx }
+                        val settled = circularCoverIndex(position, games.size)
+                        selectNow(games[settled])
+                        // Rebase only after rest: keep float precision for arbitrarily many circles.
+                        position = settled.toFloat()
+                    } finally { moving = false }
+                }
+            },
+        )
+        Box(dragModifier, contentAlignment = Alignment.Center) {
         val coverHeight = coverWidth * (4f / 3f)
         Canvas(Modifier.fillMaxSize()) {
             val w = size.width * .97f
@@ -191,29 +262,35 @@ private fun ConsoleCoverflow(
             drawOval(c.acc.copy(alpha = .25f), tl + Offset(w * .06f, h * .14f),
                 Size(w * .88f, h * .72f), style = Stroke(.7.dp.toPx()))
         }
-        // Visit far covers first. Distinct entries avoid duplicated semantics for small libraries.
-        val used = mutableSetOf(game.stableId)
-        val neighbours = listOf(-1, 1, -2, 2).mapNotNull { step ->
-            val neighbour = games[Math.floorMod(index + step, games.size)]
-            if (used.add(neighbour.stableId)) step to neighbour else null
-        }
-        (neighbours + (0 to game)).sortedByDescending { abs(it.first) }.forEach { (step, title) ->
-            val depth = abs(step)
-            val scale = when (depth) { 0 -> 1f; 1 -> .80f; else -> .65f }
-            val x = when (depth) { 0 -> 0f; 1 -> .73f; else -> 1.26f } * if (step < 0) -1 else 1
-            Box(Modifier.offset(x = coverWidth * x, y = if (depth == 0) (-8).dp else (depth * 7).dp)
-                .width(coverWidth * scale).zIndex(3f - depth)
-                .graphicsLayer { rotationY = if (step < 0) 23f else if (step > 0) -23f else -5f
-                    cameraDistance = 16f * density }
-                .semantics { contentDescription = title.name; selected = depth == 0 }
-                .clickable(role = Role.Button) { onSelect(title) }) {
+        val center = position.roundToInt()
+        val slots = if (games.size == 1) listOf(center) else (floor(position).toInt() - 3..floor(position).toInt() + 3).toList()
+        // Repeated visual slots keep small libraries continuous. Expose one accessible copy per game.
+        val accessible = slots.groupBy { Math.floorMod(it, games.size) }
+            .mapValues { (_, copies) -> copies.minBy { abs(it - position) } }
+        slots.sortedByDescending { abs(it - position) }.forEach { slot -> key(slot) {
+            val titleIndex = Math.floorMod(slot, games.size)
+            val title = games[titleIndex]
+            val relative = slot - position
+            val depth = abs(relative)
+            val scale = (1f - depth * .20f).coerceAtLeast(.48f)
+            val primary = accessible[titleIndex] == slot
+            Box(Modifier.offset(x = coverWidth * (relative * .73f), y = (-8 + depth * 15).dp)
+                .width(coverWidth * scale).zIndex(4f - depth)
+                .graphicsLayer {
+                    rotationY = (-relative * 23f).coerceIn(-48f, 48f)
+                    alpha = ((3f - depth) / .6f).coerceIn(0f, 1f)
+                    cameraDistance = 16f * density
+                }
+                .then(if (primary) Modifier.semantics { contentDescription = title.name; selected = slot == center }
+                    else Modifier.clearAndSetSemantics {})
+                .clickable(role = Role.Button) { travel(nearestCoverPosition(position, titleIndex, games.size)) }) {
                 // A dim floor reflection is part of the stage, not another game or touch target.
                 LibraryArtwork(title, artOf(title), Modifier.fillMaxWidth()
                     .graphicsLayer { scaleY = -1f; translationY = coverHeight.toPx() * scale * .97f; alpha = .075f })
-                Box(Modifier.shadow(if (depth == 0) 18.dp else 5.dp, RoundedCornerShape(5.dp),
+                Box(Modifier.shadow(if (slot == center) 18.dp else 5.dp, RoundedCornerShape(5.dp),
                     ambientColor = c.acc, spotColor = c.acc)
-                    .border(if (depth == 0) 1.5.dp else .7.dp,
-                        c.acc.copy(alpha = if (depth == 0) .9f else .5f), RoundedCornerShape(5.dp))) {
+                    .border(if (slot == center) 1.5.dp else .7.dp,
+                        c.acc.copy(alpha = if (slot == center) .9f else .5f), RoundedCornerShape(5.dp))) {
                     LibraryArtwork(title, artOf(title), Modifier.fillMaxWidth())
                     // Narrow spine and bevel supply depth without manufacturing a replacement cover.
                     Box(Modifier.matchParentSize().drawWithCache {
@@ -224,6 +301,8 @@ private fun ConsoleCoverflow(
                     })
                 }
             }
+        }
+        }
         }
         Row(Modifier.align(Alignment.BottomCenter).padding(bottom = 1.dp),
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {

@@ -29,7 +29,7 @@ fun Modifier.zephyrBackdrop(): Modifier {
     val c = Xd.colors
     return drawWithCache {
         val atmosphere = Brush.linearGradient(
-            listOf(Color(0xFF123E30), c.bg, Color(0xFF071E1A)),
+            listOf(Color(0xFF19513C), c.bg, Color(0xFF0B2D27)),
             start = Offset(size.width, 0f), end = Offset(0f, size.height),
         )
         val current = Path().apply {
@@ -38,7 +38,7 @@ fun Modifier.zephyrBackdrop(): Modifier {
                 size.height * 1.05f, size.width * 1.15f, size.height * .18f)
         }
         val halo = Brush.radialGradient(
-            listOf(c.acc.copy(alpha = .16f), Color.Transparent),
+            listOf(c.acc.copy(alpha = .22f), Color.Transparent),
             center = Offset(size.width * .78f, size.height * .16f),
             radius = size.maxDimension * .7f,
         )
@@ -58,11 +58,11 @@ fun Modifier.zephyrSurface(shape: Shape = ZephyrPanelShape, emphasized: Boolean 
     val top = if (emphasized) c.solid(c.s3) else c.solid(c.s2)
     val bottom = c.solid(c.s1)
     return clip(shape)
-        .background(Brush.linearGradient(listOf(top, bottom, Color(0xFF061B16))))
+        .background(Brush.linearGradient(listOf(top, bottom, Color(0xFF09271E))))
         .border(1.dp, if (emphasized) c.acc.copy(alpha = .55f) else c.line, shape)
         .drawWithCache {
             val sheen = Brush.linearGradient(
-                listOf(Color.White.copy(alpha = .13f), Color.Transparent),
+                listOf(Color.White.copy(alpha = .17f), Color.Transparent),
                 end = Offset(size.width * .7f, size.height * .5f),
             )
             val reflection = Path().apply {
