@@ -27,6 +27,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.safeDrawing
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.windowInsetsPadding
 import androidx.compose.foundation.relocation.BringIntoViewRequester
 import androidx.compose.foundation.relocation.bringIntoViewRequester
@@ -220,7 +221,7 @@ fun InGameMenu(
             withFrameNanos { }
             selectedRow.bringIntoView()
         }
-        val shape = if (!controller) ZephyrPanelShape else if (portrait) RoundedCornerShape(topStart = 22.dp, topEnd = 22.dp) else RoundedCornerShape(topEnd = 22.dp, bottomEnd = 22.dp)
+        val shape = ZephyrPanelShape // One silhouette for both input methods.
         val panel = if (portrait) Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.86f)
         else Modifier.align(Alignment.CenterStart).width(minOf(maxWidth * (if (controller) 0.74f else 0.78f), if (controller) 660.dp else 720.dp)).fillMaxHeight()
         Column(
@@ -341,18 +342,23 @@ private fun Head(model: InGameMenuModel, controller: Boolean, compactActions: Bo
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun StatusLine(status: List<MenuStat>) {
     val c = Xd.colors
-    Row(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(Color.White.copy(alpha = 0.05f))
-        .horizontalScroll(rememberScrollState()).padding(horizontal = 12.dp, vertical = 7.dp),
-        horizontalArrangement = Arrangement.spacedBy(16.dp), verticalAlignment = Alignment.CenterVertically) {
-        for (s in status) {
+    // No invisible off-screen driver text: compact metrics wrap and long names ellipsize.
+    FlowRow(Modifier.fillMaxWidth().clip(RoundedCornerShape(12.dp)).background(c.s1)
+        .padding(horizontal = 12.dp, vertical = 7.dp),
+        horizontalArrangement = Arrangement.spacedBy(12.dp),
+        verticalArrangement = Arrangement.spacedBy(3.dp)) {
+        status.forEachIndexed { index, s ->
             Text(buildAnnotatedString {
                 s.label?.let { append(it); append(' ') }
                 withStyle(SpanStyle(fontWeight = FontWeight.Bold, color = c.fg)) { append(s.value) }
                 s.unit?.let { append(' '); append(it) }
-            }, style = XdText.small, color = c.fg2, maxLines = 1)
+            }, modifier = Modifier.widthIn(max = 360.dp), style = XdText.small, color = c.fg2,
+                maxLines = if (index == status.lastIndex) 2 else 1,
+                overflow = TextOverflow.Ellipsis)
         }
     }
 }
@@ -362,7 +368,7 @@ private fun StatusLine(status: List<MenuStat>) {
 private fun PageRail(state: InGameMenuState, controller: Boolean, short: Boolean, onPage: (InGamePage) -> Unit) {
     val c = Xd.colors
     Column(
-        Modifier.width(if (controller) { if (short) 76.dp else 84.dp } else { if (short) 92.dp else 104.dp }).fillMaxHeight().verticalScroll(rememberScrollState()),
+        Modifier.width(if (short) 88.dp else 104.dp).fillMaxHeight().verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(4.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
@@ -380,7 +386,7 @@ private fun PageRail(state: InGameMenuState, controller: Boolean, short: Boolean
             ) {
                 Icon(page.icon(), null, Modifier.size(20.dp), tint = if (selected && !controller) c.onAction else if (selected) c.acc else c.fg3)
                 Text(page.label(), style = XdText.labelSm.copy(fontSize = if (controller) 11.5.sp else 12.sp),
-                    color = if (selected && !controller) c.onAction else if (selected) c.acc else c.fg2, maxLines = if (controller) 1 else 2)
+                    color = if (selected && !controller) c.onAction else if (selected) c.acc else c.fg2, maxLines = 2)
             }
         }
         if (controller) ButtonGlyph("RB")
@@ -520,7 +526,7 @@ private fun MenuRow(
     // Pills, chips and the slider take their own taps; the other rows act on a tap anywhere.
     val tappable = kind == RowKind.TOGGLE || kind == RowKind.CYCLE || kind == RowKind.BUTTON
     Column(
-        modifier.fillMaxWidth().heightIn(min = if (c.controller) 46.dp else 56.dp)
+        modifier.fillMaxWidth().heightIn(min = if (c.controller) 52.dp else 56.dp)
             // U02: the controller's highlight is the screen reader's "selected", for the row and its title.
             .semantics(mergeDescendants = true) { this.selected = selected }
             .clip(shape)
@@ -592,7 +598,7 @@ private fun OptionPill(text: String, on: Boolean, check: Boolean, cursor: Boolea
     val c = Xd.colors
     val shape = RoundedCornerShape(50)
     Row(
-        Modifier.then(if (c.controller) Modifier.height(32.dp) else Modifier.heightIn(min = 48.dp)).clip(shape)
+        Modifier.heightIn(min = if (c.controller) 40.dp else 48.dp).clip(shape)
             .background(if (on) c.acc.copy(alpha = 0.22f).compositeOver(c.solid(c.s2)) else c.s2)
             .then(if (on || cursor) Modifier.border(if (cursor) 2.dp else 1.dp, if (cursor) c.fg else c.acc.copy(alpha = 0.6f), shape) else Modifier)
             .clickable(enabled = enabled, role = if (check) Role.Checkbox else Role.RadioButton, onClick = onClick)
