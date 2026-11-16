@@ -49,3 +49,19 @@ aparelho; nenhum mecanismo de sincronização foi removido.
 
 Mesmo pacote Research e assinatura permanente; publicação pelo workflow
 existente com VersionCode crescente e atualização pelo canal Preview.
+
+## Publicação verificada
+
+Beta 7, build 20, VersionCode 100020; workflow 43778429093 concluído com
+sucesso. Compilação Android, testes nativos e testes selecionados do aplicativo
+(incluindo atualizador), assinatura e empacotamento aprovados.
+
+Release: https://github.com/srRodry/Zephyr-Mobile/releases/tag/Zephyr-Research-v100020-30bdfbf4
+
+APK: `Zephyr-Performance_beta7-memory_30bdfbf4.apk`, 52.507.672 bytes.
+SHA-256: `5bcad2aa604b38701cc1ff4673f6bc5408d66cdd2fcb76b6bedf2a6b1d80d3c6`.
+Certificado Research permanente confirmado:
+`22e1b7cd028e034eb6e483a40f96927fd91fab8601bf50aeb87798c64d053353`.
+
+A execução do teste novo sobre os métodos anteriores também confirmou o
+percurso redundante: falha na asserção de uma leitura por alteração localizada.
