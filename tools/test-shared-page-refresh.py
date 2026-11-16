@@ -28,13 +28,14 @@ code = r'''
 #include <array>
 #include <bit>
 #include <cstdint>
+#include <cstring>
 #include <cstdio>
 #include <mutex>
 #include <random>
 #include <vector>
 namespace xe {
-unsigned bit_count(uint32_t value) {return std::popcount(value);}
-bool bit_scan_forward(uint32_t value, uint32_t* result) {
+unsigned bit_count(uint64_t value) {return std::popcount(value);}
+bool bit_scan_forward(uint64_t value, uint32_t* result) {
  if (!value) return false; *result = std::countr_zero(value); return true;
 }
 }
@@ -48,6 +49,7 @@ struct SharedMemory {
  uint64_t* system_page_flags_preserve_exempt_ = exempt.data();
  bool gpu_written_data_dirty_ = false;
  uint32_t dirty_blocks_ = 0;
+ uint64_t dirty_entries_[32] = {};
  unsigned num_system_page_flags_ = 2048;
  uint32_t page_size_log2_ = 12;
  struct PageHistory {uint64_t gpu_write = 0, upload = 0; uint32_t gpu_write_start = 0, gpu_write_length = 0;};
@@ -56,9 +58,13 @@ struct SharedMemory {
  bool memory_invalidation_callback_handle_ = false;
  struct Memory {void EnablePhysicalMemoryAccessCallbacks(uint32_t, uint32_t, bool, bool) {}} memory_;
  Memory& memory() {return memory_;}
+ uint64_t refresh_reads = 0;
+ uint64_t ReadGpu(uint32_t i) {++refresh_reads; return gpu[i];}
+ void InvalidateAllPages();
  void SetSystemPageBlocksValidWithGpuDataWritten();
  void MakeRangeValid(uint32_t, uint32_t, bool, bool);
 };
+INVALIDATE
 REFRESH
 MAKE_VALID
 int main() {
@@ -83,6 +89,7 @@ int main() {
       expected_invalid[i] |= expected_valid[i] & ~expected_gpu[i];
       expected_valid[i] = expected_gpu[i];
     }
+    s.refresh_reads = 0;
     s.SetSystemPageBlocksValidWithGpuDataWritten();
     if (s.valid != expected_valid || s.gpu != expected_gpu || s.invalid != expected_invalid) return false;
     return true;
@@ -90,15 +97,34 @@ int main() {
   // A CPU-only upload must be eligible for refresh even without a GPU write.
   upload(2, 1, false, false);
   if (!refresh()) {std::puts("REGRESSION: CPU-only uploaded page remained valid after refresh"); return 1;}
-  // GPU dirtiness in chunk 0 must not hide CPU uploads in another chunk.
+  if (s.refresh_reads != 1) {std::puts("REGRESSION: localized upload scanned unchanged masks"); return 1;}
+  // GPU-only writes need no refresh; CPU dirtiness must survive a GPU write.
+  upload(1, 1, true, false);
+  if (!refresh() || s.refresh_reads != 0) return 1;
+  upload(2, 1, false, false);
+  upload(2, 1, true, true);
+  if (!refresh()) return 1;
+  // GPU writes in chunk 0 must not hide CPU uploads in another chunk.
   upload(1, 1, true, false);
   upload(4097, 1, false, false);
   if (!refresh()) {std::puts("REGRESSION: CPU upload outside GPU-dirty chunk was skipped"); return 1;}
   // Uploading over a previously GPU-written page must not preserve its old mask.
   upload(1, 1, false, false);
   if (!refresh()) return 1;
-  // Cover the dense (>16 dirty chunks) fallback as well as sparse refresh.
+  // Cover sparse entries spread over every coarse chunk.
   for (uint32_t first = 0; first < page_count; first += 4096) upload(first, 1, false, false);
+  if (!refresh()) return 1;
+  if (s.refresh_reads != (page_count + 4095) / 4096) return 1;
+  // Reset with pending dirtiness must not leave stale entries or access guards.
+  upload(page_count - 1, 1, false, false);
+  s.InvalidateAllPages();
+  expected_valid.fill(0); expected_gpu.fill(0);
+  for (uint32_t i = 0; i < s.num_system_page_flags_; ++i) expected_invalid[i] = UINT64_MAX;
+  if (!refresh() || s.refresh_reads != s.num_system_page_flags_) return 1;
+  // Full-range uploads exercise the dense linear path and array boundaries.
+  upload(0, page_count, false, false);
+  if (!refresh()) return 1;
+  upload(0, page_count, true, false);
   if (!refresh()) return 1;
   for (int step = 0; step < 20000; ++step) {
     const uint32_t first = random() % page_count;
@@ -109,9 +135,9 @@ int main() {
   }
   if (!refresh()) return 1;
  }
- std::puts("Page refresh: CPU-only/cross-chunk/overwrite regressions and 60,000 mixed updates passed at 4/16/64 KiB page sizes.");
+ std::puts("Page refresh: CPU-only/cross-chunk/overwrite regressions and reset/dense/sparse work bounds and 60,000 mixed updates passed at 4/16/64 KiB page sizes.");
 }
-'''.replace('REFRESH', method('void SharedMemory::SetSystemPageBlocksValidWithGpuDataWritten()')).replace('MAKE_VALID', method('void SharedMemory::MakeRangeValid('))
+'''.replace('INVALIDATE', method('void SharedMemory::InvalidateAllPages()')).replace('REFRESH', method('void SharedMemory::SetSystemPageBlocksValidWithGpuDataWritten()').replace('system_page_flags_valid_and_gpu_written_[i]', 'ReadGpu(i)')).replace('MAKE_VALID', method('void SharedMemory::MakeRangeValid('))
 with tempfile.TemporaryDirectory(prefix='zephyr-page-refresh-') as directory:
     path = Path(directory)
     (path / 'test.cc').write_text(code)

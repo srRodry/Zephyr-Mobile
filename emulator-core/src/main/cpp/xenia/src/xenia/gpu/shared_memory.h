@@ -312,6 +312,8 @@ class SharedMemory {
   // Bitmap of dirty 64-entry chunks of both page masks, so localized CPU
   // uploads and GPU writes refresh only the chunks that changed.
   uint32_t dirty_blocks_ = 0;
+  // One bit per 64-page mask entry, within each coarse chunk.
+  uint64_t dirty_entries_[32] = {};
 
   unsigned num_system_page_flags_ = 0;
 

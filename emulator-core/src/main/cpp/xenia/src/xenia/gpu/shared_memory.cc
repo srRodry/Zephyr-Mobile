@@ -158,6 +158,7 @@ void SharedMemory::InvalidateAllPages() {
 
   // Mark all chunks dirty so the next copy refreshes everything.
   dirty_blocks_ = 0xFFFFFFFF;
+  std::fill_n(dirty_entries_, 32, UINT64_MAX);
   gpu_written_data_dirty_ = true;
 }
 
@@ -223,31 +224,37 @@ void SharedMemory::SetSystemPageBlocksValidWithGpuDataWritten() {
     dirty_blocks_ = 0;
     gpu_written_data_dirty_ = false;
 
-    uint32_t dirty_count = xe::bit_count(dirty_mask);
-
-    // Past ~50% dirty the per-chunk bookkeeping costs more than a straight
-    // copy.
-    if (dirty_count == 0 || dirty_count > 16) {
-      for (uint32_t i = 0; i < num_system_page_flags_; ++i) {
-        uint64_t gpu_written_block = system_page_flags_valid_and_gpu_written_[i];
-        system_page_flags_invalidated_in_submission_[i] |=
-            system_page_flags_valid_[i] & ~gpu_written_block;
-        system_page_flags_valid_[i] = gpu_written_block;
-      }
-    } else {
-      while (dirty_mask) {
-        uint32_t block_index;
-        xe::bit_scan_forward(dirty_mask, &block_index);
-        dirty_mask &= ~(1u << block_index);
-
-        // Each chunk is 64 entries of 8 bytes.
-        uint32_t entry_offset = block_index * 64;
-        for (uint32_t i = entry_offset; i < entry_offset + 64; ++i) {
-          uint64_t gpu_written_block =
+    while (dirty_mask) {
+      uint32_t block_index;
+      xe::bit_scan_forward(dirty_mask, &block_index);
+      dirty_mask &= dirty_mask - 1;
+      uint64_t entries = dirty_entries_[block_index];
+      dirty_entries_[block_index] = 0;
+      const uint32_t entry_offset = block_index * 64;
+      // Dense chunks retain the linear, vectorizable loop. Localized writes
+      // visit just their changed entries instead of all 64 masks in a chunk.
+      if (xe::bit_count(entries) > 32) {
+        const uint32_t entry_end =
+            std::min(entry_offset + 64, num_system_page_flags_);
+        for (uint32_t i = entry_offset; i < entry_end; ++i) {
+          const uint64_t gpu_written =
               system_page_flags_valid_and_gpu_written_[i];
           system_page_flags_invalidated_in_submission_[i] |=
-              system_page_flags_valid_[i] & ~gpu_written_block;
-          system_page_flags_valid_[i] = gpu_written_block;
+              system_page_flags_valid_[i] & ~gpu_written;
+          system_page_flags_valid_[i] = gpu_written;
+        }
+      } else {
+        while (entries) {
+          uint32_t entry_bit;
+          xe::bit_scan_forward(entries, &entry_bit);
+          entries &= entries - 1;
+          const uint32_t i = entry_offset + entry_bit;
+          if (i >= num_system_page_flags_) break;
+          const uint64_t gpu_written =
+              system_page_flags_valid_and_gpu_written_[i];
+          system_page_flags_invalidated_in_submission_[i] |=
+              system_page_flags_valid_[i] & ~gpu_written;
+          system_page_flags_valid_[i] = gpu_written;
         }
       }
     }
@@ -476,10 +483,14 @@ void SharedMemory::MakeRangeValid(uint32_t start, uint32_t length,
       }
       // SystemPageFlagsBlock& block = system_page_flags_[i];
       system_page_flags_valid_[i] |= valid_bits;
-      // Refresh consumes BOTH valid and GPU-written flags. CPU uploads also
-      // change the result, including uploads outside any GPU-dirty chunk.
-      gpu_written_data_dirty_ = true;
-      dirty_blocks_ |= 1u << (i >> 6);
+      // Only CPU uploads introduce valid bits absent from the GPU mask.
+      // A GPU write sets both masks; it cannot create work for refresh. Any
+      // earlier CPU upload in this entry already has its dirty bit retained.
+      if (!written_by_gpu) {
+        gpu_written_data_dirty_ = true;
+        dirty_blocks_ |= 1u << (i >> 6);
+        dirty_entries_[i >> 6] |= uint64_t(1) << (i & 63);
+      }
       if (written_by_gpu) {
         // In the same critical region as the GPU write, so a guest write
         // faulting in can't see the pages of an export read back as preserved.
@@ -892,6 +903,7 @@ std::pair<uint32_t, uint32_t> SharedMemory::MemoryInvalidationCallback(
     system_page_flags_invalidated_in_submission_[i] |= invalidate_bits;
     // Track which chunks changed for partial copying.
     dirty_blocks_mask |= (1u << (i >> 6));
+    dirty_entries_[i >> 6] |= uint64_t(1) << (i & 63);
   }
 
   // GPU-written flags changed due to CPU invalidation.
