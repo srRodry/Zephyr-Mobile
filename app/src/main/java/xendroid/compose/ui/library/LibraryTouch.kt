@@ -268,35 +268,7 @@ fun LibraryTouch(
                             }
                         }
                     } else {
-                        // On phones, avoid showing the same library three times (featured + shelf + list).
-                        // The featured card leads directly into the complete list. Wide layouts keep the
-                        // horizontal shelf because it works as a selector for the persistent detail panel.
-                        if (query.isBlank() && filter == LibraryFilter.All) {
-                            item(key = "library-showcase", span = { GridItemSpan(maxLineSpan) }) {
-                                Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                                    if (portrait && featured != null) {
-                                        Text(
-                                            stringResource(R.string.zephyr_library_featured),
-                                            color = c.fg,
-                                            style = XdText.h2,
-                                        )
-                                        LibraryFeaturedGame(featured, artOf(featured), data, preparing,
-                                            onPlay = { onSelect(featured); onPlay(featured) },
-                                            onOpen = { openSelected(featured) }, onFavorite = { onFavorite(featured) },
-                                            nearby = shown.filter { it.stableId != featured.stableId }.take(4).map { it to artOf(it) },
-                                            onSelectNearby = onSelect)
-                                    } else if (!portrait) {
-                                        Text(
-                                            stringResource(R.string.zephyr_library_your_library),
-                                            color = c.fg,
-                                            style = XdText.h2,
-                                        )
-                                        LibraryShowcase(shown, selected, data, artOf, onSelect, openSelected, onFavorite)
-                                        HorizontalDivider(color = c.line)
-                                    }
-                                }
-                            }
-                        }
+                        // Browsing is the complete list; the console already supplies the featured stage.
                         item(key = "library-titles", span = { GridItemSpan(maxLineSpan) }) {
                             Text(stringResource(if (filter == LibraryFilter.All && query.isBlank()) R.string.zephyr_library_all_titles
                                 else R.string.zephyr_library_titles), color = c.fg, style = XdText.h2)
