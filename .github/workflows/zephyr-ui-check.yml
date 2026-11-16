@@ -261,6 +261,16 @@ jobs:
         run: python3 tools/test-vulkan-placeholder-layout.py
       - name: Test Vulkan pipeline-cache persistence throttle
         run: python3 tools/test-vulkan-pipeline-cache-save-throttle.py
+      - name: Test pipeline-cache file integrity and buffer reuse
+        run: |
+          cache_test_dir=$(mktemp -d)
+          trap 'rm -rf "$cache_test_dir"' EXIT
+          c++ -std=c++20 -O1 -fsanitize=address,undefined \
+            -I emulator-core/src/main/cpp/xenia \
+            -I emulator-core/src/main/cpp/xenia/src \
+            emulator-core/src/test/cpp/pipeline_cache_file_test.cc \
+            -o "$cache_test_dir/cache-test"
+          "$cache_test_dir/cache-test" "$cache_test_dir/data"
       - name: Test audio pump deadline diagnostics
         run: python3 tools/test-audio-pump-diagnostics.py
       - name: Test audio timing log parser
