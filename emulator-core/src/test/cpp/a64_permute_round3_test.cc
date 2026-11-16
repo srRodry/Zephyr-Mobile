@@ -21,8 +21,8 @@ static void execute(const A64Emitter& e,R& regs){
    int lane=1<<((w>>22)&3),half=(w>>14)&1,first=half*(8/lane);
    for(int k=0;k<8/lane;k++)for(int j=0;j<lane;j++){
     regs[d][(2*k)*lane+j]=a[(first+k)*lane+j];regs[d][(2*k+1)*lane+j]=b[(first+k)*lane+j];}
-  }else if((w&0xffe0fc00u)==0x4e002000u){
-   assert(n<31);auto second=regs[n+1];for(int k=0;k<16;k++){int i=b[k];regs[d][k]=i<16?a[i]:i<32?second[i-16]:0;}
+  }else if((w&0xffe0dc00u)==0x4e000000u){
+   const bool two=(w&0x2000u)!=0;assert(!two || n<31);auto second=two?regs[n+1]:V{};for(int k=0;k<16;k++){int i=b[k];regs[d][k]=i<16?a[i]:two && i<32?second[i-16]:0;}
   }else{std::fprintf(stderr,"unknown encoding %08x\n",w);assert(false);}++pc;
  }
 }
@@ -43,16 +43,16 @@ static void check(bool half,int mask,int dst,int ctrl,int a,int b,int pattern){
  else{for(int k=0;k<8;k++){int h=(c[2*k]|(c[2*k+1]<<8))&15,i=((h&7)^1)*2;auto& src=h<8?x:y;
   expected[2*k]=src[i];expected[2*k+1]=src[i+1];}}
  A64Emitter e;if(half)PERMUTE_V128::EmitByInt16(e,args);else PERMUTE_V128::EmitByInt8(e,args);e.ready();
- if(!half && !mask && !pattern)assert(e.getSize()==20); // 5 actual instructions, previously 7
+ if(!half && !mask && !pattern)assert(e.getSize()==(a==b?16:20)); // 5 actual instructions, previously 7
  if(half && pattern && !(mask&6))assert(e.getSize()==8); // ZIP + REV64
- if(!half && pattern && !(mask&6))assert(e.getSize()==16); // 2 REV32 + ZIP + REV32
+ if(!half && pattern && !(mask&6) && a!=b)assert(e.getSize()==16); // 2 REV32 + ZIP + REV32
  auto before=regs;execute(e,regs);assert(regs[dst]==expected);
  for(int r=4;r<32;r++)if(r!=dst)assert(regs[r]==before[r]);
 }
 int main(){size_t count=0;
  for(int half=0;half<2;half++)for(int mask=0;mask<8;mask++){
   if(half && !(mask&1))continue;
-  for(int d:{4,5,6,31})for(int alias=0;alias<3;alias++)for(int pattern=0;pattern<3;pattern++)for(int r=0;r<128;r++){
-   check(half,mask,d,4,alias==1?4:5,alias==2?5:6,pattern);++count;}}
+  for(int d:{4,5,6,31})for(int alias=0;alias<4;alias++)for(int pattern=0;pattern<3;pattern++)for(int r=0;r<128;r++){
+   check(half,mask,d,4,alias==1?4:5,alias==2 || alias==3?5:6,pattern);++count;}}
  std::printf("A64 permutes: %zu bit-exact encoded cases; constant/register operands, aliases, merge fast paths and non-destination preservation passed. Dynamic vperm: 5 instructions.\n",count);
 }
