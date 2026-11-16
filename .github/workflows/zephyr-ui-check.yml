@@ -5,6 +5,7 @@ on:
     branches:
       - feature/zephyr-mobile-branding
       - perf/edge30-beta1
+      - research/optimization-round3
   pull_request:
     paths:
       - 'app/src/**'
