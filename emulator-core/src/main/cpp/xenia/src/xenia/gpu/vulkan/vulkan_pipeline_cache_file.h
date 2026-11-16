@@ -181,7 +181,12 @@ inline LoadResult Load(const std::filesystem::path& path, const Identity& curren
     result.status = LoadStatus::kOtherIdentity;
     return result;
   }
-  result.payload.assign(bytes.begin() + payload_offset, bytes.end());
+  // Reuse the verified read buffer instead of allocating a second full blob.
+  // Only the small envelope is removed; legacy raw blobs move without copying.
+  if (payload_offset) {
+    bytes.erase(bytes.begin(), bytes.begin() + payload_offset);
+  }
+  result.payload = std::move(bytes);
   result.status = legacy ? LoadStatus::kLegacyLoaded : LoadStatus::kLoaded;
   return result;
 }
