@@ -50,8 +50,8 @@ jobs:
       XENDROID_THINLTO_JOBS: '2'
 
     outputs:
-      sha: ${{ steps.cfg_candidate.outputs.sha }}
-      name: ${{ steps.cfg_candidate.outputs.name }}
+      sha: ${{ steps.cfg.outputs.sha }}
+      name: ${{ steps.cfg.outputs.name }}
       apk: ${{ steps.sign_candidate.outputs.apk }}
       signed_with: ${{ steps.sign_candidate.outputs.signed_with }}
 
@@ -64,7 +64,7 @@ jobs:
     - name: Build settings
       id: cfg
       env:
-        RESEARCH_ARM: ${{ github.ref_name == 'research/optimization-round3' && 'beta7-memory' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
+        RESEARCH_ARM: ${{ github.ref_name == 'research/optimization-round3' && 'beta8-ui' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
         sha=$(git rev-parse --short=8 HEAD)
@@ -148,28 +148,6 @@ jobs:
         key: ndk${{ env.ANDROID_NDK_VERSION }}-arm64
         max-size: 2G
 
-    - name: Build settings (candidate)
-      id: cfg_candidate
-      env:
-        RESEARCH_ARM: ${{ github.ref_name == 'research/optimization-round3' && 'beta7-memory' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
-      run: |
-        git config --global --add safe.directory "$GITHUB_WORKSPACE"
-        sha=$(git rev-parse --short=8 HEAD)
-        variant=test
-        name="Zephyr-Performance_${RESEARCH_ARM}_$sha"
-        package=xendroid.compose.zephyr.research
-        package_args="-PzephyrEdge30Ultra -PxendroidReleaseIdSuffix=.zephyr.research -PxendroidReleaseDebuggable -PxendroidUpdateRepo=srRodry/Zephyr-Mobile"
-        {
-          echo "sha=$sha"
-          echo "variant=$variant"
-          echo "name=$name"
-          echo "package=$package"
-          echo "package_args=$package_args"
-        } >> "$GITHUB_OUTPUT"
-        # Paths inside the container (github.workspace is the host path).
-        echo "CCACHE_BASEDIR=$GITHUB_WORKSPACE" >> "$GITHUB_ENV"
-        echo "Building $package as $name.apk"
-
     - name: Validate native optimization invariants
       run: |
         python3 tools/test-shared-page-refresh.py
@@ -182,6 +160,7 @@ jobs:
     - name: Validate shared navigation before packaging
       run: |
         bash ./gradlew :app:testUitestUnitTest --no-daemon --stacktrace \
+          --tests 'xendroid.compose.core.PresenterPerformanceHintsTest' \
           --tests 'xendroid.compose.screens.ControlsHubTest' \
           --tests 'xendroid.compose.screens.SettingsHubTest' \
           --tests 'xendroid.compose.ui.library.*' \
@@ -193,8 +172,8 @@ jobs:
 
     - name: Build release APK
       env:
-        SHA: ${{ steps.cfg_candidate.outputs.sha }}
-        PACKAGE_ARGS: ${{ steps.cfg_candidate.outputs.package_args }}
+        SHA: ${{ steps.cfg.outputs.sha }}
+        PACKAGE_ARGS: ${{ steps.cfg.outputs.package_args }}
       run: |
         chmod +x gradlew
         # PACKAGE_ARGS holds several arguments (unquoted on purpose).
@@ -210,9 +189,9 @@ jobs:
     - name: Sign APK
       id: sign_candidate
       env:
-        NAME: ${{ steps.cfg_candidate.outputs.name }}
-        PACKAGE: ${{ steps.cfg_candidate.outputs.package }}
-        VARIANT: ${{ steps.cfg_candidate.outputs.variant }}
+        NAME: ${{ steps.cfg.outputs.name }}
+        PACKAGE: ${{ steps.cfg.outputs.package }}
+        VARIANT: ${{ steps.cfg.outputs.variant }}
         KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
         KEY_ALIAS: ${{ secrets.KEY_ALIAS }}
         KEYSTORE_PASSWORD: ${{ secrets.KEYSTORE_PASSWORD }}
@@ -293,7 +272,7 @@ jobs:
     - name: Check APK packaging
       env:
         APK: ${{ steps.sign_candidate.outputs.apk }}
-        EXPECTED_PACKAGE: ${{ steps.cfg_candidate.outputs.package }}
+        EXPECTED_PACKAGE: ${{ steps.cfg.outputs.package }}
       # arm64-only core with JNI_OnLoad, signed, license texts present, no DLL,
       # shader cache, game image or profile data inside.
       run: |
@@ -310,8 +289,8 @@ jobs:
       env:
         ARM: candidate
         APK: ${{ steps.sign_candidate.outputs.apk }}
-        NAME: ${{ steps.cfg_candidate.outputs.name }}
-        PACKAGE: ${{ steps.cfg_candidate.outputs.package }}
+        NAME: ${{ steps.cfg.outputs.name }}
+        PACKAGE: ${{ steps.cfg.outputs.package }}
       run: |
         python3 - <<'PYIDENTITY'
         import hashlib, json, os, pathlib, subprocess
@@ -339,11 +318,11 @@ jobs:
     - name: Upload APK
       uses: actions/upload-artifact@v4
       with:
-        name: ${{ steps.cfg_candidate.outputs.name }}
+        name: ${{ steps.cfg.outputs.name }}
         path: |
           ${{ steps.sign_candidate.outputs.apk }}
-          ${{ steps.cfg_candidate.outputs.name }}.signing.txt
-          ${{ steps.cfg_candidate.outputs.name }}.json
+          ${{ steps.cfg.outputs.name }}.signing.txt
+          ${{ steps.cfg.outputs.name }}.json
         if-no-files-found: error
         retention-days: 14
         compression-level: 0
@@ -352,8 +331,8 @@ jobs:
       uses: actions/github-script@v7
       env:
         APK: ${{ steps.sign_candidate.outputs.apk }}
-        NAME: ${{ steps.cfg_candidate.outputs.name }}
-        SHA: ${{ steps.cfg_candidate.outputs.sha }}
+        NAME: ${{ steps.cfg.outputs.name }}
+        SHA: ${{ steps.cfg.outputs.sha }}
       with:
         script: |
           const fs = require('fs');
@@ -367,8 +346,8 @@ jobs:
           fs.writeFileSync(checksums, digest + '  ' + apk + '\n');
           const body = [
             '<!-- update-summary:pt-BR',
-            '- Memória gráfica: atualização seletiva por entrada, com menos trabalho em alterações localizadas.',
-            '- Escritas exclusivas da GPU evitam atualização redundante; preservadas as correções de coerência da beta 5.',
+            '- Biblioteca: busca sem destaque duplicado, favorito no modo horizontal e contadores sem ordenações desnecessárias.',
+            '- Carrossel: escala visual sem redimensionar as capas a cada quadro; ADPF evita reenviar metas inalteradas.',
             '-->',
             'Beta experimental; desempenho ainda não validado no aparelho.',
             'Pacote: xendroid.compose.zephyr.research',
@@ -387,7 +366,7 @@ jobs:
             if (error.status !== 404) throw error;
             release = (await github.rest.repos.createRelease({
               ...context.repo, tag_name: tag, target_commitish: context.sha,
-              name: 'Zephyr Anel beta 7 — build ' + context.runNumber,
+              name: 'Zephyr Anel beta 8 — build ' + context.runNumber,
               body, draft: true, prerelease: true
             })).data;
           }
