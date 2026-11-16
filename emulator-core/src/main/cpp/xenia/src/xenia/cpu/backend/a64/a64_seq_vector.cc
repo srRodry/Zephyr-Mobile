@@ -955,12 +955,20 @@ struct PERMUTE_V128
                I<OPCODE_PERMUTE, V128Op, V128Op, V128Op, V128Op>> {
   static void EmitByInt8(A64Emitter& e, const EmitArgType& i) {
     int d = i.dest.reg().getIdx();
+    // Aliased tables contain the same bytes. Use one reversed table and
+    // mask away the source-select bit instead of preparing it twice.
+    const bool same_table =
+        (!i.src2.is_constant && !i.src3.is_constant &&
+         i.src2.reg().getIdx() == i.src3.reg().getIdx()) ||
+        (i.src2.is_constant && i.src3.is_constant &&
+         i.src2.constant() == i.src3.constant());
+    const uint8_t control_mask = same_table ? 0x0F : 0x1F;
     // rev32 of the tables replaces XORing the control with 3.
     int zip_form = 0;
     if (i.src1.is_constant) {
       vec128_t ctrl = i.src1.constant();
       for (int k = 0; k < 16; k++) {
-        ctrl.u8[k] &= 0x1F;
+        ctrl.u8[k] &= control_mask;
       }
       static const vec128_t kMrghbCtrl =
           vec128b(0, 16, 1, 17, 2, 18, 3, 19, 4, 20, 5, 21, 6, 22, 7, 23);
@@ -971,7 +979,7 @@ struct PERMUTE_V128
         LoadV128Const(e, 2, ctrl);
       }
     } else {
-      e.movi(VReg(2).b16, 0x1F);
+      e.movi(VReg(2).b16, control_mask);
       e.and_(VReg(2).b16, VReg(i.src1.reg().getIdx()).b16, VReg(2).b16);
     }
     // Table register `idx` = the source with the bytes of each word reversed.
@@ -988,7 +996,7 @@ struct PERMUTE_V128
       }
     };
     load_table(i.src2, 0);
-    load_table(i.src3, 1);
+    if (!same_table) load_table(i.src3, 1);
     if (zip_form) {
       if (zip_form == 1) {
         e.zip1(VReg(d).b16, VReg(0).b16, VReg(1).b16);
@@ -998,8 +1006,8 @@ struct PERMUTE_V128
       e.rev32(VReg(d).b16, VReg(d).b16);
       return;
     }
-    // TBL with 2-register table {v0, v1}.
-    e.tbl(VReg(d).b16, VReg(0).b16, 2, VReg(2).b16);
+    // The source-select bit is ignored only when both inputs are identical.
+    e.tbl(VReg(d).b16, VReg(0).b16, same_table ? 1 : 2, VReg(2).b16);
   }
 
   static void EmitByInt16(A64Emitter& e, const EmitArgType& i) {
