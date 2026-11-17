@@ -24,6 +24,7 @@ LIMITATIONS = [
     "Idle includes wait and host scheduling delay; it is not necessarily kernel sleep time.",
     "Categories exclude other scheduler work; their sum is not a complete CPU 0 breakdown.",
     "The first (bootstrap) window has zero elapsed duration and is excluded from rates.",
+    "If a log appends multiple emulator sessions, only the last Storage root session is analyzed.",
     "Counters are rounded; a log interval is not guaranteed to last exactly one second.",
     "Measurement overhead needs a controlled same-APK telemetry-off/on comparison.",
 ]
@@ -55,8 +56,15 @@ def parse_window(line):
 def summarize(lines, last=None):
     if last is not None and last < 1:
         raise ValueError("last must be positive")
-    valid, rejected, bootstrap = [], 0, 0
+    valid, rejected, bootstrap, session_boundaries = [], 0, 0, 0
     for line in lines:
+        # An xe.log may append several launches. A valid sample must not
+        # silently mix the current game with a previous emulator session.
+        if "Storage root:" in line:
+            valid.clear()
+            rejected, bootstrap = 0, 0
+            session_boundaries += 1
+            continue
         if "GuestSchedulerCPU0:" not in line:
             continue
         try:
@@ -88,6 +96,7 @@ def summarize(lines, last=None):
             }
     return {
         "valid_windows_selected": len(valid),
+        "session_boundaries_seen": session_boundaries,
         "bootstrap_windows_excluded": bootstrap,
         "malformed_windows_rejected": rejected,
         "measured_elapsed_ms": elapsed_ms,
