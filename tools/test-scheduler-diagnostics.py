@@ -78,6 +78,21 @@ class Cpu0DiagnosticsTests(unittest.TestCase):
         self.assertEqual(report["malformed_windows_rejected"], len(invalid))
         self.assertEqual(report["valid_windows_selected"], 1)
 
+    def test_new_launch_boundary_resets_old_session_samples(self):
+        # Existing xe.log files may contain an earlier title launch.
+        report = module.summarize([
+            line(window=1000, repoll=(200, 200.0, 12.0)),
+            "I> xenia Storage root: /sdcard/old",
+            line(window=1000, repoll=(100, 100.0, 10.0)),
+            "I> xenia Storage root: /sdcard/current",
+            line(window=0),
+            line(window=1000, repoll=(5, 20.0, 4.0)),
+        ], last=30)
+        self.assertEqual(report["session_boundaries_seen"], 2)
+        self.assertEqual(report["bootstrap_windows_excluded"], 1)
+        self.assertEqual(report["valid_windows_selected"], 1)
+        self.assertEqual(report["phases"]["repoll"]["calls"], 5)
+
     def test_no_false_cpu_busy_claim_and_cli(self):
         report = module.summarize([line()])
         self.assertNotIn("utilization", json.dumps(report).lower().split('"phases"')[1].split('"limitations"')[0])
