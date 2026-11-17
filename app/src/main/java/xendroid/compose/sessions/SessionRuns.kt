@@ -26,7 +26,7 @@ object SessionRuns {
         val dir = File(context.cacheDir, "shared-logs").apply { mkdirs() }
         dir.listFiles()?.filter { it.lastModified() < System.currentTimeMillis() - 86_400_000L }?.forEach { it.delete() }
         val stamp = java.text.SimpleDateFormat("yyyyMMdd-HHmmss-SSS", java.util.Locale.US).format(java.util.Date())
-        return RunReports.write(File(dir, "xendroid-run-$stamp.zip"), report)
+        return RunReports.write(File(dir, "zephyr-run-$stamp.zip"), report)
     }
 
     /** Battery temperature from the sticky broadcast; null when the platform does not report it. */
