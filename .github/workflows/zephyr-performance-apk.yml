@@ -64,7 +64,7 @@ jobs:
     - name: Build settings
       id: cfg
       env:
-        RESEARCH_ARM: ${{ github.ref_name == 'research/optimization-round3' && 'beta8-ui' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
+        RESEARCH_ARM: ${{ github.ref_name == 'research/optimization-round3' && 'beta9-core' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
         sha=$(git rev-parse --short=8 HEAD)
@@ -156,6 +156,13 @@ jobs:
         python3 tools/test-round3-a64.py
         python3 tools/test-a64-vector-select.py
         python3 tools/test-round3-cache.py
+
+    - name: Validate Vulkan cache file reads
+      run: |
+        cache_test_dir=$(mktemp -d)
+        trap 'rm -rf "$cache_test_dir"' EXIT
+        g++ -std=c++20 -O1 -fsanitize=address,undefined -I emulator-core/src/main/cpp/xenia -I emulator-core/src/main/cpp/xenia/src emulator-core/src/test/cpp/pipeline_cache_file_test.cc -o "$cache_test_dir/test"
+        "$cache_test_dir/test" "$cache_test_dir/data"
 
     - name: Validate shared navigation before packaging
       run: |
@@ -346,8 +353,8 @@ jobs:
           fs.writeFileSync(checksums, digest + '  ' + apk + '\n');
           const body = [
             '<!-- update-summary:pt-BR',
-            '- Biblioteca: busca sem destaque duplicado, favorito no modo horizontal e contadores sem ordenações desnecessárias.',
-            '- Carrossel: escala visual sem redimensionar as capas a cada quadro; ADPF evita reenviar metas inalteradas.',
+            '- ARM64: permutações com entradas idênticas usam uma única tabela.',
+            '- Vulkan: leitura direta do cache, sem segunda alocação nem cópia integral para remover o cabeçalho.',
             '-->',
             'Beta experimental; desempenho ainda não validado no aparelho.',
             'Pacote: xendroid.compose.zephyr.research',
@@ -366,7 +373,7 @@ jobs:
             if (error.status !== 404) throw error;
             release = (await github.rest.repos.createRelease({
               ...context.repo, tag_name: tag, target_commitish: context.sha,
-              name: 'Zephyr Anel beta 8 — build ' + context.runNumber,
+              name: 'Zephyr Anel beta 9 — build ' + context.runNumber,
               body, draft: true, prerelease: true
             })).data;
           }
