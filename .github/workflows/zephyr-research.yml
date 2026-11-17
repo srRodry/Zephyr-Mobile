@@ -1,10 +1,12 @@
 name: Zephyr research tools
 on:
   push:
-    branches: [research/android-x360-foundation, research/android-x360-gpu-candidate, perf/edge30-beta1]
+    branches: [research/android-x360-foundation, research/android-x360-gpu-candidate, perf/edge30-beta1, research/edge30-diagnostics-audit-20261117]
     paths:
       - 'tools/compare-benchmarks.py'
       - 'tools/test-compare-benchmarks.py'
+      - 'tools/zephyr-graphics-ab.py'
+      - 'tools/test-zephyr-graphics-ab.py'
       - '.github/workflows/zephyr-research.yml'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/gpu/disjoint_draw_ranges.h'
       - 'emulator-core/src/test/cpp/disjoint_draw_ranges_test.cc'
@@ -14,6 +16,8 @@ on:
     paths:
       - 'tools/compare-benchmarks.py'
       - 'tools/test-compare-benchmarks.py'
+      - 'tools/zephyr-graphics-ab.py'
+      - 'tools/test-zephyr-graphics-ab.py'
       - '.github/workflows/zephyr-research.yml'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/gpu/disjoint_draw_ranges.h'
       - 'emulator-core/src/test/cpp/disjoint_draw_ranges_test.cc'
@@ -30,6 +34,8 @@ jobs:
       - uses: actions/checkout@v4
       - name: Test benchmark comparison
         run: python3 tools/test-compare-benchmarks.py
+      - name: Test graphics A/B CVAR categories
+        run: python3 tools/test-zephyr-graphics-ab.py
       - name: Test shader jump analysis with sanitizers
         if: ${{ hashFiles('emulator-core/src/test/cpp/structured_jumps_test.cc') != '' }}
         run: |
