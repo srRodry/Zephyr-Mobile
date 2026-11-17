@@ -102,3 +102,15 @@ python3 tools/compare-benchmarks.py \
 ```
 
 A comparação exige seis diretórios diferentes e durações próximas (diferença máxima de 10%). O resultado usa **FPS de apresentação** e percentis dos intervalos apresentados: não converte isso em FPS guest, trabalho GPU ou benefício real de emulação. Se a coleta reduzir os FPS ou distorcer os p95/p99, desabilitar o diagnóstico durante os testes de desempenho; ativá-lo somente em sessões curtas de investigação. Não misturar as capturas diagnósticas e não diagnósticas na mesma amostra de eficácia.
+
+## 8. Leitura conservadora das fases do Guest CPU 0
+
+O analisador offline `tools/scheduler-diagnostics.py` interpreta exatamente as linhas `GuestSchedulerCPU0: window ...` emitidas pelo código nativo. Exemplo:
+
+```sh
+python3 tools/scheduler-diagnostics.py performance-tests/edge30-on-1/xe.log --last 30
+```
+
+O relatório separa `repoll`, `fiber` e `idle`: número de chamadas, taxas baseadas na **duração real da janela de log**, parede somada, média por chamada e maior chamada registrada. Rejeita linhas truncadas ou ambíguas; a primeira janela (`window 0 ms`) não entra em taxas. Se não houver janelas válidas, os agregados são `null` (dados indisponíveis), nunca o valor numérico zero.
+
+**Interpretação:** estes são tempos de parede, sujeitos a preempção do host; `fiber` **não** significa execução PPC útil, `idle` **não** prova sleep do kernel e o somatório das três categorias **não** representa o uso total de CPU 0. Os tempos são arredondados pelo logger. Para investigar gargalo, correlacionar com CPU time do processo e com GPU Commands/VkFrameSync, dentro de capturas da mesma cena, e medir separadamente o custo de ligar a instrumentação usando o protocolo da seção 7. Nenhum desses campos sozinho comprova ganho de FPS ou resolve uma falha gráfica.
