@@ -1,4 +1,4 @@
-# Zephyr-Mobile — Anel
+# Zephyr-Mobile
 
 Identidade de produto escolhida em 15/11/2026: Z prateado dentro de quatro segmentos verdes.
 Inspirada na linguagem visual da geração Xbox 360; não é o logotipo oficial do Xbox.
@@ -15,4 +15,4 @@ splash Android 12+, ícones raster de compatibilidade, favicon, Open Graph e cap
 - Brilho estático em camadas vetoriais, sem animação contínua, filtro de blur ou trabalho no loop da emulação.
 
 Os arquivos com nomes antigos usados por referências de compatibilidade agora contêm a marca
-Anel; nomes técnicos não alteram assinatura, pacote instalado ou dados do usuário.
+Zephyr-Mobile; nomes técnicos não alteram assinatura, pacote instalado ou dados do usuário.

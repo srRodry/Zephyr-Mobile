@@ -241,7 +241,7 @@ object SessionLogs {
     }
 
     /** Bundles every shelved session zip plus the CURRENT run's live logs
-     *  into Download/xendroid-logs-<stamp>.zip. Live files are snapshot
+     *  into Download/zephyr-logs-<stamp>.zip. Live files are snapshot
      *  prefixes (the emulator/capture keep appending); safe to read. */
     fun exportAll(): File? {
         val xeLog = File(Utils.get_log_file_path())
@@ -258,8 +258,8 @@ object SessionLogs {
         val downloads = android.os.Environment.getExternalStoragePublicDirectory(
             android.os.Environment.DIRECTORY_DOWNLOADS).apply { mkdirs() }
         val stamp = SimpleDateFormat("yyyyMMdd-HHmmss", Locale.US).format(Date())
-        val dest = File(downloads, "xendroid-logs-$stamp.zip")
-        val tmp = File(downloads, ".xendroid-logs.tmp")
+        val dest = File(downloads, "zephyr-logs-$stamp.zip")
+        val tmp = File(downloads, ".zephyr-logs.tmp")
         return runCatching {
             ZipOutputStream(tmp.outputStream().buffered()).use { zip ->
                 for (f in shelved) {
@@ -301,7 +301,7 @@ object SessionLogs {
             ?.forEach { it.delete() }
         val stamp = SimpleDateFormat("yyyyMMdd-HHmmss-SSS", Locale.US).format(Date())
         return SanitizedSessionExport.create(
-            File(sharedDir, "xendroid-diagnostics-$stamp.zip"), histories, current,
+            File(sharedDir, "zephyr-diagnostics-$stamp.zip"), histories, current,
         )
     }
 

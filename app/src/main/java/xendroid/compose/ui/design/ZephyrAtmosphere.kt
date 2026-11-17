@@ -49,6 +49,8 @@ fun Modifier.zephyrBackdrop(): Modifier {
             drawRect(halo)
             drawPath(current, c.acc.copy(alpha = .045f), style = Stroke(64.dp.toPx()))
             drawPath(current, c.acc.copy(alpha = .28f), style = Stroke(1.dp.toPx()))
+            drawLine(c.chrome.copy(alpha = .085f), Offset(size.width * .08f, 0f),
+                Offset(size.width * .42f, 0f), .75.dp.toPx())
         }
     }
 }
@@ -68,7 +70,7 @@ fun Modifier.zephyrSurface(shape: Shape = ZephyrPanelShape, emphasized: Boolean 
         )), shape)
         .drawWithCache {
             val sheen = Brush.linearGradient(
-                listOf(c.chrome.copy(alpha = .14f), Color.Transparent),
+                listOf(c.chrome.copy(alpha = .19f), Color.Transparent),
                 end = Offset(size.width * .7f, size.height * .5f),
             )
             val reflection = Path().apply {
@@ -81,7 +83,7 @@ fun Modifier.zephyrSurface(shape: Shape = ZephyrPanelShape, emphasized: Boolean 
                 c.chrome.copy(alpha = if (emphasized) .52f else .30f), Color.Transparent))
             onDrawBehind {
                 drawRect(sheen)
-                drawPath(reflection, c.chrome.copy(alpha = .035f))
+                drawPath(reflection, c.chrome.copy(alpha = .048f))
                 drawLine(rim, Offset(0f, size.height - 1.dp.toPx()),
                     Offset(size.width, size.height - 1.dp.toPx()), 1.dp.toPx())
                 drawLine(c.chrome.copy(alpha = if (emphasized) .6f else .32f),
@@ -91,7 +93,7 @@ fun Modifier.zephyrSurface(shape: Shape = ZephyrPanelShape, emphasized: Boolean 
         }
 }
 
-/** Shared Anel geometry, without a second decorative ring or runtime animation. */
+/** Shared Zephyr-Mobile emblem, without a second decorative ring or runtime animation. */
 @Composable
 fun ZephyrOrbitMark(size: Dp = 44.dp, modifier: Modifier = Modifier) {
     Image(painterResource(R.drawable.zephyr_brand_mark), null, modifier.size(size))
@@ -102,6 +104,6 @@ fun ZephyrOrbitMark(size: Dp = 44.dp, modifier: Modifier = Modifier) {
 fun ZephyrChromeDivider(modifier: Modifier = Modifier) {
     val c = Xd.colors
     Box(modifier.fillMaxWidth().height(1.dp).background(Brush.horizontalGradient(
-        listOf(c.line, c.chrome.copy(alpha = .25f), c.line),
+        listOf(c.line, c.chrome.copy(alpha = .38f), c.line),
     )))
 }

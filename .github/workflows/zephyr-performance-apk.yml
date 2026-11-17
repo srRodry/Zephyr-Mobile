@@ -64,7 +64,7 @@ jobs:
     - name: Build settings
       id: cfg
       env:
-        RESEARCH_ARM: ${{ github.ref_name == 'research/optimization-round3' && 'beta14-silver' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
+        RESEARCH_ARM: ${{ github.ref_name == 'research/optimization-round3' && 'beta15-chrome' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
         sha=$(git rev-parse --short=8 HEAD)
@@ -105,7 +105,7 @@ jobs:
       run: |
         apt-get update -qq
         DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends \
-          ninja-build g++ python3 glslang-tools spirv-tools ccache
+          ninja-build g++ python3 python3-pil librsvg2-2 libgdk-pixbuf-2.0-0 glslang-tools spirv-tools ccache
 
     - name: Set up Gradle
       uses: gradle/actions/setup-gradle@v4
@@ -184,6 +184,11 @@ jobs:
           --tests 'xendroid.compose.compatibility.SettingsProfilesTest' \
           --tests 'xendroid.compose.settings.SettingsSchemaTest' \
           --tests 'xendroid.compose.updater.*'
+
+    - name: Refresh Zephyr brand assets
+      run: |
+        python3 branding/generate.py
+        grep -q 'Zephyr-Mobile' app/src/main/res/drawable/zephyr_launcher_foreground.xml
 
     - name: Build release APK
       env:
@@ -383,7 +388,8 @@ jobs:
             '- Interface: detalhes prateados nas bordas de luz, divisores, cabeçalhos e ícones secundários.',
             '- Identidade consistente no modo toque e com controle; cores de seleção e compatibilidade preservadas.',
             '- Acabamentos estáticos, sem animação ou blur adicional.',
-            '- Inclui as correções e diagnósticos da beta13. Loading do TDC continua sem correção confirmada.',
+            '- Exportações e backups identificados como Zephyr, sem alterar caminhos internos ou assinatura.',
+            '- O loading do TDC permanece sem correção comprovada; desempenho ainda precisa de validação no aparelho.',
             '-->',
             'Beta experimental; desempenho ainda não validado no aparelho.',
             'Pacote: xendroid.compose.zephyr.research',
@@ -402,7 +408,7 @@ jobs:
             if (error.status !== 404) throw error;
             release = (await github.rest.repos.createRelease({
               ...context.repo, tag_name: tag, target_commitish: context.sha,
-              name: 'Zephyr Anel beta 14 — build ' + context.runNumber,
+              name: 'Zephyr-Mobile beta 15 — build ' + context.runNumber,
               body, draft: true, prerelease: true
             })).data;
           }

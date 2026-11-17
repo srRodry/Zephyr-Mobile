@@ -86,7 +86,7 @@ fun DataBundleSection(beforeImport: () -> Unit, afterImport: () -> Unit) {
                 Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     OutlinedButton(enabled = !busy, onClick = {
                         val stamp = SimpleDateFormat("yyyyMMdd-HHmm", Locale.US).format(Date())
-                        exportLauncher.launch("xendroid-settings-$stamp.zip")
+                        exportLauncher.launch("zephyr-settings-$stamp.zip")
                     }) { Text(stringResource(R.string.bundle_export)) }
                     OutlinedButton(enabled = !busy, onClick = {
                         importLauncher.launch(arrayOf("application/zip", "application/octet-stream"))

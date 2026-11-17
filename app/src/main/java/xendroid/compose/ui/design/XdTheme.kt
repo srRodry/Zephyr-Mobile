@@ -52,9 +52,9 @@ data class XdColors(
     /** Deep green actions keep white labels readable; lime is for focus and highlights. */
     val action: Color get() = Color(0xFF15573F)
     val onAction: Color get() = Color.White
-    /** Neutral silver from the Anel mark: trim and secondary glyphs, never status colors. */
-    val chrome: Color get() = Color(0xFFD7DED8)
-    val chromeShade: Color get() = Color(0xFF83948C)
+    /** Neutral silver from the Zephyr-Mobile mark: trim and secondary glyphs, never status colors. */
+    val chrome: Color get() = Color(0xFFE1E7E7)
+    val chromeShade: Color get() = Color(0xFF899B9C)
     val playable = Color(0xFF7BD77D)
     val ingame = Color(0xFFE8C55A)
     val intro = Color(0xFFEC9B52)
