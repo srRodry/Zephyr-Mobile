@@ -60,7 +60,7 @@ class GraphicsABTests(unittest.TestCase):
             for key in options:
                 source = SOURCES.get(key, CODE / "vulkan/vulkan_command_processor.cc")
                 content = source.read_text(encoding="utf-8")
-                pattern = rf'DEFINE_(?:bool|int32|uint32)\\(\\s*{re.escape(key)}\\s*,.*?,\\s*"([^"]+)"\\s*\\);'
+                pattern = rf'DEFINE_(?:bool|int32|uint32)\(\s*{re.escape(key)}\s*,.*?,\s*"([^"]+)"\s*\);'
                 match = re.search(pattern, content, re.DOTALL)
                 self.assertIsNotNone(match, f"CVAR {key} missing in {source}")
                 self.assertEqual(category, match.group(1), f"{key} must use [{match.group(1)}]")
