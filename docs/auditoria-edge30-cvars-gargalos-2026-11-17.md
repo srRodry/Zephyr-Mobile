@@ -84,3 +84,21 @@ A correção preserva o perfil de desempenho padrão e destrava somente o diagn�
 - `xe::edge30::DetailedGpuTiming` **permanece false** no dedicado: os timestamps detalhados por passe/resolve continuam desativados para evitar esperas BOTTOM_OF_PIPE excessivas no Turnip. O diagnóstico `light-timing` usa apenas os timestamps por submissão e estatísticas CPU do comando gráfico.
 
 **Limite:** a coleta com as duas flags ligadas no Edge tem custo e requer teste A/B contra a mesma build com a coleta desligada; não confundir os dois braços com uma comparação de desempenho. Os testes de host não demonstram FPS nem segurança térmica no aparelho. Nenhuma modificação foi feita em afinidade, deadlines, preempção, timers ou número de workers.
+
+## 7. Comparação reproduzível do custo de observação (incremento seguinte)
+
+O comparador `tools/compare-benchmarks.py` agora admite um teste *separado* do custo da instrumentação. A verificação padrão continua rejeitando diferenças na chave `instrumentation` do `benchmark-context.json`. Apenas a opção explícita `--allow-instrumentation-change` permite essa diferença, **desde que** `commit` e `apk_sha256` sejam idênticos nos dois braços. Os modos também precisam ser homogêneos dentro de cada braço; o uso da opção sem duas modalidades diferentes é rejeitado.
+
+Caso o próprio arquivo de configuração do título seja alterado para ligar/desligar o diagnóstico, o SHA-256 do arquivo mudará. Isso exige adicionalmente `--allow-config-change`. As flags autorizam a **comparação descritiva**, não verificam que as únicas CVARs distintas são as de diagnóstico: faça diff dos arquivos de configuração efetivamente carregados. Não alterar simultaneamente driver, frequência, shaders, resolução, cache, cap de FPS, estado térmico ou versão do APK.
+
+Exemplo com três capturas independentes de cada condição, após preencher corretamente o `benchmark-context.json` em cada diretório:
+
+```sh
+python3 tools/compare-benchmarks.py \
+  --reference performance-tests/edge30-off-1 performance-tests/edge30-off-2 performance-tests/edge30-off-3 \
+  --candidate performance-tests/edge30-on-1 performance-tests/edge30-on-2 performance-tests/edge30-on-3 \
+  --allow-config-change --allow-instrumentation-change \
+  --output performance-tests/edge30-telemetry-overhead.json
+```
+
+A comparação exige seis diretórios diferentes e durações próximas (diferença máxima de 10%). O resultado usa **FPS de apresentação** e percentis dos intervalos apresentados: não converte isso em FPS guest, trabalho GPU ou benefício real de emulação. Se a coleta reduzir os FPS ou distorcer os p95/p99, desabilitar o diagnóstico durante os testes de desempenho; ativá-lo somente em sessões curtas de investigação. Não misturar as capturas diagnósticas e não diagnósticas na mesma amostra de eficácia.
