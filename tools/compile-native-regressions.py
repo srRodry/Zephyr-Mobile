@@ -13,6 +13,7 @@ import re
 import subprocess
 
 SOURCES = (
+    'emulator-core/src/main/cpp/xenia/src/xenia/base/logging.cc',
     'emulator-core/src/main/cpp/xenia/src/xenia/kernel/kernel_state.cc',
     'emulator-core/src/main/cpp/xenia/src/xenia/kernel/xobject.cc',
     'emulator-core/src/main/cpp/xenia/src/xenia/kernel/xam/xam_ui.cc',

@@ -552,9 +552,14 @@ void logging::AppendLogLine(LogLevel log_level, const char prefix_char,
 void FatalError(const std::string_view str) {
   logging::AppendLogLine(LogLevel::Error, 'x', str);
 
+#if !XE_PLATFORM_ANDROID && !XE_PLATFORM_xendroid
+  // Android reports the persisted failure in the frontend after process exit.
+  // A modal native dialog here may never render over the boot screen.
   if (!xe::has_console_attached()) {
     ShowSimpleMessageBox(SimpleMessageBoxType::Error, str);
   }
+
+#endif
 
   ShutdownLogging();
 

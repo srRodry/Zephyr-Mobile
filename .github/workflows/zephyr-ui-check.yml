@@ -188,6 +188,8 @@ jobs:
         run: python3 tools/test-vulkan-cache-work.py
       - name: Test extracted XEX executable overrides
         run: python3 tools/test-xex-launch-module.py
+      - name: Test title DLL notification contract
+        run: python3 tools/test-dll-notifications.py
       - name: Compile Compose UI without packaging native libraries
         run: bash ./gradlew :app:compileDebugKotlin --no-daemon --stacktrace
       # These cases deliberately replace config files and the native singleton.

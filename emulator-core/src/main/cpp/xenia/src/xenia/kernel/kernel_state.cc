@@ -682,7 +682,7 @@ X_RESULT KernelState::FinishLoadingUserModule(
     // Call DllMain(DLL_PROCESS_ATTACH):
     // https://msdn.microsoft.com/en-us/library/windows/desktop/ms682583%28v=vs.85%29.aspx
     uint64_t args[] = {
-        module->handle(),
+        module->hmodule_ptr(),
         1,  // DLL_PROCESS_ATTACH
         0,  // 0 because always dynamic
     };
@@ -858,7 +858,7 @@ void KernelState::UnloadUserModule(const object_ref<UserModule>& module,
     // Call DllMain(DLL_PROCESS_DETACH):
     // https://msdn.microsoft.com/en-us/library/windows/desktop/ms682583%28v=vs.85%29.aspx
     uint64_t args[] = {
-        module->handle(),
+        module->hmodule_ptr(),
         0,  // DLL_PROCESS_DETACH
         0,  // 0 for now, assume XexUnloadImage is like FreeLibrary
     };
@@ -923,11 +923,22 @@ void KernelState::UnregisterThread(XThread* thread) {
   }
 }
 
+// Adapted from Xendroid-Plus PR #102 (Edge 5f8962a87): only title
+// guest threads notify DLLs; system/host threads must not run title TLS init.
+static bool NotifiesDlls(XThread* thread) {
+  return thread->is_guest_thread() &&
+         thread->guest_object<X_KTHREAD>()->process_type == X_PROCTYPE_TITLE;
+}
+
 void KernelState::OnThreadExecute(XThread* thread) {
   auto global_lock = global_critical_region_.Acquire();
 
   // Must be called on executing thread.
   assert_true(XThread::GetCurrentThread() == thread);
+
+  if (!NotifiesDlls(thread)) {
+    return;
+  }
 
   // Call DllMain(DLL_THREAD_ATTACH) for each user module:
   // https://msdn.microsoft.com/en-us/library/windows/desktop/ms682583%28v=vs.85%29.aspx
@@ -935,7 +946,7 @@ void KernelState::OnThreadExecute(XThread* thread) {
   for (auto user_module : user_modules_) {
     if (user_module->is_dll_module() && user_module->entry_point()) {
       uint64_t args[] = {
-          user_module->handle(),
+          user_module->hmodule_ptr(),
           user_module->is_attached()
               ? static_cast<uint64_t>(2)   // DLL_THREAD_ATTACH - Used to call
                                            // DLL for each thread created.
@@ -961,10 +972,11 @@ void KernelState::OnThreadExit(XThread* thread) {
   // Call DllMain(DLL_THREAD_DETACH) for each user module:
   // https://msdn.microsoft.com/en-us/library/windows/desktop/ms682583%28v=vs.85%29.aspx
   auto thread_state = thread->thread_state();
+  const bool notifies_dlls = NotifiesDlls(thread);
   for (auto user_module : user_modules_) {
-    if (user_module->is_dll_module() && user_module->entry_point()) {
+    if (notifies_dlls && user_module->is_dll_module() && user_module->entry_point()) {
       uint64_t args[] = {
-          user_module->handle(),
+          user_module->hmodule_ptr(),
           3,  // DLL_THREAD_DETACH
           0,  // 0 because always dynamic
       };
