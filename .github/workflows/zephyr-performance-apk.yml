@@ -321,6 +321,8 @@ jobs:
             'pipeline_workers_max': 2,
             'scheduler_diagnostics': False,
             'rendering_validated_on_device': False,
+            'tdc_kernel_recovery': 'experimental; launch Default.xex',
+            'dll_bootstrap_guard': True,
             'rendering_fix': 'track CPU uploads in page refresh dirty chunks',
             'title_defaults': {'454107F8': {'GPU|clear_memory_page_state': True}},
         }
