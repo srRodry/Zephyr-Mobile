@@ -7,6 +7,8 @@ on:
       - 'tools/test-compare-benchmarks.py'
       - 'tools/zephyr-graphics-ab.py'
       - 'tools/test-zephyr-graphics-ab.py'
+      - 'tools/scheduler-diagnostics.py'
+      - 'tools/test-scheduler-diagnostics.py'
       - 'tools/test-edge30-policy.py'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/base/zephyr_edge30_policy.h'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/kernel/guest_scheduler.cc'
@@ -21,6 +23,8 @@ on:
       - 'tools/test-compare-benchmarks.py'
       - 'tools/zephyr-graphics-ab.py'
       - 'tools/test-zephyr-graphics-ab.py'
+      - 'tools/scheduler-diagnostics.py'
+      - 'tools/test-scheduler-diagnostics.py'
       - 'tools/test-edge30-policy.py'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/base/zephyr_edge30_policy.h'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/kernel/guest_scheduler.cc'
@@ -42,6 +46,8 @@ jobs:
         run: python3 tools/test-compare-benchmarks.py
       - name: Test graphics A/B CVAR categories
         run: python3 tools/test-zephyr-graphics-ab.py
+      - name: Test Edge30 CPU0 phase log analysis
+        run: python3 tools/test-scheduler-diagnostics.py
       - name: Test opt-in Edge30 scheduler stats and IO completion
         run: python3 tools/test-edge30-policy.py
       - name: Test shader jump analysis with sanitizers
