@@ -112,7 +112,7 @@ jobs:
               path = root / "drawable" / f"{name}.xml"
               node = ET.parse(path).getroot()
               if name == "zephyr_launcher_background":
-                  assert node.tag == "shape" and node.find("solid") is not None, f"Missing solid background: {path}"
+                  assert node.tag == "shape" and node.find("gradient") is not None, f"Missing gradient background: {path}"
               else:
                   assert node.tag == "vector", f"Expected vector drawable: {path}"
                   assert node.findall(".//path"), f"Empty launcher drawable: {path}"

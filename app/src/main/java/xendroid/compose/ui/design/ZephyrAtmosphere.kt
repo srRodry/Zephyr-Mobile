@@ -6,6 +6,8 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -38,7 +40,7 @@ fun Modifier.zephyrBackdrop(): Modifier {
                 size.height * 1.05f, size.width * 1.15f, size.height * .18f)
         }
         val halo = Brush.radialGradient(
-            listOf(c.acc.copy(alpha = .22f), Color.Transparent),
+            listOf(c.acc.copy(alpha = .18f), Color.Transparent),
             center = Offset(size.width * .78f, size.height * .16f),
             radius = size.maxDimension * .7f,
         )
@@ -55,14 +57,18 @@ fun Modifier.zephyrBackdrop(): Modifier {
 @Composable
 fun Modifier.zephyrSurface(shape: Shape = ZephyrPanelShape, emphasized: Boolean = false): Modifier {
     val c = Xd.colors
-    val top = if (emphasized) c.solid(c.s3) else c.solid(c.s2)
+    val top = lerp(if (emphasized) c.solid(c.s3) else c.solid(c.s2), c.chrome, .025f)
     val bottom = c.solid(c.s1)
     return clip(shape)
         .background(Brush.linearGradient(listOf(top, bottom, Color(0xFF09271E))))
-        .border(1.dp, if (emphasized) c.acc.copy(alpha = .55f) else c.line, shape)
+        .border(1.dp, Brush.linearGradient(listOf(
+            c.chrome.copy(alpha = if (emphasized) .48f else .28f),
+            if (emphasized) c.acc.copy(alpha = .42f) else c.line,
+            c.line, c.chromeShade.copy(alpha = .24f),
+        )), shape)
         .drawWithCache {
             val sheen = Brush.linearGradient(
-                listOf(Color.White.copy(alpha = .17f), Color.Transparent),
+                listOf(c.chrome.copy(alpha = .14f), Color.Transparent),
                 end = Offset(size.width * .7f, size.height * .5f),
             )
             val reflection = Path().apply {
@@ -72,13 +78,13 @@ fun Modifier.zephyrSurface(shape: Shape = ZephyrPanelShape, emphasized: Boolean 
                 close()
             }
             val rim = Brush.horizontalGradient(listOf(Color.Transparent,
-                c.acc.copy(alpha = if (emphasized) .85f else .4f), Color.Transparent))
+                c.chrome.copy(alpha = if (emphasized) .52f else .30f), Color.Transparent))
             onDrawBehind {
                 drawRect(sheen)
-                drawPath(reflection, Color.White.copy(alpha = .035f))
+                drawPath(reflection, c.chrome.copy(alpha = .035f))
                 drawLine(rim, Offset(0f, size.height - 1.dp.toPx()),
                     Offset(size.width, size.height - 1.dp.toPx()), 1.dp.toPx())
-                drawLine(c.acc.copy(alpha = if (emphasized) .7f else .22f),
+                drawLine(c.chrome.copy(alpha = if (emphasized) .6f else .32f),
                     Offset(24.dp.toPx(), 1.dp.toPx()),
                     Offset(size.width * .6f, 1.dp.toPx()), 1.dp.toPx())
             }
@@ -89,4 +95,13 @@ fun Modifier.zephyrSurface(shape: Shape = ZephyrPanelShape, emphasized: Boolean 
 @Composable
 fun ZephyrOrbitMark(size: Dp = 44.dp, modifier: Modifier = Modifier) {
     Image(painterResource(R.drawable.zephyr_brand_mark), null, modifier.size(size))
+}
+
+/** Fine silver separator shared by touch and controller navigation. */
+@Composable
+fun ZephyrChromeDivider(modifier: Modifier = Modifier) {
+    val c = Xd.colors
+    Box(modifier.fillMaxWidth().height(1.dp).background(Brush.horizontalGradient(
+        listOf(c.line, c.chrome.copy(alpha = .25f), c.line),
+    )))
 }

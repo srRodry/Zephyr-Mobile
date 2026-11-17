@@ -52,6 +52,9 @@ data class XdColors(
     /** Deep green actions keep white labels readable; lime is for focus and highlights. */
     val action: Color get() = Color(0xFF15573F)
     val onAction: Color get() = Color.White
+    /** Neutral silver from the Anel mark: trim and secondary glyphs, never status colors. */
+    val chrome: Color get() = Color(0xFFD7DED8)
+    val chromeShade: Color get() = Color(0xFF83948C)
     val playable = Color(0xFF7BD77D)
     val ingame = Color(0xFFE8C55A)
     val intro = Color(0xFFEC9B52)
@@ -76,8 +79,8 @@ data class XdColors(
         val Touch = XdColors(
             bg = Color(0xFF04110F), s1 = Color(0xFF0D2C25), s2 = Color(0xFF143D31), s3 = Color(0xFF1D4C3C),
             s4 = Color(0xFF285E49), sheet = Color(0xFF0B231E),
-            line = Color(0xFF2F594B), line2 = Color(0xFF4D806A),
-            fg = Color(0xFFE9F8F0), fg2 = Color(0xFFC0D9CE), fg3 = Color(0xFFB5D2C3),
+            line = Color(0xFF40564C), line2 = Color(0xFF657D6E),
+            fg = Color(0xFFE9F8F0), fg2 = Color(0xFFCDD8D1), fg3 = Color(0xFFC0CFC5),
             acc = Color(0xFF87F16D), onAcc = Color(0xFF081D13), dyn = Color(0xFF113128), controller = false,
         )
         // Input method never changes the visual identity: both modes share Emerald tokens.
