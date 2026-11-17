@@ -62,6 +62,59 @@ class ComparisonTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             comparison.compare(self.reference, self.candidate, allow_config_change=True)
 
+    def test_instrumentation_overhead_requires_explicit_opt_in_and_same_apk(self):
+        # Same binary; a different telemetry mode must not be mistaken for a
+        # speedup caused by a code change.
+        for run in self.candidate:
+            run["context"]["commit"] = "a"
+            run["context"]["apk_sha256"] = "a" * 64
+            run["context"]["instrumentation"] = "scheduler-on"
+        with self.assertRaisesRegex(ValueError, "instrumentation"):
+            comparison.compare(self.reference, self.candidate)
+        report = comparison.compare(self.reference, self.candidate,
+                                    allow_instrumentation_change=True)
+        self.assertEqual(report["candidate_instrumentation"], "scheduler-on")
+        self.assertEqual(report["reference_instrumentation"], "synthetic")
+        self.assertTrue(report["instrumentation_change_allowed"])
+
+        # In a per-game CVAR test the config digest will also change, and
+        # this requires a second deliberate opt-in.
+        for run in self.candidate:
+            run["context"]["config_sha256"] = "e" * 64
+        with self.assertRaisesRegex(ValueError, "config_sha256"):
+            comparison.compare(self.reference, self.candidate,
+                               allow_instrumentation_change=True)
+        with self.assertRaisesRegex(ValueError, "instrumentation"):
+            comparison.compare(self.reference, self.candidate,
+                               allow_config_change=True)
+        report = comparison.compare(self.reference, self.candidate,
+                                    allow_config_change=True,
+                                    allow_instrumentation_change=True)
+        self.assertTrue(report["config_changed"])
+
+        # Even explicitly opted-in tests cannot mix modes within an arm.
+        self.candidate[0]["context"]["instrumentation"] = "different-mode"
+        with self.assertRaisesRegex(ValueError, "Mixed instrumentation"):
+            comparison.compare(self.reference, self.candidate,
+                               allow_config_change=True,
+                               allow_instrumentation_change=True)
+        self.candidate[0]["context"]["instrumentation"] = "scheduler-on"
+
+        # A change of executable would confound the telemetry overhead.
+        for key, changed in (("commit", "other"), ("apk_sha256", "b" * 64)):
+            candidate = copy.deepcopy(self.candidate)
+            for run in candidate:
+                run["context"][key] = changed
+            with self.assertRaisesRegex(ValueError, f"same {key}"):
+                comparison.compare(self.reference, candidate,
+                                   allow_config_change=True,
+                                   allow_instrumentation_change=True)
+
+    def test_instrumentation_override_rejects_identical_modes(self):
+        with self.assertRaisesRegex(ValueError, "two distinct"):
+            comparison.compare(self.reference, self.candidate,
+                               allow_instrumentation_change=True)
+
     def test_reject_insufficient_or_duplicate_runs(self):
         for candidate in (self.candidate[:2], self.candidate[:2] + self.candidate[:1]):
             with self.assertRaises(ValueError):
