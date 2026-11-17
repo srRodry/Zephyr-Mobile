@@ -46,12 +46,21 @@ DEFINE_bool(
     "requires a title restart and may increase heat.",
     "Kernel");
 
+// The Edge 30 dedicated build avoids telemetry overhead in normal gameplay,
+// but allows an explicit [Kernel] guest_scheduler_stats=true diagnostic run.
+#if ZEPHYR_EDGE30_ULTRA
+#define XE_GUEST_SCHEDULER_STATS_DEFAULT false
+#else
+#define XE_GUEST_SCHEDULER_STATS_DEFAULT true
+#endif
 DEFINE_bool(
-    guest_scheduler_stats, true,
+    guest_scheduler_stats, XE_GUEST_SCHEDULER_STATS_DEFAULT,
     "Log guest scheduler counters once a second: blocked-waiter re-poll rate, "
     "fiber switches, forced preemptions, and how long offloaded blocking calls "
-    "queue behind the single I/O worker.",
+    "queue behind the single I/O worker. Disabled by default in dedicated "
+    "Edge 30 Ultra builds; enable only for diagnostic captures.",
     "Kernel");
+#undef XE_GUEST_SCHEDULER_STATS_DEFAULT
 DEFINE_uint32(
     guest_scheduler_dispatch_cpus, 6,
     "Dispatch threads the cooperative scheduler runs guest threads on, 1-6: "
