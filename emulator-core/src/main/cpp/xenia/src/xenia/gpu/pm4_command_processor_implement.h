@@ -960,6 +960,12 @@ bool COMMAND_PROCESSOR::ExecutePacketType3_WAIT_REG_MEM(
   uint64_t log_begin_ns = 0;
   bool first_check = true;
   uint32_t value;
+  // Diagnose waits that never finish too: the existing optional report only
+  // runs after a match. Probe short spin waits once per 1024 polls, and sleeping
+  // waits on each poll. Never change the guest condition or force a completion.
+  uint64_t stall_begin_ns = 0;
+  uint64_t stall_report_ns = 0;
+  uint32_t stall_probe = 0;
 
   do {
     value = value_ref;
@@ -1008,6 +1014,24 @@ bool COMMAND_PROCESSOR::ExecutePacketType3_WAIT_REG_MEM(
         }
       }
       first_check = false;
+      if (wait >= 0x100 || (stall_probe++ & 1023) == 0) {
+        const uint64_t now_ns = COMMAND_PROCESSOR::FrameStatsNow();
+        if (!stall_begin_ns) {
+          stall_begin_ns = now_ns;
+          stall_report_ns = now_ns;
+        } else if (now_ns - stall_report_ns >= 5000000000ull) {
+          stall_report_ns = now_ns;
+          XELOGW(
+              "WaitRegMem stalled: {} {:08X} func={} ref={:08X} mask={:08X} "
+              "observed={:08X} masked={:08X} interval={} elapsed={}ms "
+              "rptr={} wptr={} pause_requested={}",
+              is_memory ? "mem" : "reg", poll_reg_addr, wait_info & 7,
+              ref, mask, value, value & mask, wait,
+              (now_ns - stall_begin_ns) / 1000000, read_ptr_index_,
+              write_ptr_index_.load(std::memory_order_relaxed),
+              paused_.load(std::memory_order_relaxed));
+        }
+      }
       // Wait using the duration specified by the guest.
       if (wait >= 0x100) {
         PrepareForWait();

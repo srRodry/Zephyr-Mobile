@@ -1449,8 +1449,11 @@ void Emulator::Pause() {
   // their own waits. Suspending threads mid-operation loses in-flight
   // cross-thread completions (permanent Skate 3 deadlock). Audio first so an
   // in-flight guest audio callback drains while the CP and vblank are live.
+  XELOGI("Pause: waiting for audio worker and decoder");
   audio_system_->Pause();
+  XELOGI("Pause: audio acknowledged; waiting for GPU packet boundary");
   graphics_system_->Pause();
+  XELOGI("Pause: GPU acknowledged");
 
   XELOGI("! EMULATOR PAUSED !");
 }
