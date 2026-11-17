@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 jobs:
   build:
-    name: Build Anel site
+    name: Build Zephyr-Mobile site
     permissions:
       contents: read
       pages: write

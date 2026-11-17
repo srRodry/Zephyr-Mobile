@@ -1,4 +1,4 @@
-# Zephyr-Mobile · Anel
+# Zephyr-Mobile
 
 Site público do projeto Pixel Code, publicado pelo workflow `Site` na GitHub Pages.
 A página oficial é `anel/index.html`; o build não depende de npm nem de dados do núcleo.
