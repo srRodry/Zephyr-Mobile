@@ -513,6 +513,10 @@ void Emulator::ShutdownSubsystems() {
 }
 
 X_STATUS Emulator::TerminateTitle() {
+  {
+    std::lock_guard<std::mutex> lock(active_executable_mutex_);
+    active_executable_.clear();
+  }
   if (!is_title_open()) {
     return X_STATUS_UNSUCCESSFUL;
   }
@@ -747,6 +751,14 @@ X_STATUS Emulator::LaunchXexFile(const std::filesystem::path& path) {
   // Launch the game.
   auto fs_path = fmt::format("{}\\", kDefaultGameSymbolicLink) +
                  xe::path_to_utf8(file_name);
+  // Extracted XEX folders must honor the same override as disc/container boots.
+  // Keep the original filename when no override was requested (direct XEX boot).
+  if (!cvars::launch_module.empty()) {
+    fs_path = FindLaunchModule();
+  }
+  XELOGI("LaunchXexFile: requested='{}', resolved='{}'", cvars::launch_module,
+         fs_path);
+  // An explicit missing module is an error, never a silent default.xex fallback.
   X_STATUS result = CompleteLaunch(path, fs_path);
 
   if (XFAILED(result)) {
@@ -2421,6 +2433,11 @@ X_STATUS Emulator::CompleteLaunch(const std::filesystem::path& path,
     file_system_->RegisterDevice(std::move(null_device));
   }
 
+  // Reset the diagnostic snapshot before attempting any new executable.
+  {
+    std::lock_guard<std::mutex> lock(active_executable_mutex_);
+    active_executable_.clear();
+  }
   // Reset state.
   title_id_ = std::nullopt;
   title_name_ = "";
@@ -2622,6 +2639,11 @@ X_STATUS Emulator::CompleteLaunch(const std::filesystem::path& path,
     return X_STATUS_UNSUCCESSFUL;
   }
   main_thread_ = main_thread;
+  {
+    std::lock_guard<std::mutex> lock(active_executable_mutex_);
+    active_executable_ = module->path();
+    XELOGI("Executable loaded: {}", active_executable_);
+  }
   on_launch(title_id_.value(), title_name_);
 
   // Plugins must be loaded after calling LaunchModule() and

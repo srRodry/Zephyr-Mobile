@@ -886,6 +886,10 @@ namespace ae{
         const auto* emulator = g_windowed_app_ref->emu.get();
         return emulator->is_title_open() ? emulator->title_id() : 0;
     }
+    std::string active_executable() {
+        if (!g_windowed_app_ref || !g_windowed_app_ref->emu) return {};
+        return g_windowed_app_ref->emu->active_executable();
+    }
     std::vector<uint64_t> module_hashes() {
         // Same lifetime rule as active_title_id.
         if (!g_windowed_app_ref || !g_windowed_app_ref->emu) return {};

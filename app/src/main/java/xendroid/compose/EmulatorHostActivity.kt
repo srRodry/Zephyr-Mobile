@@ -1251,6 +1251,9 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
             ) + launchOptionArgs().also { launchArgsUsed = it }.toTypedArray()
         )
 
+        launchArgsUsed.firstOrNull { it.startsWith("--launch_module=") }?.let {
+            recordEvent("executable requested", it.substringAfter('='), flush = true)
+        }
         session.setupUriInfoListFile(
             Application
                 .get_uri_info_list_file()
@@ -1260,6 +1263,7 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
 
     /** The options this launch passed to the core (R4), for the loading screen. */
     private var launchArgsUsed: List<String> = emptyList()
+    private var recordedExecutable: String? = null
 
     /** Batch 2: what the loading screen says about the launch once the title is known. */
     private fun loadingDetailsOf(title: String): xendroid.compose.ui.ingame.LoadingDetails {
@@ -1597,6 +1601,16 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
                                         touchControlsBack("the controller now plays another player")
                                     }
 
+                                    val executable = session.activeExecutable()
+                                    if (executable != recordedExecutable) {
+                                        recordedExecutable = executable
+                                        if (executable != null) {
+                                            // A guest path, not the user's host storage path.
+                                            recordEvent("executable loaded", executable, flush = true)
+                                            Toast.makeText(this@EmulatorHostActivity,
+                                                getString(R.string.xd_launch_module_loaded, executable), Toast.LENGTH_LONG).show()
+                                        }
+                                    }
                                     val activeTitle = session.activeTitleId()
                                     performanceHints.update(presenterWorkReader, presenterTargetReader,
                                         foregroundState.value && !menuState.value.open)

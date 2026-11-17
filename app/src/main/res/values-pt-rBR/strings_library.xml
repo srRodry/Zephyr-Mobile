@@ -187,4 +187,7 @@
     <string name="zephyr_ui2_featured">Em destaque</string>
     <string name="zephyr_ui2_collection">Sua coleção</string>
     <string name="zephyr_ui2_list">Lista</string>
+    <string name="xd_launch_module_configured">Conforme os ajustes</string>
+    <string name="xd_launch_module_requested">Executável solicitado: %1$s. O arquivo carregado será informado após o núcleo iniciar.</string>
+    <string name="xd_launch_module_loaded">Executável carregado: %1$s</string>
 </resources>

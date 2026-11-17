@@ -17,7 +17,10 @@ import androidx.compose.ui.unit.dp
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import xendroid.compose.R
+import xendroid.compose.core.launchExecutables
 import xendroid.compose.core.LaunchOptions
+import java.io.File
+import xendroid.compose.data.Game
 import xendroid.compose.data.PlayableProfile
 import xendroid.compose.driver.InstalledDriverPackage
 import xendroid.compose.driver.InstalledDrivers
@@ -71,6 +74,7 @@ private class LaunchChoices(val profiles: List<PlayableProfile>, val p1: String?
  */
 @Composable
 fun LaunchForm(
+    game: Game,
     state: LaunchFormState,
     library: GameLibraryViewModel,
     settings: GameSettingsViewModel?,
@@ -86,6 +90,12 @@ fun LaunchForm(
             runCatching { InstalledDrivers.list(xendroid.compose.Application.get_custom_driver_dir()) }.getOrDefault(emptyList())
         }
         choices = LaunchChoices(profiles, p1, drivers)
+    }
+    var modules by remember(game.launchUri) { mutableStateOf<List<String>?>(null) }
+    LaunchedEffect(game.launchUri) {
+        modules = withContext(Dispatchers.IO) {
+            launchExecutables(game.launchUri)
+        }
     }
     val loaded = choices
     Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -116,7 +126,13 @@ fun LaunchForm(
             }
         }
         XdSheetOption(stringResource(R.string.xd_launch_module), subtitle = stringResource(R.string.xd_launch_module_sub)) {
-            XdTextInput(state.module, { state.module = it.take(260) }, placeholder = "default.xex", width = 180.dp)
+            val found = modules
+            if (!found.isNullOrEmpty()) {
+                XdSelect(listOf("" to stringResource(R.string.xd_launch_module_configured)) + found.map { it to it },
+                    state.module, { state.module = it }, maxWidth = 220.dp)
+            } else {
+                XdTextInput(state.module, { state.module = it.take(260) }, placeholder = "default.xex", width = 180.dp)
+            }
         }
         XdSheetOption(stringResource(R.string.xd_launch_no_patches),
             subtitle = if (patchesOn != null && patchesOn > 0) pluralStringResource(R.plurals.xd_launch_no_patches_sub, patchesOn, patchesOn)
@@ -132,6 +148,13 @@ fun LaunchForm(
         XdSheetOption(stringResource(R.string.xd_launch_cl), subtitle = stringResource(R.string.xd_launch_cl_sub)) {
             XdTextInput(state.commandLine, { state.commandLine = it.take(512) }, placeholder = stringResource(R.string.xd_launch_cl_none), width = 180.dp)
         }
+        val configured = SettingsSchema.byKey["General|launch_module"]?.let { setting ->
+            (if (state.ignoreGameSettings) null else overrides[setting.key]) ?: settings?.inheritedRaw(setting)
+        }.orEmpty().trim().trim('"')
+        val requested = state.module.trim().ifEmpty {
+            configured.ifEmpty { File(game.launchUri).takeIf { it.extension.equals("xex", true) }?.name ?: "default.xex" }
+        }
+        XdNote(stringResource(R.string.xd_launch_module_requested, requested), icon = XdIcons.info)
         XdNote(stringResource(R.string.xd_launch_note), icon = XdIcons.info)
     }
 }
@@ -139,7 +162,7 @@ fun LaunchForm(
 /** "Start with…" as a sheet (touch): the form, Cancel and Play. */
 @Composable
 fun LaunchSheet(
-    gameName: String,
+    game: Game,
     state: LaunchFormState,
     library: GameLibraryViewModel,
     settings: GameSettingsViewModel?,
@@ -149,13 +172,13 @@ fun LaunchSheet(
     onDismiss: () -> Unit,
 ) {
     XdSheet(onDismiss = onDismiss, title = stringResource(R.string.xd_game_sec_launch),
-        subtitle = stringResource(R.string.xd_launch_sub, gameName),
+        subtitle = stringResource(R.string.xd_launch_sub, game.name),
         actions = {
             XdButton(stringResource(R.string.xd_cancel), onDismiss, kind = XdButtonKind.GHOST)
             XdButton(stringResource(R.string.lib_play), {
                 onPlay(state.options(overrides) { key -> SettingsSchema.byKey[key]?.let { settings?.inheritedRaw(it) } })
             }, kind = XdButtonKind.PRIMARY, icon = XdIcons.play)
         }) {
-        LaunchForm(state, library, settings, overrides, patchesOn)
+        LaunchForm(game, state, library, settings, overrides, patchesOn)
     }
 }

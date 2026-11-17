@@ -163,6 +163,7 @@ class EmulatorSession {
     fun averageFps(): Double = if (booted) core.average_fps() else 0.0
     fun hostPresentSubmissionCount(): Long =
         if (booted) core.host_present_submission_count() else 0L
+    fun activeExecutable(): String? = if (booted) core.active_executable()?.takeIf { it.isNotBlank() } else null
     fun activeTitleId(): String? = if (booted) core.active_title_id() else null
     fun presentationState(): PresentationState = if (booted) PresentationState.decode(core.presentation_state()) else PresentationState()
     fun setPresentationMode(mode: Int) { if (booted) core.set_presentation_mode(mode) }

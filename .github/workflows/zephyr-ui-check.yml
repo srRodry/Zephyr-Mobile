@@ -184,6 +184,8 @@ jobs:
           python3 tools/test-army-quirk.py
       - name: Test GPU completion timeline and exact fence collection policy
         run: python3 tools/test-gpu-completion-timeline.py
+      - name: Test extracted XEX executable overrides
+        run: python3 tools/test-xex-launch-module.py
       - name: Compile Compose UI without packaging native libraries
         run: bash ./gradlew :app:compileDebugKotlin --no-daemon --stacktrace
       # These cases deliberately replace config files and the native singleton.
@@ -207,6 +209,9 @@ jobs:
             --tests 'xendroid.compose.ui.library.*' \
             --tests 'xendroid.compose.ui.design.ZephyrPaletteTest' \
             --tests 'xendroid.compose.ui.design.EmeraldNavigationTest' \
+            --tests 'xendroid.compose.ui.design.TextInputKeyboardTest' \
+            --tests 'xendroid.compose.core.LaunchExecutablesTest' \
+            --tests 'xendroid.compose.core.LaunchOptionsTest' \
             --tests 'xendroid.compose.ui.settings.SettingsHubRoutingTest' \
             --tests 'xendroid.compose.settings.SettingsSchemaTest' \
             --tests 'xendroid.compose.screens.SettingsHubTest' \

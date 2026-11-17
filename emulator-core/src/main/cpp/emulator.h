@@ -41,6 +41,7 @@ namespace ae{
     extern bool is_running();
     extern bool is_paused();
     extern uint32_t active_title_id();
+    extern std::string active_executable();
     // L10: the active title's module hashes as its patches were matched (main executable first).
     extern std::vector<uint64_t> module_hashes();
     extern void pause();

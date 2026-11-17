@@ -257,7 +257,7 @@ fun GameScreen(
             },
             XdSection("launch", stringResource(R.string.xd_game_sec_launch), XdIcons.sliders,
                 lead = stringResource(R.string.xd_launch_sub, game.name)) {
-                LaunchForm(launchState, library, settings, overrides, patchCounts?.first)
+                LaunchForm(game, launchState, library, settings, overrides, patchCounts?.first)
                 XdButton(stringResource(R.string.xd_launch_play_with), playWith, kind = XdButtonKind.PRIMARY, size = XdButtonSize.LG,
                     icon = XdIcons.play, enabled = !actions.preparing, modifier = Modifier.padding(top = 12.dp))
             },
@@ -331,7 +331,7 @@ fun GameScreen(
         )
     }
 
-    if (launchOpen) LaunchSheet(game.name, launchState, library, settings, overrides, patchCounts?.first,
+    if (launchOpen) LaunchSheet(game, launchState, library, settings, overrides, patchCounts?.first,
         onPlay = { options -> launchOpen = false; actions.play(game, options) }, onDismiss = { launchOpen = false })
     if (moreOpen) MoreSheet(game, actions, library, onDismiss = { moreOpen = false })
     if (presetsOpen && gameEditing != null && settings != null) PresetsSheet(game.name, gameEditing, settings) { presetsOpen = false }

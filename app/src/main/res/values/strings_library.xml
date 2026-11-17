@@ -187,4 +187,7 @@
     <string name="zephyr_ui2_featured">In focus</string>
     <string name="zephyr_ui2_collection">Your collection</string>
     <string name="zephyr_ui2_list">List</string>
+    <string name="xd_launch_module_configured">As configured</string>
+    <string name="xd_launch_module_requested">Requested executable: %1$s. The loaded executable is reported after the core starts.</string>
+    <string name="xd_launch_module_loaded">Executable loaded: %1$s</string>
 </resources>

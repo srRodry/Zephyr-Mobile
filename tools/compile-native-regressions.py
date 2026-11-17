@@ -13,6 +13,7 @@ import re
 import subprocess
 
 SOURCES = (
+    'emulator-core/src/main/cpp/xenia/src/xenia/emulator.cc',
     'emulator-core/src/main/cpp/xenia/src/xenia/cpu/backend/a64/a64_sequences.cc',
     'emulator-core/src/main/cpp/xenia/src/xenia/cpu/backend/a64/a64_seq_vector.cc',
     'emulator-core/src/main/cpp/xenia/src/xenia/gpu/texture_cache.cc',

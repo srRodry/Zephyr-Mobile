@@ -1373,6 +1373,11 @@ static jstring j_active_title_id(JNIEnv* env, jobject thiz) {
 
 // L10: the active title's module hashes as its patches were matched (main executable
 // first); empty before a title loads.
+static jstring j_active_executable(JNIEnv* env, jobject thiz) {
+    const std::string module = ae::active_executable();
+    return env->NewStringUTF(module.c_str());
+}
+
 static jlongArray j_module_hashes(JNIEnv* env, jobject thiz) {
     const std::vector<uint64_t> hashes = ae::module_hashes();
     auto array = env->NewLongArray(jsize(hashes.size()));
@@ -2078,6 +2083,7 @@ int register_xendroid_Emulator(JNIEnv* env){
             ,{"average_fps", "()D", (void *) j_average_fps}
             ,{"host_present_submission_count", "()J", (void *) j_host_present_submission_count}
             ,{"active_title_id", "()Ljava/lang/String;", (void *) j_active_title_id}
+            ,{"active_executable", "()Ljava/lang/String;", (void *) j_active_executable}
             ,{"module_hashes", "()[J", (void *) j_module_hashes}
             ,{"changed_settings", "()[Ljava/lang/String;", (void *) j_changed_settings}
             ,{"set_presentation_mode", "(I)V", (void *) j_set_presentation_mode}
