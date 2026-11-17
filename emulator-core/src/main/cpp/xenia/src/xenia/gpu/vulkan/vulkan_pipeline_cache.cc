@@ -678,9 +678,16 @@ void VulkanPipelineCache::Shutdown() {
 VulkanShader* VulkanPipelineCache::LoadShader(xenos::ShaderType shader_type,
                                               const uint32_t* host_address,
                                               uint32_t dword_count) {
-  // Hash the input memory and lookup the shader.
-  uint64_t data_hash =
-      XXH3_64bits(host_address, dword_count * sizeof(uint32_t));
+  // Live guest memory must always be hashed; the storage path has already
+  // verified its bytes and can pass that same hash without scanning them twice.
+  return LoadShaderWithHash(
+      shader_type, host_address, dword_count,
+      XXH3_64bits(host_address, dword_count * sizeof(uint32_t)));
+}
+
+VulkanShader* VulkanPipelineCache::LoadShaderWithHash(
+    xenos::ShaderType shader_type, const uint32_t* host_address,
+    uint32_t dword_count, uint64_t data_hash) {
   auto it = shaders_.find(data_hash);
   if (it != shaders_.end()) {
     // Shader has been previously loaded.
@@ -3278,7 +3285,8 @@ void VulkanPipelineCache::InitializeShaderStorage(
           [&](xenos::ShaderType type, const uint32_t* ucode_dwords,
               uint32_t ucode_dword_count, uint64_t ucode_data_hash) {
             VulkanShader* shader =
-                LoadShader(type, ucode_dwords, ucode_dword_count);
+                LoadShaderWithHash(type, ucode_dwords, ucode_dword_count,
+                                   ucode_data_hash);
             if (!shader || shader->ucode_storage_index() == storage_index) {
               return true;  // Continue reading.
             }
@@ -3650,13 +3658,15 @@ bool VulkanPipelineCache::SaveVkPipelineCache() {
   if (dfn.vkGetPipelineCacheData(device, vk_pipeline_cache_, &cache_size,
                                  nullptr) == VK_SUCCESS &&
       cache_size > 0) {
-    std::vector<uint8_t> cache_data(cache_size);
+    // Vulkan writes the returned byte range. Avoid zero-filling the entire
+    // cache before the driver overwrites it (periodic saves and shutdown).
+    auto cache_data = std::make_unique_for_overwrite<uint8_t[]>(cache_size);
     // If creation threads grew the cache between the two calls the driver
     // returns VK_INCOMPLETE with partial data: skip this save, a later one runs.
     if (dfn.vkGetPipelineCacheData(device, vk_pipeline_cache_, &cache_size,
-                                   cache_data.data()) == VK_SUCCESS) {
+                                   cache_data.get()) == VK_SUCCESS) {
       std::string description;
-      if (vk_pipeline_cache_store_->Save(cache_data.data(), cache_size,
+      if (vk_pipeline_cache_store_->Save(cache_data.get(), cache_size,
                                          description)) {
         XELOGI("Saved {} bytes of VkPipelineCache data: {}", cache_size,
                description);

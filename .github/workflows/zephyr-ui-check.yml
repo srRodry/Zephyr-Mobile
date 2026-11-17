@@ -184,6 +184,8 @@ jobs:
           python3 tools/test-army-quirk.py
       - name: Test GPU completion timeline and exact fence collection policy
         run: python3 tools/test-gpu-completion-timeline.py
+      - name: Test Vulkan cache redundant-work removal
+        run: python3 tools/test-vulkan-cache-work.py
       - name: Test extracted XEX executable overrides
         run: python3 tools/test-xex-launch-module.py
       - name: Compile Compose UI without packaging native libraries
