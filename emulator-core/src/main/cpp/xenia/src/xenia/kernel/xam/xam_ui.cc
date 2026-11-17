@@ -738,6 +738,15 @@ dword_result_t XamShowDeviceSelectorUI_entry(
 
   std::vector<const DummyDeviceInfo*> devices = ListStorageDevices();
 
+  if (kernel_state()->title_id() == 0x454109AB && devices.size() == 1 &&
+      (cvars::headless || !cvars::storage_selection_dialog)) {
+    // Recomp reference: avoid the artificial headless UI delay for TDC's
+    // job system. Keep validation and the overlapped completion contract.
+    *device_id_ptr = static_cast<uint32_t>(devices.front()->device_id);
+    kernel_state()->CompleteOverlappedImmediate(overlapped, X_ERROR_SUCCESS);
+    return X_ERROR_IO_PENDING;
+  }
+
   if (cvars::headless || !cvars::storage_selection_dialog) {
     // Default to the first storage device (HDD) if headless.
     return xeXamDispatchHeadless(

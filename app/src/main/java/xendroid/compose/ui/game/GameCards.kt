@@ -185,7 +185,7 @@ class GameCards(
     fun Performance() {
         val runs = info?.runs.orEmpty()
         var picked by rememberSaveable(game.identityKey) { mutableStateOf<String?>(null) }
-        val chosen = runs.firstOrNull { it.runId == picked } ?: runs.firstOrNull { it.hasNumbers() } ?: run
+        val chosen = runs.firstOrNull { it.runId == picked } ?: run ?: runs.firstOrNull()
         val lastEvents = info?.lastRunEvents
         val events by produceState<xendroid.compose.sessions.RunEventLog?>(null, chosen?.runId, lastEvents) {
             value = when {

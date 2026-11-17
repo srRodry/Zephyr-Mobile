@@ -689,7 +689,14 @@ X_RESULT KernelState::FinishLoadingUserModule(
 
     module->is_attached_ = true;
 
-    auto thread_state = XThread::GetCurrentThread()->thread_state();
+    auto* current_thread = XThread::GetCurrentThread();
+    if (!current_thread) {
+      module->is_attached_ = false;
+      XELOGE("Cannot attach DLL {} on a host thread. Start the title launcher "
+             "(default.xex), which loads this DLL from a guest thread.", module->name());
+      return X_STATUS_INVALID_PARAMETER;
+    }
+    auto thread_state = current_thread->thread_state();
     processor()->Execute(thread_state, module->entry_point(), args,
                          xe::countof(args));
   }

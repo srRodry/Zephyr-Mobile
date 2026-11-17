@@ -946,6 +946,7 @@ object_ref<XObject> XObject::GetNativeObject(KernelState* kernel_state,
     type = header->type;
   }
 
+  const bool tdc = kernel_state->title_id() == 0x454109AB;
   if (header->wait_list.flink_ptr == kXObjSignature) {
     // Already initialized.
     // TODO: assert if the type of the object != as_type
@@ -957,11 +958,16 @@ object_ref<XObject> XObject::GetNativeObject(KernelState* kernel_state,
     // handle that now belongs to something else.
     uint32_t guest_ptr = kernel_state->memory()->HostToGuestVirtual(native_ptr);
     if (result &&
-        static_cast<const XObject*>(result)->guest_object() != guest_ptr) {
+        (static_cast<const XObject*>(result)->guest_object() != guest_ptr ||
+         (tdc && MapGuestTypeToHost(type) != Type::Undefined &&
+          result->type() != MapGuestTypeToHost(type)))) {
       result->Release();
       result = nullptr;
     }
-  } else {
+  }
+  if (header->wait_list.flink_ptr != kXObjSignature || (tdc && !result)) {
+    // TDC reuses dispatch memory; a dead or mismatched cached handle must
+    // be rebuilt instead of returning null to KeSetEvent/Wait.
     // First use, create new.
     // https://www.nirsoft.net/kernel_struct/vista/KOBJECTS.html
     switch (type) {
