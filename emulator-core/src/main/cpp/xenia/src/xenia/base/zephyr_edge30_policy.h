@@ -27,11 +27,9 @@ constexpr bool DetailedGpuTiming(bool requested) {
 #endif
 }
 constexpr bool SchedulerStats(bool requested) {
-#if ZEPHYR_EDGE30_ULTRA
-  return false; // Dedicated performance build: compile out diagnostic updates.
-#else
+  // Runtime opt-in: dedicated Edge builds default this cvar to false.
+  // A hard-coded false would prevent capturing CPU 0 scheduler phases at all.
   return requested;
-#endif
 }
 }  // namespace xe::edge30
 #endif
