@@ -148,31 +148,45 @@ inline LoadResult Load(const std::filesystem::path& path, const Identity& curren
     result.status = LoadStatus::kTooLarge;
     return result;
   }
-  std::vector<uint8_t> bytes(static_cast<size_t>(file_size));
-  FILE* file = std::fopen(path.string().c_str(), "rb");
-  const bool read_ok =
-      file && (bytes.empty() || std::fread(bytes.data(), 1, bytes.size(), file) == bytes.size());
-  if (file) std::fclose(file);
-  if (!read_ok) {
+  // Read the fixed header separately so the payload lands directly in its
+  // final allocation. No full-blob erase/memmove after checksum validation.
+  uint8_t header[kEnvelopeSize];
+  if (file_size < sizeof(header)) {
     result.status = LoadStatus::kCorrupt;
     return result;
   }
-  bool legacy = true;
-  size_t payload_offset = 0;
-  if (bytes.size() >= sizeof(kMagic) && std::memcmp(bytes.data(), kMagic, sizeof(kMagic)) == 0) {
-    legacy = false;
-    if (bytes.size() < kEnvelopeSize || ReadU32(bytes.data() + 8) != kEnvelopeSize ||
-        ReadU32(bytes.data() + 12) != kFormatVersion ||
-        ReadU64(bytes.data() + 16) != bytes.size() - kEnvelopeSize ||
-        ReadU64(bytes.data() + 24) !=
-            XXH3_64bits(bytes.data() + kEnvelopeSize, bytes.size() - kEnvelopeSize)) {
-      result.status = LoadStatus::kCorrupt;
-      return result;
-    }
-    payload_offset = kEnvelopeSize;
+  FILE* file = std::fopen(path.string().c_str(), "rb");
+  if (!file) {
+    result.status = LoadStatus::kCorrupt;
+    return result;
   }
-  if (!ReadBlobIdentity(bytes.data() + payload_offset, bytes.size() - payload_offset,
-                        result.identity)) {
+  if (std::fread(header, 1, sizeof(header), file) != sizeof(header)) {
+    std::fclose(file);
+    result.status = LoadStatus::kCorrupt;
+    return result;
+  }
+  const bool legacy = std::memcmp(header, kMagic, sizeof(kMagic)) != 0;
+  const size_t payload_size = static_cast<size_t>(file_size) -
+                              (legacy ? 0 : kEnvelopeSize);
+  if (!legacy &&
+      (ReadU32(header + 8) != kEnvelopeSize ||
+       ReadU32(header + 12) != kFormatVersion ||
+       ReadU64(header + 16) != payload_size ||
+       payload_size < kVulkanHeaderSize)) {
+    std::fclose(file);
+    result.status = LoadStatus::kCorrupt;
+    return result;
+  }
+  std::vector<uint8_t> bytes(payload_size);
+  const size_t prefix = legacy ? sizeof(header) : 0;
+  if (legacy) std::memcpy(bytes.data(), header, prefix);
+  const size_t remaining = bytes.size() - prefix;
+  const bool read_ok = !remaining ||
+      std::fread(bytes.data() + prefix, 1, remaining, file) == remaining;
+  std::fclose(file);
+  if (!read_ok || (!legacy && ReadU64(header + 24) !=
+                                      XXH3_64bits(bytes.data(), bytes.size())) ||
+      !ReadBlobIdentity(bytes.data(), bytes.size(), result.identity)) {
     result.status = LoadStatus::kCorrupt;
     return result;
   }
@@ -180,11 +194,6 @@ inline LoadResult Load(const std::filesystem::path& path, const Identity& curren
   if (result.identity != current) {
     result.status = LoadStatus::kOtherIdentity;
     return result;
-  }
-  // Reuse the verified read buffer instead of allocating a second full blob.
-  // Only the small envelope is removed; legacy raw blobs move without copying.
-  if (payload_offset) {
-    bytes.erase(bytes.begin(), bytes.begin() + payload_offset);
   }
   result.payload = std::move(bytes);
   result.status = legacy ? LoadStatus::kLegacyLoaded : LoadStatus::kLoaded;
