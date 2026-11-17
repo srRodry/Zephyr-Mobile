@@ -72,6 +72,8 @@ int main() {
   assert(xe::edge30::PipelineWorkers(4, 8) == (ZEPHYR_EDGE30_ULTRA ? 2 : 4));
   assert(!xe::edge30::DetailedGpuTiming(false));
   assert(xe::edge30::DetailedGpuTiming(true) == !ZEPHYR_EDGE30_ULTRA);
+  assert(!xe::edge30::SchedulerStats(false));
+  assert(xe::edge30::SchedulerStats(true));
   for (bool requested : {false, true}) {
     cvars::guest_scheduler_stats = requested;
     for (bool recorded : {false, true}) {
@@ -86,7 +88,7 @@ int main() {
       scheduler.IoWorkerLoop();
       assert(ran == 1 && call.done.load(std::memory_order_acquire));
       assert(scheduler.wakes == 1 && scheduler.io_queue_.empty());
-      const bool measured = requested && recorded && !ZEPHYR_EDGE30_ULTRA;
+      const bool measured = requested && recorded;
       assert(Clock::reads == (measured ? 2 : 0));
       assert(scheduler.stats_.io_calls.load() == (measured ? 1 : 0));
       assert(scheduler.stats_.io_queue_ns.load() == (measured ? 80 : 0));
