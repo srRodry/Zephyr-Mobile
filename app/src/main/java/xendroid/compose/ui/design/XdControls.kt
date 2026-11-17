@@ -2,6 +2,12 @@ package xendroid.compose.ui.design
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.foundation.gestures.awaitEachGesture
+import androidx.compose.foundation.gestures.awaitFirstDown
+import androidx.compose.ui.focus.FocusRequester
+import androidx.compose.ui.focus.focusRequester
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.platform.LocalSoftwareKeyboardController
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -334,6 +340,8 @@ fun XdTextInput(
     enabled: Boolean = true,
     width: Dp = 200.dp,
 ) {
+    val keyboard = LocalSoftwareKeyboardController.current
+    val focus = remember { FocusRequester() }
     val c = Xd.colors
     var focused by remember { mutableStateOf(false) }
     val shape = RoundedCornerShape(10.dp)
@@ -345,6 +353,13 @@ fun XdTextInput(
             .clip(shape)
             .background(c.s3)
             .then(if (focused) Modifier.border(1.5.dp, c.acc, shape) else Modifier)
+            .pointerInput(enabled, keyboard) {
+                if (enabled) awaitEachGesture {
+                    awaitFirstDown(requireUnconsumed = false)
+                    focus.requestFocus()
+                    keyboard?.show()
+                }
+            }
             .padding(horizontal = 11.dp)
             .alpha(if (enabled) 1f else 0.4f),
         contentAlignment = Alignment.CenterStart,
@@ -353,7 +368,8 @@ fun XdTextInput(
         BasicTextField(
             value = value, onValueChange = onValueChange, singleLine = true, enabled = enabled,
             textStyle = style.copy(color = c.fg), cursorBrush = SolidColor(c.acc),
-            modifier = Modifier.fillMaxWidth().onFocusChanged { focused = it.isFocused },
+            keyboardOptions = KeyboardOptions(showKeyboardOnFocus = true),
+            modifier = Modifier.fillMaxWidth().focusRequester(focus).onFocusChanged { focused = it.isFocused },
         )
     }
 }

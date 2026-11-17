@@ -1,0 +1,1 @@
+<resources><style name="Theme.xendroidCompose" parent="android:Theme.Material.Light.NoActionBar"><item name="android:windowSplashScreenBackground">#04150F</item><item name="android:windowSplashScreenAnimatedIcon">@drawable/zephyr_launcher_foreground</item><item name="android:windowLightStatusBar">false</item><item name="android:statusBarColor">#04150F</item></style></resources>

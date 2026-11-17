@@ -111,6 +111,12 @@ class Emulator {
     return !title_id_.has_value() ? 0 : title_id_.value();
   }
 
+  // Snapshot published by the loader; never dereference guest modules on JNI threads.
+  std::string active_executable() const {
+    std::lock_guard<std::mutex> lock(active_executable_mutex_);
+    return active_executable_;
+  }
+
   // Are we currently running a title?
   bool is_title_open() const { return title_id_.has_value(); }
 
@@ -475,6 +481,8 @@ class Emulator {
   std::filesystem::path content_root_;
   std::filesystem::path cache_root_;
 
+  mutable std::mutex active_executable_mutex_;
+  std::string active_executable_;
   std::string title_name_;
   std::string title_version_;
 

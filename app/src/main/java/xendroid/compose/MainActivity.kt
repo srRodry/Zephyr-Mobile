@@ -224,7 +224,7 @@ class MainActivity : ComponentActivity() {
                     // A debug build's -debug versionName never matches a release tag, so the
                     // check always reports an update - to an APK whose .debug-suffixed package
                     // could not replace this install anyway.
-                    if (BuildConfig.DEBUG) return@LaunchedEffect
+                    if (xendroid.compose.updater.updateRepository() == null) return@LaunchedEffect
                     if (!shouldCheckForUpdates(applicationContext)) {
                         Log.d("Updater", "Skipping update check (less than 5 minutes)")
                         return@LaunchedEffect

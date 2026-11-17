@@ -23,6 +23,12 @@ struct Quirk {
 // Entries apply at per-game-config priority, so a user's own per-game config
 // still overrides them.
 static const Quirk kQuirks[] = {
+    // Army of Two retail: refresh page validity at frame boundaries to avoid
+    // stale uploaded data (corrupt/warped character textures and geometry).
+    // Source: xenia-manager/optimized-settings/settings/454107F8.toml.
+    // Zephyr Edge30 corruption report; device confirmation still pending.
+    {0x454107F8, "clear_memory_page_state", true,
+     "refresh uploaded page state for Army of Two rendering corruption"},
     // Ninja Gaiden 2: the opening FMV renders as three time-skewed vertical
     // slices when the restore half of the saverest inline is active. Every
     // emitted expansion verifies correct, so the current reading is a latent

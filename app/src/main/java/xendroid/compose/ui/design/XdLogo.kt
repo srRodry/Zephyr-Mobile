@@ -13,6 +13,6 @@ import xendroid.compose.R
 /** Shared Zephyr mark for onboarding, About and app updates. */
 @Composable
 fun XdLogo(size: Dp = 30.dp, modifier: Modifier = Modifier) {
-    Image(painterResource(R.drawable.zephyr_launcher_foreground), contentDescription = stringResource(R.string.app_name),
+    Image(painterResource(R.drawable.zephyr_brand_mark), contentDescription = stringResource(R.string.app_name),
         modifier = modifier.size(size))
 }

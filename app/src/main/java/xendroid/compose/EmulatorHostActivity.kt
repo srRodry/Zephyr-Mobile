@@ -1104,6 +1104,8 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
 
     /** Batch 2: the menu's status line: FPS now, p99 of the last seconds, battery, the driver. */
     private fun buildMenuStatus(): List<xendroid.compose.ui.ingame.MenuStat> = buildList {
+        if (session.pausePending()) add(xendroid.compose.ui.ingame.MenuStat(getString(R.string.host_pause_pending)))
+        if (session.pauseFailure() != null) add(xendroid.compose.ui.ingame.MenuStat(getString(R.string.host_pause_failed)))
         val fps = session.averageFps().takeIf { it > 0 } ?: lastGuestFps
         if (fps > 0) add(xendroid.compose.ui.ingame.MenuStat(fps.roundToInt().toString(), "FPS"))
         performancePanel.recent()?.let { add(xendroid.compose.ui.ingame.MenuStat(it.p99UnderMs.toString(), "ms", "p99")) }
@@ -1251,6 +1253,9 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
             ) + launchOptionArgs().also { launchArgsUsed = it }.toTypedArray()
         )
 
+        launchArgsUsed.firstOrNull { it.startsWith("--launch_module=") }?.let {
+            recordEvent("executable requested", it.substringAfter('='), flush = true)
+        }
         session.setupUriInfoListFile(
             Application
                 .get_uri_info_list_file()
@@ -1260,6 +1265,7 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
 
     /** The options this launch passed to the core (R4), for the loading screen. */
     private var launchArgsUsed: List<String> = emptyList()
+    private var recordedExecutable: String? = null
 
     /** Batch 2: what the loading screen says about the launch once the title is known. */
     private fun loadingDetailsOf(title: String): xendroid.compose.ui.ingame.LoadingDetails {
@@ -1597,6 +1603,16 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
                                         touchControlsBack("the controller now plays another player")
                                     }
 
+                                    val executable = session.activeExecutable()
+                                    if (executable != recordedExecutable) {
+                                        recordedExecutable = executable
+                                        if (executable != null) {
+                                            // A guest path, not the user's host storage path.
+                                            recordEvent("executable loaded", executable, flush = true)
+                                            Toast.makeText(this@EmulatorHostActivity,
+                                                getString(R.string.xd_launch_module_loaded, executable), Toast.LENGTH_LONG).show()
+                                        }
+                                    }
                                     val activeTitle = session.activeTitleId()
                                     performanceHints.update(presenterWorkReader, presenterTargetReader,
                                         foregroundState.value && !menuState.value.open)
@@ -1788,7 +1804,7 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
                                         if (!presentationState.value.requested) restoreGenerationCap()
                                         audioVolume.intValue = session.audioVolume()
                                         gpuLabel.value = session.activeGpuLabel()
-                                        menuPaused.value = session.isPaused()
+                                        menuPaused.value = session.isPauseComplete()
                                         fpsLimitState.intValue = session.fpsLimit()
                                         if (activeTitle != fpsConfig.value.titleId) refreshFpsConfig()
                                         // Players joining or leaving and their latency.
@@ -2290,9 +2306,9 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
         if (!session.isPaused()) {
             session.pause()
             pausedByLifecycle = true
-            recordEvent("pause", "guest paused by the app lifecycle")
+            recordEvent("pause", "pause requested by the app lifecycle")
         }
-        menuPaused.value = session.isPaused()
+        menuPaused.value = session.isPauseComplete()
     }
 
     private fun resumeForLifecycle() {
@@ -2301,8 +2317,8 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
             lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) {
             session.resumeIfPaused()
             pausedByLifecycle = false
-            menuPaused.value = session.isPaused()
-            recordEvent("pause", "guest resumed")
+            menuPaused.value = session.isPauseComplete()
+            recordEvent("pause", "resume requested")
         }
         if (gyroEnabled.value && foregroundState.value && !menuState.value.open && hasWindowFocus()) gyroCamera.start()
     }
@@ -3036,8 +3052,8 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
         releaseGuestInput()
         val pausedHere = pauseOnOpen.value && session.booted && !session.isPaused()
         if (pausedHere) session.pause()
-        recordEvent("menu", if (pausedHere) "opened, guest paused" else "opened")
-        menuPaused.value = session.isPaused()
+        recordEvent("menu", if (pausedHere) "opened, pause requested" else "opened")
+        menuPaused.value = session.isPauseComplete()
         fpsLimitState.intValue = session.fpsLimit()
         presentationState.value = session.presentationState()
         menuState.value = menuState.value.show(pausedHere)
@@ -3402,7 +3418,7 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
                     session.pause()
                     menuState.value = menuState.value.copy(pausedByMenu = true)
                 }
-                menuPaused.value = session.isPaused()
+                menuPaused.value = session.isPauseComplete()
                 editorOpen.value = true
             }
             InGameAction.STRETCH -> {
@@ -3809,7 +3825,7 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
             pausedByLifecycle = true
             resumeForLifecycle()
         }
-        menuPaused.value = session.isPaused()
+        menuPaused.value = session.isPauseComplete()
     }
 
     private fun setAutoSave(on: Boolean) {
@@ -3941,7 +3957,7 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
 
     private fun toggleGpuLive(option: xendroid.compose.core.GpuLiveOption) = setGpuLive(option, if (gpuValue(option) != 0) 0 else 1)
 
-    /** The game's picture as its surface holds it (no menu, no HUD), saved to Pictures/Xendroid+. */
+    /** The game's picture as its surface holds it (no menu, no HUD), saved to Pictures/Zephyr-Mobile. */
     private fun takeScreenshot() {
         val view = surfaceView ?: return
         if (view.width <= 0 || view.height <= 0) return
@@ -3962,9 +3978,9 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
     private fun saveScreenshot(bitmap: android.graphics.Bitmap) {
         val stamp = java.text.SimpleDateFormat("yyyyMMdd_HHmmss", java.util.Locale.US).format(java.util.Date())
         val values = android.content.ContentValues().apply {
-            put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, "Xendroid+_${activeTitleState.value ?: "game"}_$stamp.png")
+            put(android.provider.MediaStore.Images.Media.DISPLAY_NAME, "Zephyr-Mobile_${activeTitleState.value ?: "game"}_$stamp.png")
             put(android.provider.MediaStore.Images.Media.MIME_TYPE, "image/png")
-            put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Xendroid+")
+            put(android.provider.MediaStore.Images.Media.RELATIVE_PATH, Environment.DIRECTORY_PICTURES + "/Zephyr-Mobile")
             put(android.provider.MediaStore.Images.Media.IS_PENDING, 1)
         }
         val resolver = contentResolver

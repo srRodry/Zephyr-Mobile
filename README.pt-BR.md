@@ -1,144 +1,77 @@
 <p align="center">
-  <img src="docs/assets/zephyr-mobile-banner.svg" alt="Zephyr-Mobile — Xbox 360 emulation for Android" width="100%">
+  <img src="docs/assets/zephyr-mobile-banner.svg" alt="Zephyr-Mobile · Pixel Code · Anel" width="100%">
 </p>
 
-<p align="center"><strong>Emulação de Xbox 360 no Android, com uma interface pensada para toque e controles.</strong></p>
+<p align="center"><strong>Emulação de Xbox 360 no Android. Leve, medida, afinada para Snapdragon.</strong><br><sub>Um projeto Pixel Code · Edição Research para Motorola Edge 30 Ultra</sub></p>
 
 <p align="center">
-  <img alt="Status: em desenvolvimento" src="https://img.shields.io/badge/status-em%20desenvolvimento-237BFF">
-  <img alt="Android 10 ou superior" src="https://img.shields.io/badge/Android-10%2B-263241?logo=android&logoColor=white">
-  <img alt="Arquitetura ARM de 64 bits" src="https://img.shields.io/badge/ABI-arm64--v8a-263241">
-  <img alt="API gráfica Vulkan" src="https://img.shields.io/badge/API-Vulkan-263241">
+  <a href="https://github.com/srRodry/Zephyr-Mobile/releases"><img alt="Baixar betas Research" src="https://img.shields.io/badge/BAIXAR-Betas%20Research-44C88B?style=for-the-badge&amp;labelColor=04110F"></a>
+  <a href="README.md"><img alt="Read in English" src="https://img.shields.io/badge/READ%20IN-ENGLISH-87F16D?style=for-the-badge&amp;labelColor=04110F"></a>
 </p>
 
-<p align="center">
-  <a href="README.md">English</a> · <b>Português (Brasil)</b>
-</p>
+<p align="center"><a href="#baixar-e-atualizar">Baixar e atualizar</a> · <a href="#a-experiência-zephyr">Experiência</a> · <a href="#desenvolvimento-e-código-fonte">Código-fonte</a> · <a href="#créditos-e-licenças">Créditos</a></p>
 
-<p align="center">
-  <a href="https://github.com/srRodry/Zephyr-Mobile/actions/workflows/zephyr-ui-check.yml">Testes da interface</a> ·
-  <a href="https://github.com/srRodry/Zephyr-Mobile/actions/workflows/XenDroid.yml">Compilação do APK</a> ·
-  <a href="https://github.com/srRodry/Zephyr-Mobile/issues">Problemas e sugestões</a>
-</p>
+## Zephyr-Mobile, por Pixel Code
 
----
+O **Zephyr-Mobile** é o projeto experimental de emulação de Xbox 360 para Android da Pixel Code. Sua identidade **Anel** combina superfícies verde-escuras, um Z prateado dentro de um anel verde com quatro segmentos e uma biblioteca pensada para toque e controle.
 
-## Sobre o projeto
+As versões Research atuais concentram o desenvolvimento no **Motorola Edge 30 Ultra — Snapdragon 8+ Gen 1 (SM8475), Adreno 730 e 12 GB de RAM**. As otimizações são avaliadas por jogo; esse foco não garante que todos os títulos iniciem ou rodem sem falhas.
 
-O **Zephyr-Mobile** é um projeto experimental de emulação de Xbox 360 para Android, desenvolvido no repositório `srRodry/Zephyr-Mobile`. Nosso objetivo é aprimorar a experiência em dispositivos móveis com navegação mais clara, identidade visual consistente, suporte a controles e uma biblioteca de jogos acessível.
+## Baixar e atualizar
 
-O projeto **aproveita tecnologias e código aberto existentes**: [Xendroid+](https://github.com/phforner0), o port anterior [XenDroid](https://github.com/rfandango) e o núcleo de emulação [Xenia](https://github.com/xenia-project/xenia) / Xenia Canary. O Zephyr-Mobile **não é um núcleo de emulação criado do zero**. Mantemos os créditos e as obrigações de licenciamento dos projetos de origem.
+1. Abra os **[lançamentos do Zephyr](https://github.com/srRodry/Zephyr-Mobile/releases)** e selecione a beta Research publicada mais recente.
+2. Baixe o arquivo **`.apk`** nos anexos. O ZIP do código-fonte não é o instalador Android.
+3. Instale, abra o aplicativo e selecione **Atualizações → Prévia** para receber as betas pelo próprio app.
+4. Mantenha o mesmo pacote Research e a mesma assinatura nas atualizações. O Android pede a confirmação da instalação.
 
-> [!IMPORTANT]
-> **Versão de desenvolvimento — ainda não é um lançamento estável.** Melhorias na interface e nos processos de compilação não garantem que um jogo funcione corretamente. A compatibilidade depende do título, do dispositivo, do driver Vulkan e do núcleo do emulador. Um teste de interface aprovado não comprova que o APK é instalável nem que os jogos são executados corretamente.
+Os lançamentos Research incluem APK, **SHA-256**, relatório de assinatura e identificação do build. O aplicativo confere tamanho e hash do download e verifica pacote, certificado e versão antes de abrir o instalador Android.
 
-## O que estamos desenvolvendo
+**Pacote Research:** `xendroid.compose.zephyr.research`. Versões antigas sem o atualizador habilitado precisam de uma primeira instalação manual. Não desinstale o aplicativo apenas para atualizá-lo.
 
-| Área | Trabalho atual |
+## A experiência Zephyr
+
+| Área | No projeto |
 | --- | --- |
-| **Identidade visual** | Superfícies em grafite (`#15191F`), azul de destaque (`#237BFF`), tipografia legível e componentes consistentes em Jetpack Compose. |
-| **Biblioteca de jogos** | Busca, filtros, favoritos, coleções, capas e estados de seleção, aprimorando funcionalidades herdadas do aplicativo. |
-| **Navegação por toque** | Interface adaptada aos modos retrato e paisagem, com ações práticas e informações dos jogos. |
-| **Navegação por controle** | Indicadores de foco, seleção e navegação na biblioteca. |
-| **Acessibilidade** | Identificação mais clara dos jogos, foco visível e diferenciação dos elementos selecionados. |
-| **Testes automatizados** | Compilação Kotlin/Compose e testes de regressão da biblioteca e da navegação por controle. |
-| **APK experimental** | Workflow ARM64 separado, com assinatura e verificação de conteúdo e identificação do pacote. |
+| **Biblioteca Emerald** | Retrato e paisagem, carrossel circular, capas, busca e favoritos. |
+| **Toque e controle** | Navegação compartilhada, foco visível e controles configuráveis. |
+| **Gestão de jogos** | Ajustes por título, atualizações, DLC e gerenciamento de saves. |
+| **Núcleo nativo** | Tradução ARM64, renderização Vulkan e caches persistentes de shaders e pipelines. |
+| **Betas para o aparelho** | Compilação ajustada ao SM8475 e orçamento menor de workers Vulkan. |
+| **Diagnóstico** | Relatórios de sessão, logs e registros de tempo de quadro para investigar falhas. |
 
-Esses itens descrevem implementações ou processos **em desenvolvimento**, não uma garantia de funcionamento completo em aparelhos reais. O projeto também incorpora funcionalidades preexistentes do código de origem, documentadas nos arquivos técnicos.
-
-## Andamento do desenvolvimento
-
-| Etapa | Situação |
-| --- | --- |
-| Nome Zephyr-Mobile e identidade visual básica | Implementados na branch de desenvolvimento |
-| Melhorias da biblioteca para toque e controle | Implementadas; faltam mais testes em aparelhos |
-| Compilação e testes automatizados da interface | Configurados no GitHub Actions |
-| APK experimental separado (`xendroid.compose.zephyr.test`) | Workflow configurado; compilação concluída e instalação ainda exigem confirmação |
-| Compatibilidade de jogos Xbox 360 no Android | Experimental; deve ser verificada por jogo e dispositivo |
-| Versão pública estável | **Ainda não anunciada** |
-
-A branch de desenvolvimento é [`feature/zephyr-mobile-branding`](https://github.com/srRodry/Zephyr-Mobile/tree/feature/zephyr-mobile-branding). A branch `main` permanece separada enquanto validamos as alterações.
-
-### Próximas etapas
-
-1. Confirmar a conclusão do workflow de APK, verificar o arquivo assinado e testar a instalação em um dispositivo ARM64 real.
-2. Validar as interfaces de toque, a navegação por controle, a acessibilidade e os estados da biblioteca.
-3. Testar abertura de jogos e estabilidade, distinguindo problemas de interface dos problemas do núcleo de emulação.
-4. Registrar resultados verificáveis de compatibilidade e preparar um processo reproduzível de versões experimentais.
+**Estado: beta experimental.** Corrupção de texturas, travamentos e títulos incompatíveis continuam sob investigação. Compilar e passar em testes automatizados não comprova compatibilidade nem ganho de FPS no telefone. Números de outro aparelho não são apresentados como resultados do Zephyr.
 
 ## Requisitos
 
-- **Android 10 ou superior**, com arquitetura **ARM64 (`arm64-v8a`)**.
-- **GPU compatível com Vulkan** e driver apropriado; Snapdragon/Adreno com drivers Turnip compatíveis é um dos focos da base técnica utilizada.
-- Cópias de jogos de Xbox 360 obtidas legalmente, em formatos aceitos pelo emulador de origem.
+- Android **10+**, **ARM64** e Vulkan.
+- A beta dedicada atual tem como alvo o **Edge 30 Ultra / SM8475 / Adreno 730**; não é uma recomendação genérica para outros aparelhos.
+- Backups próprios obtidos legalmente. Os formatos aceitos incluem ISO, ZAR, Games on Demand e estruturas de jogos extraídos compatíveis.
+- Espaço para jogos e caches de shaders. Nenhum jogo acompanha o APK.
 
-Hardware mais potente pode ajudar, mas **nenhum dispositivo ou jogo tem funcionamento garantido**. As medições de desempenho dos projetos de origem não devem ser apresentadas como benchmarks do Zephyr-Mobile.
+## Testes e relatos de problemas
 
-## Como testar um APK experimental
+Compare builds mantendo driver, resolução, versão do jogo e cena. Aqueça o cache de shaders antes de avaliar desempenho sustentado.
 
-1. Acesse o workflow [Zephyr Android APK](https://github.com/srRodry/Zephyr-Mobile/actions/workflows/XenDroid.yml).
-2. Procure uma execução **concluída com sucesso** na branch `feature/zephyr-mobile-branding`.
-3. Se houver um artefato disponível, baixe o APK `Zephyr-Mobile_test_<commit>` na página da execução.
-4. Instale o APK assinado em um Android compatível e verifique primeiro a abertura do app, a biblioteca e a navegação por controle.
+Para falha, congelamento ou imagem corrompida, exporte o **ZIP dos logs da sessão** pelo app e informe jogo/Title ID, build instalado, driver e passos para reproduzir. Uma captura ajuda a localizar o artefato; sozinha, não identifica a operação de CPU/GPU que falhou.
 
-> [!CAUTION]
-> O APK **pode ainda não estar disponível**. Os artefatos expiram, e uma execução incompleta ou com erro não representa um aplicativo validado. As versões experimentais usam o identificador `xendroid.compose.zephyr.test`. Se duas versões forem assinadas com chaves temporárias diferentes, talvez seja necessário desinstalar a anterior. Faça backup dos dados antes disso.
+## Desenvolvimento e código-fonte
 
-## Como compilar
+- **[Branch de desenvolvimento Research](https://github.com/srRodry/Zephyr-Mobile/tree/research/optimization-round3)** — fonte da série Research atual.
+- **[Lançamentos e commits exatos](https://github.com/srRodry/Zephyr-Mobile/releases)** — cada versão aponta para seu código-fonte correspondente.
+- **[Compilação e validação](https://github.com/srRodry/Zephyr-Mobile/actions/workflows/zephyr-performance-apk.yml)** — testes nativos, APK, assinatura permanente e verificação dos lançamentos.
+- **[Guia técnico de compilação](https://github.com/srRodry/Zephyr-Mobile/blob/research/optimization-round3/BUILD.md)** — ferramentas nativas e preparação do ambiente.
+- **[Organização do projeto](docs/zephyr-repository.md)** — apresentação pública, desenvolvimento e atribuição.
 
-A compilação nativa herdada utiliza **JDK 21**, Android **SDK 35**, **NDK 29.0.14206865**, **CMake 3.30.3**, Gradle **8.11.1**, Python e ferramentas de shaders SPIR-V. Consulte [BUILD.md](BUILD.md) para configurar o ambiente, as ferramentas nativas e a assinatura do APK.
-
-Para compilar a variante experimental usando o identificador do Zephyr-Mobile:
-
-```bash
-./gradlew -PxendroidReleaseIdSuffix=.zephyr.test -PxendroidReleaseDebuggable :app:assembleRelease
-```
-
-O Gradle compila o aplicativo, mas **isso não significa que o APK resultante esteja assinado e pronto para instalação**. O workflow do GitHub Actions executa separadamente a assinatura e a verificação do pacote.
-
-Para executar os testes de interface configurados no CI:
-
-```bash
-./gradlew :app:compileDebugKotlin
-./gradlew :app:testUitestUnitTest
-```
-
-### Estrutura do repositório
-
-| Caminho | Função |
-| --- | --- |
-| `app/` | Aplicativo Android em Kotlin/Jetpack Compose, biblioteca e interface. |
-| `emulator-core/` | Núcleo nativo de emulação Xbox 360 herdado e integração com Android. |
-| `.github/workflows/zephyr-ui-check.yml` | Compilação e testes de regressão da interface. |
-| `.github/workflows/XenDroid.yml` | Compilação, assinatura e verificação do APK ARM64. |
-| `docs/ui-redesign/` | Estudos de design e documentação da interface (incluindo materiais anteriores ao Zephyr). |
-| `performance-tests/` | Investigações de desempenho herdadas; não equivalem a uma validação específica do Zephyr. |
-
-## Documentação
-
-- [Guia de compilação e instalação](BUILD.md)
-- [Configurações específicas por jogo](GAME_COMPAT.md)
-- [Documentação do redesenho da interface](docs/ui-redesign/README.md)
-- [Registro técnico de recursos e validações](docs/experiencia-em-jogo-status.md)
-- [Licenças e componentes de terceiros](THIRD-PARTY-NOTICES.md)
+A página da `main` apresenta o projeto. As mudanças experimentais do núcleo permanecem nas branches de desenvolvimento; use o commit exato do lançamento para reproduzir um build.
 
 ## Créditos e licenças
 
-O Zephyr-Mobile é desenvolvido neste repositório por **[srRodry](https://github.com/srRodry)**, com importantes contribuições herdadas de:
+A Pixel Code mantém a **identidade Zephyr-Mobile e o desenvolvimento deste fork**. O emulador utiliza o trabalho do **[Xendroid+ de phforner0](https://github.com/phforner0/Xendroid-Plus)**, do **[port Android XenDroid de rfandango](https://github.com/rfandango)** e a tecnologia **[Xenia](https://github.com/xenia-project/xenia)** / Xenia Canary.
 
-- **Xendroid+**, criado e mantido por **[phforner0](https://github.com/phforner0)**.
-- **XenDroid**, port anterior para Android desenvolvido por **[rfandango](https://github.com/rfandango)**.
-- **[Xenia](https://github.com/xenia-project/xenia)** e Xenia Canary, responsáveis pela tecnologia central de emulação.
-- Outros projetos de código aberto, fontes, drivers e componentes gráficos citados em [THIRD-PARTY-NOTICES.md](THIRD-PARTY-NOTICES.md).
+Autoria original, histórico e licenças dos componentes são preservados. Consulte os **[avisos de terceiros](THIRD-PARTY-NOTICES.md)** e os arquivos de licença do código-fonte e do APK. A mudança de identidade visual não modifica essas licenças.
 
-As licenças e atribuições originais continuam válidas. O arquivo de avisos de terceiros descreve, inclusive, obrigações relacionadas ao binário combinado e a seus componentes. **Alterar o nome ou a interface do aplicativo não transfere a autoria dessas tecnologias.**
-
-## Aviso legal
-
-O Zephyr-Mobile é um projeto independente e experimental, **sem vínculo ou endosso da Microsoft**. Xbox e Xbox 360 são marcas da Microsoft Corporation.
-
-**Este repositório não distribui jogos comerciais, imagens de jogos, firmware, chaves de consoles ou outros dados protegidos pertencentes aos jogos.** Utilize cópias de segurança próprias, respeitando a legislação aplicável.
+Zephyr-Mobile é um projeto independente, sem vínculo com a Microsoft. Xbox e Xbox 360 são marcas da Microsoft. Nenhum jogo comercial, imagem de jogo, firmware ou chave de console é distribuído aqui.
 
 ---
 
-<p align="center"><sub>Zephyr-Mobile · Em desenvolvimento · Interface, usabilidade e validação em primeiro lugar.</sub></p>
+<p align="center"><strong>ZEPHYR-MOBILE</strong><br><sub>Pixel Code · Anel · Android / ARM64 / Vulkan</sub></p>

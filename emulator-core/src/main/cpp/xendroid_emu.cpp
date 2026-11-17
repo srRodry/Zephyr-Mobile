@@ -23,6 +23,7 @@
 #include "xenia/apu/nop/nop_audio_system.h"
 #include "xenia/base/cvar.h"
 #include "xenia/base/logging.h"
+#include "xenia/base/zephyr_edge30_policy.h"
 #include "xenia/base/profiling.h"
 #include "xenia/config.h"
 #include "xenia/emulator.h"
@@ -330,6 +331,12 @@ bool EmulatorApp::OnInitialize() {
         config::LoadGameConfigForFile(
             std::filesystem::absolute(std::filesystem::u8path(game_path)));
     }
+
+#if ZEPHYR_EDGE30_ULTRA
+    XELOGI("Edge30 dedicated beta: SM8475/X2-tuned ARMv8.2 FP16/DotProd/LSE; "
+           "pipeline workers capped at 2; scheduler diagnostics and detailed "
+           "GPU pass timing compiled out; Android controls core placement");
+#endif
 
     // The settings away from the core's defaults, first in the log (global config
     // and this game's own), so a log alone says what the run was set to; the run
@@ -879,6 +886,10 @@ namespace ae{
         const auto* emulator = g_windowed_app_ref->emu.get();
         return emulator->is_title_open() ? emulator->title_id() : 0;
     }
+    std::string active_executable() {
+        if (!g_windowed_app_ref || !g_windowed_app_ref->emu) return {};
+        return g_windowed_app_ref->emu->active_executable();
+    }
     std::vector<uint64_t> module_hashes() {
         // Same lifetime rule as active_title_id.
         if (!g_windowed_app_ref || !g_windowed_app_ref->emu) return {};
@@ -887,13 +898,8 @@ namespace ae{
         return emulator->patcher()->ModuleHashes(emulator->title_id());
     }
     void pause(){
-        // DIRECT call on the calling (Android main) thread. Emulator::Pause() is
-        // idempotent and blocks internally on the audio pause_fence_ + the GPU-worker
-        // fence; the only requirement is the caller is not the audio worker, the GPU
-        // worker, or a guest XThread -- the main thread satisfies all three. Do NOT
-        // marshal via CallInUIThread (that is the surface-marshaling path; redundant +
-        // would stall the paint pump). g_windowed_app_ref->emu is null until the detached
-        // boot thread populates it, so guard exactly like is_paused()/is_running().
+        // Blocking audio and GPU fences. EmulatorSession serializes pause/resume
+        // on its process-lifetime control worker, never Android's input thread.
         if(g_windowed_app_ref && g_windowed_app_ref->emu)
             g_windowed_app_ref->emu->Pause();
     }

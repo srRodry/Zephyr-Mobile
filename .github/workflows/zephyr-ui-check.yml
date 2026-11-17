@@ -5,6 +5,7 @@ on:
     branches:
       - feature/zephyr-mobile-branding
       - perf/edge30-beta1
+      - research/optimization-round3
   pull_request:
     paths:
       - 'app/src/**'
@@ -19,6 +20,16 @@ on:
       - '.github/workflows/zephyr-ui-check.yml'
       - 'tools/*signing*'
       - 'tools/test-a64-vector-select.py'
+      - 'tools/test-round3-*.py'
+      - 'tools/test-shared-page-refresh.py'
+      - 'tools/test-army-quirk.py'
+      - 'tools/test-edge30-policy.py'
+      - 'emulator-core/src/main/cpp/xenia/src/xenia/gpu/shared_memory.*'
+      - 'emulator-core/src/main/cpp/xenia/src/xenia/game_quirks.*'
+      - 'emulator-core/src/main/cpp/xenia/src/xenia/base/zephyr_edge30_policy.h'
+      - 'emulator-core/src/test/cpp/a64_permute_round3_test.cc'
+      - 'emulator-core/src/main/cpp/xenia/src/xenia/gpu/texture_cache.*'
+      - 'emulator-core/src/main/cpp/xenia/src/xenia/vfs/devices/disc_zarchive_device.cc'
       - 'tools/test-jit-compile-stats.py'
       - 'tools/test-a64-logical-immediate.py'
       - 'tools/compile-native-regressions.py'
@@ -95,12 +106,16 @@ jobs:
               "zephyr_launcher_foreground",
               "zephyr_launcher_monochrome",
               "zephyr_app_icon",
+              "zephyr_brand_mark",
           }
           for name in required:
               path = root / "drawable" / f"{name}.xml"
               node = ET.parse(path).getroot()
-              assert node.tag == "vector", f"Expected vector drawable: {path}"
-              assert node.findall("path"), f"Empty launcher drawable: {path}"
+              if name == "zephyr_launcher_background":
+                  assert node.tag == "shape" and node.find("gradient") is not None, f"Missing gradient background: {path}"
+              else:
+                  assert node.tag == "vector", f"Expected vector drawable: {path}"
+                  assert node.findall(".//path"), f"Empty launcher drawable: {path}"
 
           for name in ("ic_launcher", "ic_launcher_round"):
               path = root / "mipmap-anydpi-v26" / f"{name}.xml"
@@ -126,7 +141,7 @@ jobs:
           for filename in ("ZephyrAtmosphere.kt", "XdLogo.kt"):
               source = design / filename
               text = source.read_text()
-              assert "R.drawable.zephyr_launcher_foreground" in text, f"Missing Zephyr mark: {source}"
+              assert "R.drawable.zephyr_brand_mark" in text, f"Missing Zephyr mark: {source}"
               assert "R.drawable.xd_logo_mark" not in text, f"Legacy mark still displayed: {source}"
           blades = (design / "XdBlades.kt").read_text()
           assert "ZephyrOrbitMark(" in blades, "Blade navigation must use the shared Zephyr mark"
@@ -144,6 +159,10 @@ jobs:
         run: python3 tools/test-native-clock.py
       - name: Test ARM64 vector select semantics and instruction encoding
         run: python3 tools/test-a64-vector-select.py
+      - name: Test circular permutation codegen and cache lifecycle
+        run: |
+          python3 tools/test-round3-a64.py
+          python3 tools/test-round3-cache.py
       - name: Test ARM64 logical masks and unchanged materialization fallbacks
         run: python3 tools/test-a64-logical-immediate.py
       - name: Test A64 perf map remains opt-in
@@ -159,8 +178,20 @@ jobs:
 
       - name: Check CPU 0 scheduler phase diagnostics
         run: python3 tools/test-scheduler-phase-stats.py
+      - name: Test shared-memory CPU upload refresh and Army title policy
+        run: |
+          python3 tools/test-shared-page-refresh.py
+          python3 tools/test-army-quirk.py
       - name: Test GPU completion timeline and exact fence collection policy
         run: python3 tools/test-gpu-completion-timeline.py
+      - name: Test Vulkan cache redundant-work removal
+        run: python3 tools/test-vulkan-cache-work.py
+      - name: Test extracted XEX executable overrides
+        run: python3 tools/test-xex-launch-module.py
+      - name: Test title DLL notification contract
+        run: python3 tools/test-dll-notifications.py
+      - name: Test pending GPU wait diagnostics
+        run: python3 tools/test-wait-reg-mem-stall.py
       - name: Compile Compose UI without packaging native libraries
         run: bash ./gradlew :app:compileDebugKotlin --no-daemon --stacktrace
       # These cases deliberately replace config files and the native singleton.
@@ -184,7 +215,12 @@ jobs:
             --tests 'xendroid.compose.ui.library.*' \
             --tests 'xendroid.compose.ui.design.ZephyrPaletteTest' \
             --tests 'xendroid.compose.ui.design.EmeraldNavigationTest' \
+            --tests 'xendroid.compose.ui.design.TextInputKeyboardTest' \
+            --tests 'xendroid.compose.core.AsyncPauseControllerTest' \
+            --tests 'xendroid.compose.core.LaunchExecutablesTest' \
+            --tests 'xendroid.compose.core.LaunchOptionsTest' \
             --tests 'xendroid.compose.ui.settings.SettingsHubRoutingTest' \
+            --tests 'xendroid.compose.settings.SettingsSchemaTest' \
             --tests 'xendroid.compose.screens.SettingsHubTest' \
             --tests 'xendroid.compose.screens.ProfilesWorkspaceTest' \
             --tests 'xendroid.compose.screens.ControlsHubTest' \
@@ -237,6 +273,16 @@ jobs:
         run: python3 tools/test-vulkan-placeholder-layout.py
       - name: Test Vulkan pipeline-cache persistence throttle
         run: python3 tools/test-vulkan-pipeline-cache-save-throttle.py
+      - name: Test pipeline-cache file integrity and buffer reuse
+        run: |
+          cache_test_dir=$(mktemp -d)
+          trap 'rm -rf "$cache_test_dir"' EXIT
+          c++ -std=c++20 -O1 -fsanitize=address,undefined \
+            -I emulator-core/src/main/cpp/xenia \
+            -I emulator-core/src/main/cpp/xenia/src \
+            emulator-core/src/test/cpp/pipeline_cache_file_test.cc \
+            -o "$cache_test_dir/cache-test"
+          "$cache_test_dir/cache-test" "$cache_test_dir/data"
       - name: Test audio pump deadline diagnostics
         run: python3 tools/test-audio-pump-diagnostics.py
       - name: Test audio timing log parser
@@ -257,6 +303,8 @@ jobs:
       # Configure the same Release CMake variant as the experimental APK, then
       # build object targets only. No assemble/package/signing/release task.
       - name: Configure Android ARM64 Release without packaging
-        run: bash ./gradlew -PxendroidReleaseDebuggable ':emulator-core:configureCMakeRelease[arm64-v8a]' --no-daemon --stacktrace
+        run: bash ./gradlew -PzephyrEdge30Ultra -PxendroidReleaseDebuggable ':emulator-core:configureCMakeRelease[arm64-v8a]' --no-daemon --stacktrace
+      - name: Verify Edge30 worker, completion and compiler target policy
+        run: python3 tools/test-edge30-policy.py --verify-android-target
       - name: Compile production CPU, GPU and JNI regression objects
         run: python3 tools/compile-native-regressions.py --jobs 2

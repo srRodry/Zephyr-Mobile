@@ -40,6 +40,18 @@ class LibraryDataTest {
         assertEquals(2, d.count(LibraryFilter.Favorites))
     }
 
+    @Test fun counts_match_visible_entries_for_every_filter_and_sort() {
+        val filters = listOf(LibraryFilter.All, LibraryFilter.Favorites, LibraryFilter.Recent,
+            LibraryFilter.Collection("Racing"), LibraryFilter.Collection("Gone")) +
+            GameFormat.entries.map { LibraryFilter.Format(it) }
+        for (sort in LibrarySort.entries) {
+            val d = data(sort)
+            for (filter in filters) assertEquals(d.shown(filter, "").size, d.count(filter))
+            val empty = d.copy(games = emptyList())
+            for (filter in filters) assertEquals(0, empty.count(filter))
+        }
+    }
+
     @Test fun search_by_name_or_title_id() {
         val d = data()
         assertEquals(listOf("Halo 3"), d.shown(LibraryFilter.All, "halo").map { it.name })

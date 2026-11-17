@@ -49,6 +49,7 @@ object SettingsSchema {
             b("Vulkan", "vulkan_resolve_to_texture_serve", "Resolve-to-texture: skip upload", true),
             // Master toggle gates cross-draw descriptor-set reuse; the edge toggle (only when
             // reuse is on) picks edge's bitmask gate vs the content-hash gate for A/B.
+            b("GPU", "texture_lookup_memo", "Memoize texture and image-view lookups", true),
             b("Vulkan", "vulkan_cache_texture_descriptors", "Cache texture descriptors", true),
             b("Vulkan", "vulkan_disjoint_memexport_barriers", "Disjoint memory-export barriers (experimental)", false),
             b("GPU", "spirv_structured_forward_jumps", "Structured shader jumps (experimental)", false),

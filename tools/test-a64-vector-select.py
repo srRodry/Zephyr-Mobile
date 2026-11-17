@@ -24,15 +24,21 @@ A64_SHIM = r'''
 #pragma once
 #include "xbyak_aarch64/xbyak_aarch64.h"
 namespace test_a64 {
+namespace hir = xe::cpu::hir;
 using xe::cpu::hir::OPCODE_SELECT;
+using xe::cpu::hir::OPCODE_TRUNCATE;
+using Xbyak_aarch64::WReg;
+using Xbyak_aarch64::XReg;
+struct I32Op : WReg { using WReg::WReg; I32Op() : WReg(0) {} const WReg& reg() const { return *this; } };
+struct I64Op : XReg { using XReg::XReg; I64Op() : XReg(0) {} const XReg& reg() const { return *this; } };
 using Xbyak_aarch64::VReg;
 struct V128Op {
   bool is_constant; uint32_t index;
   struct Register { uint32_t index; uint32_t getIdx() const { return index; } };
   Register reg() const { return {index}; }
 };
-template<xe::cpu::hir::Opcode opcode, class D, class S, class S2, class S3>
-struct I { D dest; S src1; S2 src2; S3 src3; };
+template<xe::cpu::hir::Opcode opcode, class D, class S, class S2 = S, class S3 = S>
+struct I { D dest; S src1; S2 src2; S3 src3; hir::Instr* instr = nullptr; };
 template<class Self, class Arg> struct Sequence { using EmitArgType = Arg; };
 struct A64Emitter : Xbyak_aarch64::CodeGenerator {};
 static int SrcVReg(A64Emitter&, const V128Op& op, int) {
@@ -55,7 +61,12 @@ def main(sequence_source=None):
         sequences = sequence_source if sequence_source is not None else (SRC / 'xenia/cpu/backend/a64/a64_sequences.cc').read_text()
         select_begin = sequences.index('struct SELECT_V128_V128')
         select_end = sequences.index('EMITTER_OPCODE_TABLE(OPCODE_SELECT', select_begin)
-        (root / 'a64_select_test.h').write_text(A64_SHIM + sequences[select_begin:select_end] + '\n}\n')
+        trunc_begin = sequences.index('inline bool TruncationOnlyReadAsWord')
+        trunc_end = sequences.index('struct TRUNCATE_I8_I16', trunc_begin)
+        emit_begin = sequences.index('struct TRUNCATE_I32_I64')
+        emit_end = sequences.index('EMITTER_OPCODE_TABLE(OPCODE_TRUNCATE', emit_begin)
+        (root / 'a64_select_test.h').write_text(A64_SHIM + sequences[select_begin:select_end] +
+            sequences[trunc_begin:trunc_end] + sequences[emit_begin:emit_end] + '\n}\n')
         flags = ['-std=c++20', '-O1', '-ffunction-sections', '-fdata-sections',
                  '-DFMT_HEADER_ONLY', '-msse4.1', '-mfma', '-Wno-attributes']
         if 'clang' not in Path(cxx).name:

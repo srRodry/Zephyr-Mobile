@@ -32,6 +32,7 @@
 #include "xenia/ui/vulkan/vulkan_mem_alloc.h"
 #include "xenia/ui/vulkan/vulkan_util.h"
 
+DECLARE_bool(texture_lookup_memo);
 DECLARE_bool(texture_partial_reload);
 DECLARE_bool(tiled_shared_memory);
 DECLARE_bool(vulkan_resolve_draw_barriers_at_resolve);
@@ -3429,6 +3430,15 @@ VulkanTextureCache::VulkanTexture::~VulkanTexture() {
 VkImageView VulkanTextureCache::VulkanTexture::GetView(bool is_signed,
                                                        uint32_t host_swizzle,
                                                        bool is_array) {
+  // The arguments as passed (the view only depends on them for a texture).
+  const uint32_t view_arguments = uint32_t(is_signed) | (host_swizzle << 1) |
+                                  (uint32_t(is_array) << 31);
+  const bool use_view_memo = cvars::texture_lookup_memo;
+  if (use_view_memo && last_view_ != VK_NULL_HANDLE &&
+      last_view_arguments_ == view_arguments) {
+    return last_view_;
+  }
+
   xenos::DataDimension dimension = key().dimension;
   if (dimension == xenos::DataDimension::k3D ||
       dimension == xenos::DataDimension::kCube) {
@@ -3470,6 +3480,10 @@ VkImageView VulkanTextureCache::VulkanTexture::GetView(bool is_signed,
   // Try to find an existing view.
   auto it = views_.find(view_key);
   if (it != views_.end()) {
+    if (use_view_memo) {
+      last_view_ = it->second;
+      last_view_arguments_ = view_arguments;
+    }
     return it->second;
   }
 
@@ -3514,6 +3528,10 @@ VkImageView VulkanTextureCache::VulkanTexture::GetView(bool is_signed,
     return VK_NULL_HANDLE;
   }
   views_.emplace(view_key, view);
+  if (use_view_memo) {
+    last_view_ = view;
+    last_view_arguments_ = view_arguments;
+  }
   return view;
 }
 

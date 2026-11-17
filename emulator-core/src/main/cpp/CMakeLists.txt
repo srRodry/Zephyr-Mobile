@@ -10,7 +10,19 @@ set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_POSITION_INDEPENDENT_CODE ON)
 
 # Global compile options applied to every target in this build.
-add_compile_options(-march=armv8-a)
+option(ZEPHYR_EDGE30_ULTRA "Dedicated Snapdragon SM8475 / Adreno 730 beta" OFF)
+if(ZEPHYR_EDGE30_ULTRA)
+    if(NOT ANDROID OR NOT ANDROID_ABI STREQUAL "arm64-v8a")
+        message(FATAL_ERROR "Edge 30 Ultra build requires Android arm64-v8a")
+    endif()
+    # Qualcomm's shipping ISA, not the full optional Armv9/SVE feature set.
+    # All X2/A710/A510 cores may execute this code; tuning never pins a thread.
+    add_compile_options(-march=armv8.2-a+fp16+dotprod+lse -mtune=cortex-x2 -mno-outline-atomics)
+    add_compile_definitions(ZEPHYR_EDGE30_ULTRA=1)
+    message(STATUS "Zephyr target: Edge 30 Ultra SM8475; X2 tuning, inline LSE, no SVE")
+else()
+    add_compile_options(-march=armv8-a)
+endif()
 add_compile_options(-stdlib=libc++)
 add_compile_options(-fno-omit-frame-pointer)
 add_compile_options(-funwind-tables)

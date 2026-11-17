@@ -48,7 +48,17 @@ data class LibraryData(
         }
     }
 
-    fun count(filter: LibraryFilter): Int = shown(filter, "").size
+    /** Counts need no sorted copy of the library (chips are recomposed frequently). */
+    fun count(filter: LibraryFilter): Int = when (filter) {
+        LibraryFilter.All -> games.size
+        LibraryFilter.Favorites -> games.count { favorite(it) }
+        LibraryFilter.Recent -> games.count { played(it) != null }
+        is LibraryFilter.Format -> games.count { it.format == filter.format }
+        is LibraryFilter.Collection -> {
+            val members = collections.firstOrNull { it.name == filter.name }?.members?.toHashSet()
+            if (members == null) 0 else games.count { it.identityKey in members }
+        }
+    }
 
     fun sorted(list: List<Game>, sort: LibrarySort): List<Game> = when (sort) {
         LibrarySort.NAME_ASC -> list.sortedBy { it.name.lowercase() }

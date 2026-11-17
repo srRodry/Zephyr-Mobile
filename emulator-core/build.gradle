@@ -24,6 +24,9 @@ android {
         externalNativeBuild {
             cmake {
                 abiFilters 'arm64-v8a'
+                if (project.hasProperty('zephyrEdge30Ultra')) {
+                    arguments '-DZEPHYR_EDGE30_ULTRA=ON'
+                }
                 // Optimize host code in all variants; -g kept for simpleperf;
                 // -fno-strict-aliasing for the raw-memory-reinterpretation code.
                 // HWASan build: XENDROID_HWASAN=true. Tags every heap

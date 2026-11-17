@@ -38,18 +38,24 @@ class PresenterPerformanceHints(context: Context) : AutoCloseable {
         private var session: PerformanceHintManager.Session? = null
         private var tid = 0
         private var sequence = -1L
+        private var targetNs = 0L
         fun report(work: LongArray, target: Long): String {
             if (work.size != 3 || work[0] <= 0) return "Presenter ADPF · waiting for native thread"
             val nextTid = work[0].toInt()
+            val nextTarget = target.coerceAtLeast(1)
             if (nextTid != tid || session == null) {
-                close(); session = manager?.createHintSession(intArrayOf(nextTid), target.coerceAtLeast(1))
+                close(); session = manager?.createHintSession(intArrayOf(nextTid), nextTarget)
                 tid = nextTid
+                targetNs = nextTarget
             }
             val active = session ?: return "Presenter ADPF · unavailable"
-            active.updateTargetWorkDuration(target.coerceAtLeast(1))
+            if (targetNs != nextTarget) {
+                active.updateTargetWorkDuration(nextTarget)
+                targetNs = nextTarget
+            }
             if (work[2] != sequence && work[1] > 0) { active.reportActualWorkDuration(work[1]); sequence = work[2] }
             return "Presenter ADPF · active (native presentation only)"
         }
-        override fun close() { session?.close(); session = null; tid = 0; sequence = -1 }
+        override fun close() { session?.close(); session = null; tid = 0; sequence = -1; targetNs = 0 }
     }
 }

@@ -7,7 +7,7 @@ package xendroid.compose.updater
 data class ReleaseTag(val versionCode: Int?, val commit: String)
 
 fun parseReleaseTag(tag: String): ReleaseTag? {
-    val body = tag.trim().removePrefix("XenDroid-")
+    val body = tag.trim().removePrefix("Zephyr-Research-").removePrefix("XenDroid-")
     Regex("v([0-9]{1,9})-([0-9a-fA-F]{7,40})").matchEntire(body)?.let {
         return ReleaseTag(it.groupValues[1].toInt(), it.groupValues[2].lowercase())
     }
@@ -25,4 +25,11 @@ fun isUpdateFor(release: ReleaseTag, installedVersionCode: Int, installedCommit:
     val remote = release.versionCode ?: return false
     if (installedVersionCode <= 1) return false   // local build without CI numbering
     return remote > installedVersionCode && !installedCommit.startsWith(release.commit)
+}
+
+/** Keep Research APKs separate from the legacy regular-package feed. */
+fun releaseMatchesPackage(tag: String, applicationId: String): Boolean = when (applicationId) {
+    "xendroid.compose.zephyr.research" -> tag.startsWith("Zephyr-Research-v")
+    "xendroid.compose.fork" -> tag.startsWith("XenDroid-v")
+    else -> false
 }

@@ -31,6 +31,7 @@
 #include "xenia/base/frame_stats.h"
 #include "xenia/base/logging.h"
 #include "xenia/base/math.h"
+#include "xenia/base/zephyr_edge30_policy.h"
 #include "xenia/base/memory.h"
 #include "xenia/base/profiling.h"
 #include "xenia/base/xxhash.h"
@@ -75,6 +76,7 @@ DECLARE_bool(vulkan_texture_load_levels_to_image);
 DECLARE_int32(vulkan_skip_gpu_written_texture_loads);
 DECLARE_bool(readback_resolve_uma_read_watch);
 DECLARE_int32(readback_resolve_uma_read_watch_min_kb);
+DECLARE_bool(texture_lookup_memo);
 DECLARE_bool(texture_partial_reload);
 DECLARE_bool(texture_integer_num_format);
 DECLARE_bool(vulkan_direct_host_resolve);
@@ -496,6 +498,8 @@ void PollDebugPropertyOverrides(CommandProcessor& command_processor) {
   PollDebugPropertyOverride("debug.xendroid.partial_reload",
                             "texture_partial_reload",
                             cvars::texture_partial_reload);
+  PollDebugPropertyOverride("debug.xendroid.lookup_memo", "texture_lookup_memo",
+                            cvars::texture_lookup_memo);
   PollDebugPropertyOverride("debug.xendroid.texload_levels",
                             "vulkan_texture_load_levels_to_image",
                             cvars::vulkan_texture_load_levels_to_image);
@@ -2188,7 +2192,8 @@ bool VulkanCommandProcessor::SetupContext() {
   }
   // Per-resolve GPU timestamps, ring-buffered per submission; only meaningful
   // alongside the per-submission pair above.
-  if (frame_timestamp_mapping_ && cvars::log_gpu_frame_time_breakdown_passes) {
+  if (frame_timestamp_mapping_ && xe::edge30::DetailedGpuTiming(
+          cvars::log_gpu_frame_time_breakdown_passes)) {
     VkQueryPoolCreateInfo resolve_ts_pool_info = {
         VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO};
     resolve_ts_pool_info.queryType = VK_QUERY_TYPE_TIMESTAMP;
@@ -2218,7 +2223,8 @@ bool VulkanCommandProcessor::SetupContext() {
     }
   }
   // Per-render-pass timestamps, bucketed by framebuffer extent.
-  if (frame_timestamp_mapping_ && cvars::log_gpu_frame_time_breakdown_passes) {
+  if (frame_timestamp_mapping_ && xe::edge30::DetailedGpuTiming(
+          cvars::log_gpu_frame_time_breakdown_passes)) {
     VkQueryPoolCreateInfo pass_ts_pool_info = {
         VK_STRUCTURE_TYPE_QUERY_POOL_CREATE_INFO};
     pass_ts_pool_info.queryType = VK_QUERY_TYPE_TIMESTAMP;

@@ -174,7 +174,7 @@ private fun ConsoleCoverflow(
 ) {
     if (games.isEmpty()) return
     val c = Xd.colors
-    val identities = games.map { it.stableId }
+    val identities = remember(games) { games.map { it.stableId } }
     val index = games.indexOfFirst { it.stableId == game.stableId }.coerceAtLeast(0)
     var position by remember(identities) { mutableFloatStateOf(index.toFloat()) }
     var moving by remember(identities) { mutableStateOf(false) }
@@ -274,8 +274,10 @@ private fun ConsoleCoverflow(
             val scale = (1f - depth * .20f).coerceAtLeast(.48f)
             val primary = accessible[titleIndex] == slot
             Box(Modifier.offset(x = coverWidth * (relative * .73f), y = (-8 + depth * 15).dp)
-                .width(coverWidth * scale).zIndex(4f - depth)
+                .width(coverWidth).zIndex(4f - depth)
                 .graphicsLayer {
+                    scaleX = scale
+                    scaleY = scale
                     rotationY = (-relative * 23f).coerceIn(-48f, 48f)
                     alpha = ((3f - depth) / .6f).coerceIn(0f, 1f)
                     cameraDistance = 16f * density
@@ -285,7 +287,7 @@ private fun ConsoleCoverflow(
                 .clickable(role = Role.Button) { travel(nearestCoverPosition(position, titleIndex, games.size)) }) {
                 // A dim floor reflection is part of the stage, not another game or touch target.
                 LibraryArtwork(title, artOf(title), Modifier.fillMaxWidth()
-                    .graphicsLayer { scaleY = -1f; translationY = coverHeight.toPx() * scale * .97f; alpha = .075f })
+                    .graphicsLayer { scaleY = -1f; translationY = coverHeight.toPx() * .97f; alpha = .075f })
                 Box(Modifier.shadow(if (slot == center) 18.dp else 5.dp, RoundedCornerShape(5.dp),
                     ambientColor = c.acc, spotColor = c.acc)
                     .border(if (slot == center) 1.5.dp else .7.dp,
@@ -339,7 +341,7 @@ private fun ConsoleIdentity(
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             ConsolePlay(onPlay, !preparing, Modifier.weight(1f))
-            if (!landscape) XdIconButton(if (data.favorite(game)) XdIcons.starFilled else XdIcons.star,
+            XdIconButton(if (data.favorite(game)) XdIcons.starFilled else XdIcons.star,
                 stringResource(R.string.lib_favorites), onFavorite, on = data.favorite(game))
         }
         XdButton(stringResource(R.string.xd_lib_sheet), onOpen,

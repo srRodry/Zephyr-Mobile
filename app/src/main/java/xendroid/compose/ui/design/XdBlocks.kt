@@ -84,7 +84,7 @@ fun XdCard(
 fun XdCardHeader(title: String, icon: ImageVector? = null, trailing: String? = null) {
     val c = Xd.colors
     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-        if (icon != null) Icon(icon, null, Modifier.size(15.dp), tint = c.fg3)
+        if (icon != null) Icon(icon, null, Modifier.size(15.dp), tint = c.chrome)
         Text(title.uppercase(), style = XdText.cardHead, color = c.fg3, maxLines = 1, overflow = TextOverflow.Ellipsis,
             modifier = Modifier.weight(1f, fill = trailing != null))
         if (trailing != null) Text(trailing, style = XdText.small.copy(fontSize = 12.sp), color = c.fg2, maxLines = 1)

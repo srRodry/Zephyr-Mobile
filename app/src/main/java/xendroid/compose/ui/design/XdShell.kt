@@ -167,7 +167,7 @@ fun BTopBar(
                     verticalAlignment = Alignment.CenterVertically, content = actions)
             }
         }
-        HorizontalDivider(thickness = 1.dp, color = c.line)
+        ZephyrChromeDivider()
     }
 }
 
@@ -327,7 +327,7 @@ fun XdSectionedScreen(
                         horizontalArrangement = Arrangement.spacedBy(4.dp)) {
                         for (s in sections) SecNavItem(s, s.id == current?.id, history::pick, compact = true)
                     }
-                    HorizontalDivider(thickness = 1.dp, color = c.line)
+                    ZephyrChromeDivider()
                     SectionBody(current, Modifier.weight(1f)) { BackToLink(history, sections) }
                 }
             }

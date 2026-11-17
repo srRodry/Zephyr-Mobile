@@ -221,7 +221,8 @@ internal fun LibraryShowcase(
                     }.combinedClickable(role = Role.Button, onClick = { onSelect(game) }, onLongClick = { onOpen(game) })
                     .semantics { contentDescription = game.name; this.selected = picked }.padding(4.dp),
                     horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(6.dp)) {
-                    LibraryArtwork(game, artOf(game), Modifier.width(tileWidth - if (picked) 8.dp else 20.dp), data.favorite(game))
+                    // Selection animates in graphicsLayer; keep decode/layout bounds stable.
+                    LibraryArtwork(game, artOf(game), Modifier.width(tileWidth - 8.dp), data.favorite(game))
                     Text(game.name, color = c.fg, style = XdText.labelSm.copy(fontWeight = if (picked) FontWeight.Bold else FontWeight.Medium),
                         maxLines = 2, overflow = TextOverflow.Ellipsis)
                 }

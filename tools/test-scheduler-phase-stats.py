@@ -10,6 +10,10 @@ import tempfile
 root = Path(__file__).resolve().parents[1]
 base = root / 'emulator-core/src/main/cpp/xenia/src'
 source = (base / 'xenia/kernel/guest_scheduler.cc').read_text()
+# Strip only the diagnostic predicate, never scheduler synchronization.
+source = source.replace('&& CollectSchedulerStats()', '&& cvars::guest_scheduler_stats')
+source = source.replace('if (!CollectSchedulerStats())', 'if (!cvars::guest_scheduler_stats)')
+source = source.replace('if (CollectSchedulerStats()) {\n      stats_.idle_wakes.fetch_add(1, std::memory_order_relaxed);\n    }', 'stats_.idle_wakes.fetch_add(1, std::memory_order_relaxed);')
 body = source.split('void GuestScheduler::RunLoop(', 1)[1].split('void GuestScheduler::NoteForcedPreempt', 1)[0]
 pattern = r'cpu0_phase_stats_\.Measure\(\s*cpu_index == 0 && cvars::guest_scheduler_stats,\s*SchedulerPhaseStats::Kind::(\w+),\s*\[&\]\(\) \{(.*?)\}\);'
 matches = re.findall(pattern, body, re.S)

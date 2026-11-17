@@ -74,7 +74,7 @@ fun BTopAreaBar(current: XdArea?, modifier: Modifier = Modifier) {
                 BladeTab(group, current, if (enlargedText) Modifier.width(132.dp) else Modifier.weight(1f))
             }
         }
-        HorizontalDivider(color = c.line)
+        ZephyrChromeDivider()
     }
 }
 
@@ -86,7 +86,7 @@ fun ZephyrBladeRail(current: XdArea?, modifier: Modifier = Modifier) {
         .windowInsetsPadding(WindowInsets.safeDrawing.part(top = true, bottom = true, start = true))) {
         Column(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             ZephyrOrbitMark(48.dp)
-            Text("ZEPHYR", style = XdText.eyebrow, color = c.fg, modifier = Modifier.padding(top = 6.dp))
+            Text("ZEPHYR", style = XdText.eyebrow, color = c.chrome, modifier = Modifier.padding(top = 6.dp))
         }
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
             .padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -101,7 +101,7 @@ private fun BladeIdentity(modifier: Modifier) {
     Row(modifier.padding(horizontal = 14.dp, vertical = 8.dp), verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         ZephyrOrbitMark(42.dp)
-        Text(stringResource(R.string.app_name), Modifier.weight(1f), color = Xd.colors.fg,
+        Text(stringResource(R.string.app_name), Modifier.weight(1f), color = Xd.colors.chrome,
             style = XdText.h1.copy(fontSize = 21.sp, lineHeight = 25.sp), maxLines = 1, overflow = TextOverflow.Ellipsis)
         BladeProfile(Modifier.widthIn(max = 150.dp))
     }
@@ -114,7 +114,7 @@ private fun BladeProfile(modifier: Modifier) {
     Row(modifier.heightIn(min = 48.dp).focusRing(shape).clip(shape)
         .clickable(role = Role.Button) { nav.area(XdArea.PROFILES) }.padding(horizontal = 8.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-        Icon(XdIcons.user, stringResource(R.string.xd_area_profiles), Modifier.size(18.dp), tint = Xd.colors.fg2)
+        Icon(XdIcons.user, stringResource(R.string.xd_area_profiles), Modifier.size(18.dp), tint = Xd.colors.chrome)
         Text(nav.gamertag ?: stringResource(R.string.xd_guide_no_profile), color = Xd.colors.fg2,
             style = XdText.small, maxLines = 2, overflow = TextOverflow.Ellipsis)
     }
@@ -152,7 +152,7 @@ private fun BladeTab(group: BladeGroup, current: XdArea?, modifier: Modifier, sh
                         BladeGroup.CONTENT -> XdIcons.layers
                         BladeGroup.PROFILES -> XdIcons.user
                         BladeGroup.SYSTEM -> XdIcons.gear
-                    }, null, Modifier.size(18.dp), tint = c.fg)
+                    }, null, Modifier.size(18.dp), tint = c.chrome)
                     Spacer(Modifier.width(7.dp))
                 }
                 Text(label, Modifier.weight(1f), color = if (picked) c.onAction else c.fg2,
@@ -164,7 +164,7 @@ private fun BladeTab(group: BladeGroup, current: XdArea?, modifier: Modifier, sh
                 }
             }
             // A geometric selection mark accompanies color; the complete shape is the touch target.
-            if (picked) Box(Modifier.padding(top = 5.dp).width(26.dp).height(2.dp).background(c.acc))
+            if (picked) Box(Modifier.padding(top = 5.dp).width(26.dp).height(2.dp).background(Brush.horizontalGradient(listOf(c.chrome, c.acc))))
         }
         DropdownMenu(expanded, onDismissRequest = { expanded = false }, modifier = Modifier.background(c.s1)) {
             val areas = when (group) {
@@ -181,7 +181,7 @@ private fun BladeTab(group: BladeGroup, current: XdArea?, modifier: Modifier, sh
                 )
             }
             if (group == BladeGroup.SYSTEM) {
-                HorizontalDivider(color = c.line)
+                ZephyrChromeDivider()
                 listOf(
                     Triple(XdShortcut.DIAGNOSTICS, R.string.xd_guide_diagnostics, XdIcons.bug),
                     Triple(XdShortcut.COMPARE, R.string.xd_guide_compare, XdIcons.ab),
