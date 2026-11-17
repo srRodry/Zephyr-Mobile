@@ -54,7 +54,7 @@ Primeiro repetir Forza Horizon 1 (`4D5309C9`) e Forza Horizon 2 (`4D530AA4`), co
 
 1. Executar pelo menos três sessões de referência e três do candidato em ordem intercalada (ABBA/BAAB quando viável), 5 min de gameplay comparável após aquecimento, com outra execução sustentada de 20–30 min para estabilidade térmica.
 2. Coletar FPS **guest**, frame time p50/p95/p99, timestamp da GPU por submissão (se suportado), custo da thread de comandos, fases do Guest CPU 0 e frequência/estado térmico; distinguir tempos por submissão de tempos por quadro.
-3. Só para diagnóstico: `GPU|log_gpu_frame_time_breakdown=true` e `GPU|log_gpu_frame_time_breakdown_passes=false`, comparando a sobrecarga da instrumentação; passar para timestamps detalhados por pass em sessão curta e separada. A instrumentação detalhada distorce desempenho em Turnip.
+3. Só para diagnóstico: `GPU|log_gpu_frame_time_breakdown=true` e `GPU|log_gpu_frame_time_breakdown_passes=false`, comparando a sobrecarga da instrumentação; não tentar timestamps detalhados por pass nessa build dedicada: a política Edge 30 os bloqueia para evitar distorção grave no Turnip; uma build diagnóstica diferente exigiria validação independente.
 4. Testar diferentes drivers Turnip **apenas** com compatibilidade verificada e isolamento de variáveis; comparar três drivers no futuro não substitui a linha de base inicial.
 5. Rodar `python3 tools/vulkan_diagnostics.py xe.log --last 30` e `python3 tools/compare-benchmarks.py --reference ... --candidate ...` com metadados válidos; inspecionar visualmente (sombras, transparência, depth, texturas, travas).
 6. **Não atribuir ganho** a esta correção do script, pois ela não altera o runtime nem foi medida no aparelho.
@@ -77,9 +77,10 @@ A inspeção adicional revelou que a política `xe::edge30::SchedulerStats` devo
 
 A correção preserva o perfil de desempenho padrão e destrava somente o diagnóstico solicitado:
 
-- `guest_scheduler_stats` passa a ter **default false no build dedicado** (na variante genérica mantém true), igual ao comportamento efetivo anterior do dedicado;
-- `xe::edge30::SchedulerStats(requested)` passa a respeitar o valor solicitado. Um `[Kernel] guest_scheduler_stats=true` explícito, aplicado e confirmado nos logs, habilita as estatísticas sem reconstruir outro APK;
+- `guest_scheduler_stats` **mantém o default legado true**, sem invalidar arquivos de configuração já existentes. Na variante dedicada, esse valor por si só permanece inefetivo;
+- o novo `zephyr_edge30_scheduler_diagnostics=false` (categoria `[Kernel]`) exige autorização **adicional** na versão dedicada, impedindo que um arquivo antigo com `guest_scheduler_stats=true` ative instrumentação inesperadamente;
+- para coletar no Edge, configurar **ambos** `[Kernel] guest_scheduler_stats=true` e `[Kernel] zephyr_edge30_scheduler_diagnostics=true`, reiniciar e confirmar os logs; a variante genérica continua respeitando `guest_scheduler_stats` sem depender da segunda opção;
 - o teste `tools/test-edge30-policy.py` executa produção do `IoWorkerLoop` e `CollectSchedulerStats` nos modos Edge e genérico, com o coletor ligado/desligado, verificando clocks, contagens, wakeups e conclusão I/O;
 - `xe::edge30::DetailedGpuTiming` **permanece false** no dedicado: os timestamps detalhados por passe/resolve continuam desativados para evitar esperas BOTTOM_OF_PIPE excessivas no Turnip. O diagnóstico `light-timing` usa apenas os timestamps por submissão e estatísticas CPU do comando gráfico.
 
-**Limite:** a coleta com `guest_scheduler_stats=true` tem custo e requer teste A/B contra a mesma build com a coleta desligada; não confundir os dois braços com uma comparação de desempenho. Os testes de host não demonstram FPS nem segurança térmica no aparelho. Nenhuma modificação foi feita em afinidade, deadlines, preempção, timers ou número de workers.
+**Limite:** a coleta com as duas flags ligadas no Edge tem custo e requer teste A/B contra a mesma build com a coleta desligada; não confundir os dois braços com uma comparação de desempenho. Os testes de host não demonstram FPS nem segurança térmica no aparelho. Nenhuma modificação foi feita em afinidade, deadlines, preempção, timers ou número de workers.
