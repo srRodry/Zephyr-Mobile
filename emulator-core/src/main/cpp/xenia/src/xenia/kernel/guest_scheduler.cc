@@ -46,21 +46,20 @@ DEFINE_bool(
     "requires a title restart and may increase heat.",
     "Kernel");
 
-// The Edge 30 dedicated build avoids telemetry overhead in normal gameplay,
-// but allows an explicit [Kernel] guest_scheduler_stats=true diagnostic run.
-#if ZEPHYR_EDGE30_ULTRA
-#define XE_GUEST_SCHEDULER_STATS_DEFAULT false
-#else
-#define XE_GUEST_SCHEDULER_STATS_DEFAULT true
-#endif
 DEFINE_bool(
-    guest_scheduler_stats, XE_GUEST_SCHEDULER_STATS_DEFAULT,
+    guest_scheduler_stats, true,
     "Log guest scheduler counters once a second: blocked-waiter re-poll rate, "
     "fiber switches, forced preemptions, and how long offloaded blocking calls "
-    "queue behind the single I/O worker. Disabled by default in dedicated "
-    "Edge 30 Ultra builds; enable only for diagnostic captures.",
+    "queue behind the single I/O worker.",
     "Kernel");
-#undef XE_GUEST_SCHEDULER_STATS_DEFAULT
+DEFINE_bool(
+    zephyr_edge30_scheduler_diagnostics, false,
+    "Explicitly enable guest scheduler instrumentation in a dedicated Edge 30 "
+    "Ultra build, together with guest_scheduler_stats=true. This opt-in is "
+    "separate because existing configs may contain guest_scheduler_stats=true "
+    "even though the dedicated build previously suppressed all counters. "
+    "Leave false for normal gameplay.",
+    "Kernel");
 DEFINE_uint32(
     guest_scheduler_dispatch_cpus, 6,
     "Dispatch threads the cooperative scheduler runs guest threads on, 1-6: "
@@ -82,7 +81,9 @@ namespace xe {
 namespace kernel {
 
 static bool CollectSchedulerStats() {
-  return xe::edge30::SchedulerStats(cvars::guest_scheduler_stats);
+  return xe::edge30::SchedulerStats(
+      cvars::guest_scheduler_stats,
+      cvars::zephyr_edge30_scheduler_diagnostics);
 }
 
 #if XE_PLATFORM_ANDROID || XE_PLATFORM_xendroid
