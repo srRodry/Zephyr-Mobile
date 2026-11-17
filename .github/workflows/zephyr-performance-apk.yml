@@ -64,7 +64,7 @@ jobs:
     - name: Build settings
       id: cfg
       env:
-        RESEARCH_ARM: ${{ github.ref_name == 'research/optimization-round3' && 'beta11-tdc' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
+        RESEARCH_ARM: ${{ github.ref_name == 'research/optimization-round3' && 'beta12-dll' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
         sha=$(git rev-parse --short=8 HEAD)
@@ -158,6 +158,7 @@ jobs:
         python3 tools/test-round3-cache.py
         python3 tools/test-vulkan-cache-work.py
         python3 tools/test-xex-launch-module.py
+        python3 tools/test-dll-notifications.py
 
     - name: Validate Vulkan cache file reads
       run: |
@@ -323,6 +324,9 @@ jobs:
             'rendering_validated_on_device': False,
             'tdc_kernel_recovery': 'experimental; launch Default.xex',
             'dll_bootstrap_guard': True,
+            'dll_lifecycle_hmodule': True,
+            'dll_notifications_title_threads_only': True,
+            'android_fatal_modal_dialog': False,
             'rendering_fix': 'track CPU uploads in page refresh dirty chunks',
             'title_defaults': {'454107F8': {'GPU|clear_memory_page_state': True}},
         }
@@ -360,11 +364,11 @@ jobs:
           fs.writeFileSync(checksums, digest + '  ' + apk + '\n');
           const body = [
             '<!-- update-summary:pt-BR',
-            '- Corrige crash ao tentar anexar uma DLL sem thread Xbox ativa; use Default.xex como entrada.',
-            '- TDC: valida e recupera objetos de sincronização com handles obsoletos.',
-            '- TDC: conclui imediatamente a seleção automática de armazenamento quando há um único dispositivo.',
-            '- Diagnósticos: a sessão mais recente aparece mesmo quando falha antes de gerar FPS.',
-            '- Compatibilidade do TDC ainda depende de validação no aparelho.',
+            '- DLLs: DllMain recebe o HMODULE correto nas quatro notificações de ciclo de vida.',
+            '- DLLs: apenas threads do processo do jogo enviam notificações; threads de sistema e host são excluídas.',
+            '- Android: erros fatais deixam de aguardar uma caixa de diálogo nativa invisível durante a abertura.',
+            '- TDC: iniciar pelo Default.xex. Compatibilidade e avanço além do Loading ainda dependem de teste no aparelho.',
+            '- Escalonador e opções gráficas experimentais preservados nesta versão.',
             '-->',
             'Beta experimental; desempenho ainda não validado no aparelho.',
             'Pacote: xendroid.compose.zephyr.research',
@@ -383,7 +387,7 @@ jobs:
             if (error.status !== 404) throw error;
             release = (await github.rest.repos.createRelease({
               ...context.repo, tag_name: tag, target_commitish: context.sha,
-              name: 'Zephyr Anel beta 11 — build ' + context.runNumber,
+              name: 'Zephyr Anel beta 12 — build ' + context.runNumber,
               body, draft: true, prerelease: true
             })).data;
           }
