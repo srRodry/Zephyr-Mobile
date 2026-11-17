@@ -70,3 +70,16 @@ Primeiro repetir Forza Horizon 1 (`4D5309C9`) e Forza Horizon 2 (`4D530AA4`), co
 | Regressão entre builds | Capturas comparáveis, hashes/config efetiva, pelo menos 3 por braço | Reverter o commit causal ou manter o recurso atrás de flag |
 
 **Fora de escopo neste incremento:** recompilação estática por jogo, portar código GPL incompatível sem revisão de licença, trocar arquitetura do scheduler, alterar APU, ativar skip draws ou mudar flags de precisão. Não foi produzida nem publicada uma nova beta nesta etapa.
+
+## 6. Acesso real à instrumentação no build dedicado Edge 30 Ultra
+
+A inspeção adicional revelou que a política `xe::edge30::SchedulerStats` devolvia **false sempre que `ZEPHYR_EDGE30_ULTRA=1`**. Portanto, nessa variante, nem mesmo um override `[Kernel] guest_scheduler_stats=true` habilitava os contadores ou a medição de fases do Guest CPU 0.
+
+A correção preserva o perfil de desempenho padrão e destrava somente o diagnóstico solicitado:
+
+- `guest_scheduler_stats` passa a ter **default false no build dedicado** (na variante genérica mantém true), igual ao comportamento efetivo anterior do dedicado;
+- `xe::edge30::SchedulerStats(requested)` passa a respeitar o valor solicitado. Um `[Kernel] guest_scheduler_stats=true` explícito, aplicado e confirmado nos logs, habilita as estatísticas sem reconstruir outro APK;
+- o teste `tools/test-edge30-policy.py` executa produção do `IoWorkerLoop` e `CollectSchedulerStats` nos modos Edge e genérico, com o coletor ligado/desligado, verificando clocks, contagens, wakeups e conclusão I/O;
+- `xe::edge30::DetailedGpuTiming` **permanece false** no dedicado: os timestamps detalhados por passe/resolve continuam desativados para evitar esperas BOTTOM_OF_PIPE excessivas no Turnip. O diagnóstico `light-timing` usa apenas os timestamps por submissão e estatísticas CPU do comando gráfico.
+
+**Limite:** a coleta com `guest_scheduler_stats=true` tem custo e requer teste A/B contra a mesma build com a coleta desligada; não confundir os dois braços com uma comparação de desempenho. Os testes de host não demonstram FPS nem segurança térmica no aparelho. Nenhuma modificação foi feita em afinidade, deadlines, preempção, timers ou número de workers.
