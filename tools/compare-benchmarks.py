@@ -53,7 +53,8 @@ def read_capture(directory):
     return {"directory": str(directory), "context": context, "summary": summary}
 
 
-def compare(reference, candidate, *, allow_config_change=False):
+def compare(reference, candidate, *, allow_config_change=False,
+            allow_instrumentation_change=False):
     if len(reference) < 3 or len(candidate) < 3:
         raise ValueError("At least three independent captures per arm are required")
     paths = [Path(r["directory"]).resolve() for r in reference + candidate]
@@ -62,16 +63,25 @@ def compare(reference, candidate, *, allow_config_change=False):
     first = reference[0]
     for run in reference + candidate:
         for key in CONTEXT_FIELDS:
-            if allow_config_change and key == "config_sha256":
+            if (allow_config_change and key == "config_sha256") or (
+                    allow_instrumentation_change and key == "instrumentation"):
                 continue
             if run["context"][key] != first["context"][key]:
                 raise ValueError(f"Incomparable context: {key} differs in {run['directory']}")
         if run["summary"]["package"] != first["summary"]["package"]:
             raise ValueError("Incomparable captures: package differs")
     for arm in (reference, candidate):
-        for key in ("commit", "apk_sha256", "config_sha256"):
+        for key in ("commit", "apk_sha256", "config_sha256", "instrumentation"):
             if len({r["context"][key] for r in arm}) != 1:
                 raise ValueError(f"Mixed {key} values within one arm")
+    # The diagnostic observer must not be compared across different binaries:
+    # a difference in FPS would be unidentifiable (code vs instrumentation).
+    if allow_instrumentation_change:
+        if reference[0]["context"]["instrumentation"] == candidate[0]["context"]["instrumentation"]:
+            raise ValueError("Instrumentation override requires two distinct instrumentation modes")
+        for key in ("commit", "apk_sha256"):
+            if reference[0]["context"][key] != candidate[0]["context"][key]:
+                raise ValueError(f"Instrumentation overhead study requires the same {key} in both arms")
     durations = [r["summary"]["measurement_elapsed_s"] for r in reference + candidate]
     if max(durations) / min(durations) > 1.1:
         raise ValueError("Capture durations differ by more than 10%")
@@ -89,6 +99,9 @@ def compare(reference, candidate, *, allow_config_change=False):
     return {
         "schema_version": 1,
         "config_change_allowed": allow_config_change,
+        "instrumentation_change_allowed": allow_instrumentation_change,
+        "reference_instrumentation": reference[0]["context"]["instrumentation"],
+        "candidate_instrumentation": candidate[0]["context"]["instrumentation"],
         "config_changed": reference[0]["context"]["config_sha256"] != candidate[0]["context"]["config_sha256"],
         "reference_runs": len(reference),
         "candidate_runs": len(candidate), "metrics": rows,
@@ -100,6 +113,8 @@ def compare(reference, candidate, *, allow_config_change=False):
             "Medians of run percentiles are not pooled frame percentiles.",
             "Context is operator supplied; inspect thermal logs and screenshots manually.",
             "This descriptive comparison does not establish statistical significance or visual correctness.",
+            "Instrumentation overhead is not a game-speed improvement; check that all other settings match.",
+            "If configuration hashes differ, manual inspection must verify that only intended CVARs changed.",
         ],
     }
 
@@ -111,11 +126,14 @@ def main():
     parser.add_argument("--output", type=Path, help="New JSON report; existing files are preserved")
     parser.add_argument("--allow-config-change", action="store_true",
                         help="Explicit configuration experiment; other context must still match")
+    parser.add_argument("--allow-instrumentation-change", action="store_true",
+                        help="Explicit telemetry-overhead A/B; requires identical commit and APK across arms")
     args = parser.parse_args()
     try:
         result = compare([read_capture(p) for p in args.reference],
                          [read_capture(p) for p in args.candidate],
-                         allow_config_change=args.allow_config_change)
+                         allow_config_change=args.allow_config_change,
+                         allow_instrumentation_change=args.allow_instrumentation_change)
         rendered = json.dumps(result, indent=2, allow_nan=False) + "\n"
         if args.output:
             with args.output.open("x", encoding="utf-8") as stream:
