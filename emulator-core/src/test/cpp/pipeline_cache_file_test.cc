@@ -109,6 +109,23 @@ int main(int argc, char** argv) {
     CHECK(pcf::Load(main, a).status == pcf::LoadStatus::kCorrupt);
   }
 
+  // Boundary payloads, truncated headers and a nonuniform large payload.
+  {
+    for (size_t size = 0; size < pcf::kEnvelopeSize; ++size) {
+      WriteAll(main, std::vector<uint8_t>(size, 0));
+      CHECK(pcf::Load(main, a).status == pcf::LoadStatus::kCorrupt);
+    }
+    for (size_t extra : {size_t(0), size_t(1), size_t(1024 * 1024)}) {
+      auto blob = MakeBlob(a, 0, extra);
+      for (size_t i = pcf::kVulkanHeaderSize; i < blob.size(); ++i)
+        blob[i] = uint8_t(i * 37);
+      CHECK(pcf::WriteAtomically(main, blob.data(), blob.size()));
+      CHECK(pcf::Load(main, a).payload == blob);
+      WriteAll(main, blob);
+      CHECK(pcf::Load(main, a).payload == blob);
+    }
+  }
+
   // Bounded: an absurd file is never read into memory.
   {
     pcf::Store(main, a).Save(blob_a.data(), blob_a.size(), log);
