@@ -26,10 +26,15 @@ constexpr bool DetailedGpuTiming(bool requested) {
   return requested;
 #endif
 }
-constexpr bool SchedulerStats(bool requested) {
-  // Runtime opt-in: dedicated Edge builds default this cvar to false.
-  // A hard-coded false would prevent capturing CPU 0 scheduler phases at all.
+constexpr bool SchedulerStats(bool requested, bool dedicated_diagnostics_opt_in) {
+#if ZEPHYR_EDGE30_ULTRA
+  // A saved legacy config can already contain guest_scheduler_stats=true.
+  // Require a separate new explicit opt-in to preserve performance defaults.
+  return requested && dedicated_diagnostics_opt_in;
+#else
+  (void)dedicated_diagnostics_opt_in;
   return requested;
+#endif
 }
 }  // namespace xe::edge30
 #endif
