@@ -64,7 +64,7 @@ jobs:
     - name: Build settings
       id: cfg
       env:
-        RESEARCH_ARM: ${{ github.ref_name == 'research/optimization-round3' && 'beta12-dll' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
+        RESEARCH_ARM: ${{ github.ref_name == 'research/optimization-round3' && 'beta13-pause' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
         sha=$(git rev-parse --short=8 HEAD)
@@ -159,6 +159,7 @@ jobs:
         python3 tools/test-vulkan-cache-work.py
         python3 tools/test-xex-launch-module.py
         python3 tools/test-dll-notifications.py
+        python3 tools/test-wait-reg-mem-stall.py
 
     - name: Validate Vulkan cache file reads
       run: |
@@ -177,6 +178,7 @@ jobs:
           --tests 'xendroid.compose.ui.design.ZephyrPaletteTest' \
           --tests 'xendroid.compose.ui.design.EmeraldNavigationTest' \
           --tests 'xendroid.compose.ui.design.TextInputKeyboardTest' \
+          --tests 'xendroid.compose.core.AsyncPauseControllerTest' \
           --tests 'xendroid.compose.core.LaunchExecutablesTest' \
           --tests 'xendroid.compose.core.LaunchOptionsTest' \
           --tests 'xendroid.compose.compatibility.SettingsProfilesTest' \
@@ -323,6 +325,8 @@ jobs:
             'scheduler_diagnostics': False,
             'rendering_validated_on_device': False,
             'tdc_kernel_recovery': 'experimental; launch Default.xex',
+            'async_serial_pause_control': True,
+            'wait_reg_mem_stall_reports': True,
             'dll_bootstrap_guard': True,
             'dll_lifecycle_hmodule': True,
             'dll_notifications_title_threads_only': True,
@@ -345,6 +349,17 @@ jobs:
         retention-days: 14
         compression-level: 0
 
+    - name: Preserve matching native symbol map
+      run: python3 tools/collect-native-symbols.py --apk "${{ steps.sign_candidate.outputs.apk }}" --out native-symbols
+
+    - name: Upload matching native symbol map
+      uses: actions/upload-artifact@v4
+      with:
+        name: ${{ steps.cfg.outputs.name }}-native-symbols
+        path: native-symbols/
+        if-no-files-found: error
+        retention-days: 90
+
     - name: Publish verified Research update
       uses: actions/github-script@v7
       env:
@@ -364,11 +379,11 @@ jobs:
           fs.writeFileSync(checksums, digest + '  ' + apk + '\n');
           const body = [
             '<!-- update-summary:pt-BR',
-            '- DLLs: DllMain recebe o HMODULE correto nas quatro notificações de ciclo de vida.',
-            '- DLLs: apenas threads do processo do jogo enviam notificações; threads de sistema e host são excluídas.',
-            '- Android: erros fatais deixam de aguardar uma caixa de diálogo nativa invisível durante a abertura.',
-            '- TDC: iniciar pelo Default.xex. Compatibilidade e avanço além do Loading ainda dependem de teste no aparelho.',
-            '- Escalonador e opções gráficas experimentais preservados nesta versão.',
+            '- Android: pausa e retomada serializadas fora da thread da interface; o menu e a exportação de diagnósticos não aguardam a pausa nativa.',
+            '- Menu: distingue pausa solicitada de pausa concluída e mostra operações pendentes.',
+            '- Diagnóstico: esperas prolongadas WAIT_REG_MEM registram endereço, condição e valor observado a cada 5 segundos.',
+            '- Diagnóstico: etapas da pausa identificam se áudio ou GPU ainda não respondeu.',
+            '- TDC: usar Default.xex. O travamento do carregamento ainda não está corrigido nem validado no aparelho.',
             '-->',
             'Beta experimental; desempenho ainda não validado no aparelho.',
             'Pacote: xendroid.compose.zephyr.research',
@@ -387,7 +402,7 @@ jobs:
             if (error.status !== 404) throw error;
             release = (await github.rest.repos.createRelease({
               ...context.repo, tag_name: tag, target_commitish: context.sha,
-              name: 'Zephyr Anel beta 12 — build ' + context.runNumber,
+              name: 'Zephyr Anel beta 13 — build ' + context.runNumber,
               body, draft: true, prerelease: true
             })).data;
           }

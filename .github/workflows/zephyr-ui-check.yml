@@ -190,6 +190,8 @@ jobs:
         run: python3 tools/test-xex-launch-module.py
       - name: Test title DLL notification contract
         run: python3 tools/test-dll-notifications.py
+      - name: Test pending GPU wait diagnostics
+        run: python3 tools/test-wait-reg-mem-stall.py
       - name: Compile Compose UI without packaging native libraries
         run: bash ./gradlew :app:compileDebugKotlin --no-daemon --stacktrace
       # These cases deliberately replace config files and the native singleton.
@@ -214,6 +216,7 @@ jobs:
             --tests 'xendroid.compose.ui.design.ZephyrPaletteTest' \
             --tests 'xendroid.compose.ui.design.EmeraldNavigationTest' \
             --tests 'xendroid.compose.ui.design.TextInputKeyboardTest' \
+            --tests 'xendroid.compose.core.AsyncPauseControllerTest' \
             --tests 'xendroid.compose.core.LaunchExecutablesTest' \
             --tests 'xendroid.compose.core.LaunchOptionsTest' \
             --tests 'xendroid.compose.ui.settings.SettingsHubRoutingTest' \

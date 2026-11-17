@@ -7,7 +7,7 @@ import xendroid.compose.driver.DriverIdentity
 import xendroid.emulator.Emulator as BaseEmulator
 
 /**
- * Thin, UI-thread-affine facade over the native xenia singleton. Owns the boot-once invariant;
+ * Thin facade (UI-thread-affine except serialized pause/resume) over the native xenia singleton. Owns the boot-once invariant;
  * one instance per EmulatorHostActivity (one process / one core).
  *
  * Contract (caller MUST keep order; native enforces nothing):
@@ -108,13 +108,26 @@ class EmulatorSession {
         }
     }
 
-    fun resumeIfPaused() {
-        if (core.is_paused()) core.resume()
+    private val pauseControl = AsyncPauseController(
+        java.util.concurrent.Executors.newSingleThreadExecutor { task ->
+            Thread(task, "Emulator pause control").apply { isDaemon = true }
+        },
+    ) { paused ->
+        if (paused) core.pause() else core.resume()
+        check(core.is_paused() == paused) { "Native pause state was not applied" }
     }
 
-    fun pause() = core.pause()
-    fun resume() = core.resume()
-    fun isPaused(): Boolean = booted && core.is_paused()
+    fun resumeIfPaused() { if (booted) pauseControl.request(false) }
+    fun pause() { if (booted) pauseControl.request(true) }
+    fun resume() { if (booted) pauseControl.request(false) }
+    /** Requested state for menu/lifecycle ownership, including an outstanding fence. */
+    fun isPaused(): Boolean = booted && pauseControl.state.requested
+    /** Only claim a completed pause after the blocking JNI call returned. */
+    fun isPauseComplete(): Boolean = booted && pauseControl.state.let {
+        it.confirmed && !it.pending && it.failure == null
+    }
+    fun pausePending(): Boolean = booted && pauseControl.state.pending
+    fun pauseFailure(): String? = pauseControl.state.failure
 
     /** Best-effort GPU cache flush (onPause). Swallows everything; never throws. */
     fun flushGpuCaches() {

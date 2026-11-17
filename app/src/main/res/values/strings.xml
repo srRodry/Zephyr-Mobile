@@ -1299,4 +1299,6 @@
     <string name="drv_from">From %1$s</string>
     <string name="menu_color_vivid">Vivid (fake HDR)</string>
     <string name="ge_group">Group</string>
+    <string name="host_pause_pending">Waiting for the emulator to pause or resume</string>
+    <string name="host_pause_failed">Emulator pause or resume failed</string>
 </resources>

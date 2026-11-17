@@ -1104,6 +1104,8 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
 
     /** Batch 2: the menu's status line: FPS now, p99 of the last seconds, battery, the driver. */
     private fun buildMenuStatus(): List<xendroid.compose.ui.ingame.MenuStat> = buildList {
+        if (session.pausePending()) add(xendroid.compose.ui.ingame.MenuStat(getString(R.string.host_pause_pending)))
+        if (session.pauseFailure() != null) add(xendroid.compose.ui.ingame.MenuStat(getString(R.string.host_pause_failed)))
         val fps = session.averageFps().takeIf { it > 0 } ?: lastGuestFps
         if (fps > 0) add(xendroid.compose.ui.ingame.MenuStat(fps.roundToInt().toString(), "FPS"))
         performancePanel.recent()?.let { add(xendroid.compose.ui.ingame.MenuStat(it.p99UnderMs.toString(), "ms", "p99")) }
@@ -1802,7 +1804,7 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
                                         if (!presentationState.value.requested) restoreGenerationCap()
                                         audioVolume.intValue = session.audioVolume()
                                         gpuLabel.value = session.activeGpuLabel()
-                                        menuPaused.value = session.isPaused()
+                                        menuPaused.value = session.isPauseComplete()
                                         fpsLimitState.intValue = session.fpsLimit()
                                         if (activeTitle != fpsConfig.value.titleId) refreshFpsConfig()
                                         // Players joining or leaving and their latency.
@@ -2304,9 +2306,9 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
         if (!session.isPaused()) {
             session.pause()
             pausedByLifecycle = true
-            recordEvent("pause", "guest paused by the app lifecycle")
+            recordEvent("pause", "pause requested by the app lifecycle")
         }
-        menuPaused.value = session.isPaused()
+        menuPaused.value = session.isPauseComplete()
     }
 
     private fun resumeForLifecycle() {
@@ -2315,8 +2317,8 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
             lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) {
             session.resumeIfPaused()
             pausedByLifecycle = false
-            menuPaused.value = session.isPaused()
-            recordEvent("pause", "guest resumed")
+            menuPaused.value = session.isPauseComplete()
+            recordEvent("pause", "resume requested")
         }
         if (gyroEnabled.value && foregroundState.value && !menuState.value.open && hasWindowFocus()) gyroCamera.start()
     }
@@ -3050,8 +3052,8 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
         releaseGuestInput()
         val pausedHere = pauseOnOpen.value && session.booted && !session.isPaused()
         if (pausedHere) session.pause()
-        recordEvent("menu", if (pausedHere) "opened, guest paused" else "opened")
-        menuPaused.value = session.isPaused()
+        recordEvent("menu", if (pausedHere) "opened, pause requested" else "opened")
+        menuPaused.value = session.isPauseComplete()
         fpsLimitState.intValue = session.fpsLimit()
         presentationState.value = session.presentationState()
         menuState.value = menuState.value.show(pausedHere)
@@ -3416,7 +3418,7 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
                     session.pause()
                     menuState.value = menuState.value.copy(pausedByMenu = true)
                 }
-                menuPaused.value = session.isPaused()
+                menuPaused.value = session.isPauseComplete()
                 editorOpen.value = true
             }
             InGameAction.STRETCH -> {
@@ -3823,7 +3825,7 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
             pausedByLifecycle = true
             resumeForLifecycle()
         }
-        menuPaused.value = session.isPaused()
+        menuPaused.value = session.isPauseComplete()
     }
 
     private fun setAutoSave(on: Boolean) {

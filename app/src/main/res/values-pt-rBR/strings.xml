@@ -1338,4 +1338,6 @@
     <string name="drv_from">De %1$s</string>
     <string name="menu_color_vivid">Vívido (falso HDR)</string>
     <string name="ge_group">Grupo</string>
+    <string name="host_pause_pending">Aguardando o emulador pausar ou retomar</string>
+    <string name="host_pause_failed">Falha ao pausar ou retomar o emulador</string>
 </resources>
