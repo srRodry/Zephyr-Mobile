@@ -563,7 +563,10 @@ int InstrEmit_vcmpbfp_(PPCHIRBuilder& f, const InstrData& i, uint32_t vd,
   // if vA or vB are NaN, the 2 high-order bits are set (0xC0000000)
   Value* va_value = f.LoadVR(va);
   Value* vb_value = f.LoadVR(vb);
-  Value* gt = f.VectorCompareSGT(va_value, vb_value, FLOAT32_TYPE);
+  // "Not <= / not >=" also includes unordered comparisons, as required
+  // by the PowerPC bounds test: NaN sets *both* result bits per lane.
+  Value* gt =
+      f.Not(f.VectorCompareSGE(vb_value, va_value, FLOAT32_TYPE));
   Value* lt =
       f.Not(f.VectorCompareSGE(va_value, f.Neg(vb_value), FLOAT32_TYPE));
   Value* v =
@@ -573,10 +576,11 @@ int InstrEmit_vcmpbfp_(PPCHIRBuilder& f, const InstrData& i, uint32_t vd,
                                                   0x40000000, 0x40000000))));
   f.StoreVR(vd, v);
   if (rc) {
-    // CR0:4 = 0; CR0:5 = VT == 0; CR0:6 = CR0:7 = 0;
-    // If all of the elements are within bounds, CR6[2] is set
-    // FIXME: Does not affect CR6[0], but the following function does.
-    f.UpdateCR6(f.Or(gt, lt));
+    // The record form only sets CR6[2] when all lanes are in bounds;
+    // CR6[0] must remain zero even when all lanes are out of bounds.
+    // Passing the two-bit-per-lane result (never all ones) to UpdateCR6
+    // preserves those semantics without a separate condition-register path.
+    f.UpdateCR6(v);
   }
   return 0;
 }
