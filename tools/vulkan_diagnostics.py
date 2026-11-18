@@ -43,6 +43,7 @@ LIMITATIONS = [
     "Pipeline waits are host API wall time, not GPU busy or summed worker compilation.",
     "Pipeline windows are independent; adjacency/frame counts do not establish a shared frame ID.",
     "Pipeline maxima are per wait call, not per frame; missing pipeline logs are unavailable, not zero.",
+    "Append-only xe.log files are restricted to the latest marked session; unmarked logs cover all input.",
     "These logs alone do not identify a bottleneck, FPS gain or game compatibility.",
 ]
 
@@ -104,7 +105,17 @@ def summarize(lines, last=None):
     rejected = 0
     pipeline_windows = []
     pipeline_rejected = 0
+    session_boundaries_seen = 0
     for line in lines:
+        # xe.log can contain multiple launches and games. Prevent GPU timing
+        # from a previous session from contaminating the latest one.
+        if "Storage root:" in line:
+            session_boundaries_seen += 1
+            windows.clear()
+            rejected = 0
+            pipeline_windows.clear()
+            pipeline_rejected = 0
+            continue
         if "VkPipelineWait:" in line:
             try:
                 pipeline_windows.append(parse_pipeline_wait(line))
@@ -123,7 +134,9 @@ def summarize(lines, last=None):
     for key in ("cpu_await_ms_per_frame", "cpu_replay_and_submit_ms_per_frame"):
         cpu[key] = (sum(w[key] * w["frames"] for w in windows) / frames
                     if frames else None)
-    return {"valid_windows_selected": len(windows), "frames_selected": frames,
+    return {"session_boundaries_seen": session_boundaries_seen,
+            "analysis_scope": "latest_session" if session_boundaries_seen else "entire_log_unmarked",
+            "valid_windows_selected": len(windows), "frames_selected": frames,
             "malformed_windows_rejected": rejected,
             "approximate_frame_weighted_cpu": cpu,
             "pipeline_waits": summarize_pipeline_windows(pipeline_windows, pipeline_rejected, last),
