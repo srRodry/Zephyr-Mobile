@@ -15,6 +15,8 @@ import tempfile
 root = Path(__file__).resolve().parents[1]
 base = root / 'emulator-core/src/main/cpp/xenia/src'
 source = (base / 'xenia/kernel/guest_scheduler.cc').read_text()
+assert 'guest_scheduler_stats, true' in source
+assert 'zephyr_edge30_scheduler_diagnostics, false' in source
 
 def extract(marker):
     begin = source.index(marker)
@@ -35,7 +37,10 @@ code = r'''
 #include <mutex>
 #include <queue>
 #include "xenia/base/zephyr_edge30_policy.h"
-namespace cvars { bool guest_scheduler_stats = true; }
+namespace cvars {
+  bool guest_scheduler_stats = true;
+  bool zephyr_edge30_scheduler_diagnostics = false;
+}
 COLLECTOR
 struct Clock {
   static inline uint64_t reads = 0;
@@ -72,9 +77,14 @@ int main() {
   assert(xe::edge30::PipelineWorkers(4, 8) == (ZEPHYR_EDGE30_ULTRA ? 2 : 4));
   assert(!xe::edge30::DetailedGpuTiming(false));
   assert(xe::edge30::DetailedGpuTiming(true) == !ZEPHYR_EDGE30_ULTRA);
+  assert(!xe::edge30::SchedulerStats(false, false));
+  assert(xe::edge30::SchedulerStats(true, true));
+  assert(xe::edge30::SchedulerStats(true, false) == !ZEPHYR_EDGE30_ULTRA);
   for (bool requested : {false, true}) {
     cvars::guest_scheduler_stats = requested;
-    for (bool recorded : {false, true}) {
+    for (bool opt_in : {false, true}) {
+      cvars::zephyr_edge30_scheduler_diagnostics = opt_in;
+      for (bool recorded : {false, true}) {
       GuestScheduler scheduler;
       GuestScheduler::BlockingCall call;
       call.queued_ns = recorded ? 20 : 0;
@@ -86,11 +96,12 @@ int main() {
       scheduler.IoWorkerLoop();
       assert(ran == 1 && call.done.load(std::memory_order_acquire));
       assert(scheduler.wakes == 1 && scheduler.io_queue_.empty());
-      const bool measured = requested && recorded && !ZEPHYR_EDGE30_ULTRA;
+      const bool measured = requested && recorded && (!ZEPHYR_EDGE30_ULTRA || opt_in);
       assert(Clock::reads == (measured ? 2 : 0));
       assert(scheduler.stats_.io_calls.load() == (measured ? 1 : 0));
       assert(scheduler.stats_.io_queue_ns.load() == (measured ? 80 : 0));
       assert(scheduler.stats_.io_run_ns.load() == (measured ? 10 : 0));
+      }
     }
   }
 }
@@ -122,4 +133,4 @@ with tempfile.TemporaryDirectory(prefix='zephyr-edge30-') as directory:
                         f'-DZEPHYR_EDGE30_ULTRA={specialized}', '-I', str(base),
                         str(path / 'test.cc'), '-o', str(executable)], check=True)
         subprocess.run([str(executable)], check=True)
-print('Edge30 policy: 266,514 worker cases; real I/O completion/wake/timing paths, generic and dedicated modes passed.')
+print('Edge30 policy: 266,514 worker cases; real I/O completion/wake/timing paths, generic and dedicated modes, explicit diagnostic gate passed.')

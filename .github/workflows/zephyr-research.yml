@@ -1,10 +1,17 @@
 name: Zephyr research tools
 on:
   push:
-    branches: [research/android-x360-foundation, research/android-x360-gpu-candidate, perf/edge30-beta1]
+    branches: [research/android-x360-foundation, research/android-x360-gpu-candidate, perf/edge30-beta1, research/edge30-diagnostics-audit-20261117]
     paths:
       - 'tools/compare-benchmarks.py'
       - 'tools/test-compare-benchmarks.py'
+      - 'tools/zephyr-graphics-ab.py'
+      - 'tools/test-zephyr-graphics-ab.py'
+      - 'tools/scheduler-diagnostics.py'
+      - 'tools/test-scheduler-diagnostics.py'
+      - 'tools/test-edge30-policy.py'
+      - 'emulator-core/src/main/cpp/xenia/src/xenia/base/zephyr_edge30_policy.h'
+      - 'emulator-core/src/main/cpp/xenia/src/xenia/kernel/guest_scheduler.cc'
       - '.github/workflows/zephyr-research.yml'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/gpu/disjoint_draw_ranges.h'
       - 'emulator-core/src/test/cpp/disjoint_draw_ranges_test.cc'
@@ -14,6 +21,13 @@ on:
     paths:
       - 'tools/compare-benchmarks.py'
       - 'tools/test-compare-benchmarks.py'
+      - 'tools/zephyr-graphics-ab.py'
+      - 'tools/test-zephyr-graphics-ab.py'
+      - 'tools/scheduler-diagnostics.py'
+      - 'tools/test-scheduler-diagnostics.py'
+      - 'tools/test-edge30-policy.py'
+      - 'emulator-core/src/main/cpp/xenia/src/xenia/base/zephyr_edge30_policy.h'
+      - 'emulator-core/src/main/cpp/xenia/src/xenia/kernel/guest_scheduler.cc'
       - '.github/workflows/zephyr-research.yml'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/gpu/disjoint_draw_ranges.h'
       - 'emulator-core/src/test/cpp/disjoint_draw_ranges_test.cc'
@@ -30,6 +44,12 @@ jobs:
       - uses: actions/checkout@v4
       - name: Test benchmark comparison
         run: python3 tools/test-compare-benchmarks.py
+      - name: Test graphics A/B CVAR categories
+        run: python3 tools/test-zephyr-graphics-ab.py
+      - name: Test Edge30 CPU0 phase log analysis
+        run: python3 tools/test-scheduler-diagnostics.py
+      - name: Test opt-in Edge30 scheduler stats and IO completion
+        run: python3 tools/test-edge30-policy.py
       - name: Test shader jump analysis with sanitizers
         if: ${{ hashFiles('emulator-core/src/test/cpp/structured_jumps_test.cc') != '' }}
         run: |

@@ -5,7 +5,7 @@ name: Zephyr performance beta APK
 
 on:
   push:
-    branches: [perf/edge30-beta1, integration/zephyr-beta2, research/optimization-round3]
+    branches: [perf/edge30-beta1, integration/zephyr-beta2, research/optimization-round3, research/edge30-diagnostics-audit-20261117]
     paths-ignore:
       - '**.md'
       - 'docs/**'
@@ -64,7 +64,7 @@ jobs:
     - name: Build settings
       id: cfg
       env:
-        RESEARCH_ARM: ${{ github.ref_name == 'research/optimization-round3' && 'beta15-chrome' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
+        RESEARCH_ARM: ${{ github.ref_name == 'research/edge30-diagnostics-audit-20261117' && 'beta16-edge30' || github.ref_name == 'research/optimization-round3' && 'beta15-chrome' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
         sha=$(git rev-parse --short=8 HEAD)
@@ -377,6 +377,7 @@ jobs:
           const crypto = require('crypto');
           const versionCode = 100000 + Number(context.runNumber);
           const tag = 'Zephyr-Research-v' + versionCode + '-' + process.env.SHA;
+          const edge30Audit = context.ref === 'refs/heads/research/edge30-diagnostics-audit-20261117';
           const apk = process.env.APK;
           const bytes = fs.readFileSync(apk);
           const digest = crypto.createHash('sha256').update(bytes).digest('hex');
@@ -384,12 +385,20 @@ jobs:
           fs.writeFileSync(checksums, digest + '  ' + apk + '\n');
           const body = [
             '<!-- update-summary:pt-BR',
+            ...(edge30Audit ? [
+              '- Beta 16 (Edge30): telemetria do escalonador disponível apenas por opt-in explícito na variante dedicada.',
+              '- Diagnóstico: CVARs gráficas A/B corrigidas, com categorias [GPU] e [Vulkan] verificadas.',
+              '- Pesquisa: analisadores de GPU/CPU0 e comparador A/B mais rigorosos para testes reproduzíveis.',
+              '- Nenhum ganho de FPS comprovado nesta rodada; políticas padrão de renderização preservadas.',
+              '- Identidade, pacote e assinatura Research preservados; sem lançamento estável.'
+            ] : [
             '- Ícone: Z prateado com reflexo metálico, anel verde luminoso e fundo verde esmaltado.',
             '- Interface: detalhes prateados nas bordas de luz, divisores, cabeçalhos e ícones secundários.',
             '- Identidade consistente no modo toque e com controle; cores de seleção e compatibilidade preservadas.',
             '- Acabamentos estáticos, sem animação ou blur adicional.',
             '- Exportações e backups identificados como Zephyr, sem alterar caminhos internos ou assinatura.',
             '- O loading do TDC permanece sem correção comprovada; desempenho ainda precisa de validação no aparelho.',
+            ]),
             '-->',
             'Beta experimental; desempenho ainda não validado no aparelho.',
             'Pacote: xendroid.compose.zephyr.research',
@@ -408,7 +417,7 @@ jobs:
             if (error.status !== 404) throw error;
             release = (await github.rest.repos.createRelease({
               ...context.repo, tag_name: tag, target_commitish: context.sha,
-              name: 'Zephyr-Mobile beta 15 — build ' + context.runNumber,
+              name: 'Zephyr-Mobile ' + (edge30Audit ? 'beta 16 — Edge30 diagnostics' : 'beta 15') + ' — build ' + context.runNumber,
               body, draft: true, prerelease: true
             })).data;
           }

@@ -26,10 +26,13 @@ constexpr bool DetailedGpuTiming(bool requested) {
   return requested;
 #endif
 }
-constexpr bool SchedulerStats(bool requested) {
+constexpr bool SchedulerStats(bool requested, bool dedicated_diagnostics_opt_in) {
 #if ZEPHYR_EDGE30_ULTRA
-  return false; // Dedicated performance build: compile out diagnostic updates.
+  // A saved legacy config can already contain guest_scheduler_stats=true.
+  // Require a separate new explicit opt-in to preserve performance defaults.
+  return requested && dedicated_diagnostics_opt_in;
 #else
+  (void)dedicated_diagnostics_opt_in;
   return requested;
 #endif
 }
