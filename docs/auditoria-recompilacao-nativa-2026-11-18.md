@@ -201,3 +201,13 @@ A campanha posterior deve separar:
 5. Só publicar **preview Research** após empacotamento e assinatura verificados. Nunca promover automaticamente para estável por sucesso da compilação.
 
 **Conclusão:** duas falhas semânticas identificadas e corrigidas em PowerPC/VMX, uma operação HIR redundante eliminada e uma nova regressão que executa o emissor real. As vantagens maiores dos projetos AOT derivam do pré-processamento específico do título e, sobretudo, de renderizadores nativos próprios — técnicas que exigem experimento isolado, não transplante indiscriminado ao JIT universal do Zephyr.
+
+## 8. Continuação: correção da telemetria Vulkan por sessão
+
+O arquivo `xe.log` pode acumular várias inicializações do emulador. O antigo `tools/vulkan_diagnostics.py` agregava todas as linhas `VkFrameSync` e `VkPipelineWait` sem considerar o título/driver/instância que as produziu. Isso poderia imputar esperas de pipeline de uma execução anterior a uma sessão atual e induzir decisões erradas sobre GPU bound.
+
+**Correção aplicada:** ao observar um marcador de início de sessão `Storage root:`, o parser descarta as janelas e os contadores de rejeição anteriores e analisa somente a última sessão. Logs antigos sem marcador continuam analisados integralmente, com o campo `analysis_scope=entire_log_unmarked` explicitando a limitação. O relatório agora inclui `session_boundaries_seen` e `analysis_scope`.
+
+**Testes:** `tools/test-vulkan-diagnostics.py` recebeu casos para duas sessões com cargas divergentes, filtro independente `--last`, resets de contadores de erro e formato legado, e passou a ser executado em `zephyr-research.yml` além das verificações de UI existentes. A alteração não ativa instrumentação, não muda código Vulkan no dispositivo e não demonstra aumento de FPS: melhora a atribuição correta das medições.
+
+**UI:** a integração Android ARM64 já passou no commit `76099ad7`. Uma execução de Robolectric teve falha isolada ao consultar um Dialog logo depois do retorno do navegador de pastas (1 de 235 testes), apesar de não haver alterações de UI no PR. O teste foi alterado para aguardar explicitamente a reaparição da etapa, ainda falhando se o wizard reiniciar. O CI deve validar o ajuste antes de integrar.
