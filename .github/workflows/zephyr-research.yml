@@ -11,6 +11,8 @@ on:
       - 'tools/test-scheduler-diagnostics.py'
       - 'tools/test-native-ppc-edgecases.py'
       - 'tools/test-army-tdc-native-hotpath.py'
+      - 'tools/analyze-army-tdc-boot.py'
+      - 'tools/test-analyze-army-tdc-boot.py'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/kernel/xam/xam_content.cc'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/kernel/xevent.cc'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/cpu/compiler/passes/memory_poll_park_pass.cc'
@@ -36,6 +38,8 @@ on:
       - 'tools/test-scheduler-diagnostics.py'
       - 'tools/test-native-ppc-edgecases.py'
       - 'tools/test-army-tdc-native-hotpath.py'
+      - 'tools/analyze-army-tdc-boot.py'
+      - 'tools/test-analyze-army-tdc-boot.py'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/kernel/xam/xam_content.cc'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/kernel/xevent.cc'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/cpu/compiler/passes/memory_poll_park_pass.cc'
@@ -68,6 +72,8 @@ jobs:
         run: python3 tools/test-native-ppc-edgecases.py
       - name: Verify Army TDC missing ordinal and hot-path trace guards
         run: python3 tools/test-army-tdc-native-hotpath.py
+      - name: Test TDC XEX and scheduler log classification
+        run: python3 tools/test-analyze-army-tdc-boot.py
       - name: Test Vulkan frame and pipeline diagnostics
         run: python3 tools/test-vulkan-diagnostics.py
       - name: Test Edge30 CPU0 phase log analysis
