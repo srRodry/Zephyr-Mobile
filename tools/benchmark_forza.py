@@ -26,7 +26,7 @@ def main():
     if args.duration < 5 or not re.fullmatch(r"[A-Za-z0-9_-]+", args.label):
         parser.error("duration must be >=5 and label may contain letters, digits, _ and -")
     out = Path(__file__).resolve().parents[1] / "performance-tests" / args.label
-    out.mkdir(exist_ok=False)
+    out.mkdir(parents=True, exist_ok=False)
     prefix = [args.adb, "-s", args.serial]
     log_path = f"/sdcard/Android/data/{args.package}/files/compose/xe.log"
 

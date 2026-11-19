@@ -200,6 +200,9 @@ class A64Emitter : public Xbyak_aarch64::CodeGenerator {
   XexModule* GuestModule() { return guest_module_; }
 
  protected:
+  // Reads the dispatch slot for guest address w16, returning the host target
+  // in x9 while keeping w16 available to the resolve thunk.
+  void LoadIndirectCallTarget();
   void* Emplace(const EmitFunctionInfo& func_info,
                 GuestFunction* function = nullptr);
   // Drops the code buffer, tail entries and both label pools. Both the success

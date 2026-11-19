@@ -1427,6 +1427,9 @@ class VulkanCommandProcessor final : public CommandProcessor {
   // usage submission has fully completed) can never destroy a cached handle.
   uint32_t current_samplers_fetch_up_to_date_vertex_ = 0;
   uint32_t current_samplers_fetch_up_to_date_pixel_ = 0;
+  // Fetch slots referenced by the current binding list for each stage.
+  uint32_t current_samplers_fetch_mask_vertex_ = 0;
+  uint32_t current_samplers_fetch_mask_pixel_ = 0;
   const VulkanShader* current_samplers_shader_vertex_ = nullptr;
   const VulkanShader* current_samplers_shader_pixel_ = nullptr;
   uint64_t current_samplers_submission_vertex_ = 0;

@@ -5,7 +5,7 @@ name: Zephyr performance beta APK
 
 on:
   push:
-    branches: [perf/edge30-beta1, integration/zephyr-beta2, research/optimization-round3, research/edge30-diagnostics-audit-20261117, research/native-recomp-semantics-20261118, research/army-tdc-native-hotpath-20261118]
+    branches: [perf/edge30-beta1, integration/zephyr-beta2, research/optimization-round3, research/edge30-diagnostics-audit-20261117, research/native-recomp-semantics-20261118, research/army-tdc-native-hotpath-20261118, research/edge30-performance-swarm-20261119]
     paths-ignore:
       - '**.md'
       - 'docs/**'
@@ -64,7 +64,7 @@ jobs:
     - name: Build settings
       id: cfg
       env:
-        RESEARCH_ARM: ${{ github.ref_name == 'research/army-tdc-native-hotpath-20261118' && 'beta18-army-tdc' || github.ref_name == 'research/native-recomp-semantics-20261118' && 'beta17-ppc-native' || github.ref_name == 'research/edge30-diagnostics-audit-20261117' && 'beta16-edge30' || github.ref_name == 'research/optimization-round3' && 'beta15-chrome' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
+        RESEARCH_ARM: ${{ github.ref_name == 'research/edge30-performance-swarm-20261119' && 'edge30-swarm' || github.ref_name == 'research/army-tdc-native-hotpath-20261118' && 'beta18-army-tdc' || github.ref_name == 'research/native-recomp-semantics-20261118' && 'beta17-ppc-native' || github.ref_name == 'research/edge30-diagnostics-audit-20261117' && 'beta16-edge30' || github.ref_name == 'research/optimization-round3' && 'beta15-chrome' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
         sha=$(git rev-parse --short=8 HEAD)
@@ -151,6 +151,7 @@ jobs:
     - name: Validate native optimization invariants
       run: |
         python3 tools/test-shared-page-refresh.py
+        python3 tools/test-memexport-page-bitmap.py
         python3 tools/test-army-quirk.py
         python3 tools/test-edge30-policy.py
         python3 tools/test-round3-a64.py
@@ -162,6 +163,7 @@ jobs:
         python3 tools/test-verify-army-tdc-aot-inputs.py
         python3 tools/test-vulkan-diagnostics.py
         python3 tools/test-vulkan-cache-work.py
+        python3 tools/test-vulkan-sampler-reuse.py
         python3 tools/test-xex-launch-module.py
         python3 tools/test-dll-notifications.py
         python3 tools/test-wait-reg-mem-stall.py
@@ -372,6 +374,7 @@ jobs:
         retention-days: 90
 
     - name: Publish verified Research update
+      if: ${{ github.ref_name != 'research/edge30-performance-swarm-20261119' }}
       uses: actions/github-script@v7
       env:
         APK: ${{ steps.sign_candidate.outputs.apk }}

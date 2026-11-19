@@ -5882,15 +5882,15 @@ bool VulkanCommandProcessor::IssueDraw(xenos::PrimitiveType prim_type,
   // (after per-game config has loaded) - lets a setting like the per-game
   // vulkan_depth_unorm24 override be verified from the log.
   static std::atomic<bool> depth_path_logged{false};
-  {
-    bool expected = false;
-    if (depth_path_logged.compare_exchange_strong(expected, true)) {
-      bool unorm24 = render_target_cache_->depth_unorm24_vulkan_format_supported();
-      XELOGI(
-          "Depth path: vulkan_depth_unorm24(effective)={} -> guest 24-bit depth "
-          "uses {}",
-          cvars::vulkan_depth_unorm24, unorm24 ? "native D24_UNORM_S8" : "float32 emulation");
-    }
+  if (!depth_path_logged.load(std::memory_order_relaxed) &&
+      !depth_path_logged.exchange(true, std::memory_order_relaxed)) {
+    const bool unorm24 =
+        render_target_cache_->depth_unorm24_vulkan_format_supported();
+    XELOGI(
+        "Depth path: vulkan_depth_unorm24(effective)={} -> guest 24-bit depth "
+        "uses {}",
+        cvars::vulkan_depth_unorm24,
+        unorm24 ? "native D24_UNORM_S8" : "float32 emulation");
   }
 
   xenos::EdramMode edram_mode = regs.Get<reg::RB_MODECONTROL>().edram_mode;
@@ -6227,6 +6227,12 @@ bool VulkanCommandProcessor::IssueDraw(xenos::PrimitiveType prim_type,
               j ? current_samplers_pixel_ : current_samplers_vertex_;
       const VulkanShader*& cached_samplers_shader =
           j ? current_samplers_shader_pixel_ : current_samplers_shader_vertex_;
+      uint32_t& sampler_fetch_mask =
+          j ? current_samplers_fetch_mask_pixel_
+            : current_samplers_fetch_mask_vertex_;
+      uint64_t& sampler_submission =
+          j ? current_samplers_submission_pixel_
+            : current_samplers_submission_vertex_;
       const VulkanShader* shader = j ? pixel_shader : vertex_shader;
       if (!shader) {
         // Downstream consumers (texture set hash, descriptor writes) iterate
@@ -6257,9 +6263,14 @@ bool VulkanCommandProcessor::IssueDraw(xenos::PrimitiveType prim_type,
             j ? current_samplers_fetch_up_to_date_pixel_
               : current_samplers_fetch_up_to_date_vertex_;
         const bool submission_changed =
-            (j ? current_samplers_submission_pixel_
-               : current_samplers_submission_vertex_) !=
-            GetCurrentSubmission();
+            sampler_submission != GetCurrentSubmission();
+        if (!submission_changed && !(sampler_fetch_mask & ~fetch_up_to_date)) {
+          sampler_stage_validated[j] = true;
+          continue;
+        }
+        // A failed update may leave a null handle in the vector. Only the
+        // successful pass below can publish its submission stamp again.
+        sampler_submission = 0;
         for (size_t k = 0; k < shader_sampler_bindings.size(); ++k) {
           std::pair<VulkanTextureCache::SamplerParameters, VkSampler>&
               shader_sampler_pair = shader_samplers[k];
@@ -6296,11 +6307,15 @@ bool VulkanCommandProcessor::IssueDraw(xenos::PrimitiveType prim_type,
       // Full pass: cache disabled or missed, or the i == 1 overflow retry
       // (where the parameters derived at i == 0 are kept, but every sampler
       // must be revalidated with UseSampler in the possibly new submission).
+      sampler_submission = 0;
       if (!i) {
         shader_samplers.clear();
         shader_samplers.reserve(shader_sampler_bindings.size());
+        sampler_fetch_mask = 0;
         for (const VulkanShader::SamplerBinding& shader_sampler_binding :
              shader_sampler_bindings) {
+          sampler_fetch_mask |=
+              uint32_t(1) << shader_sampler_binding.fetch_constant;
           shader_samplers.emplace_back(
               texture_cache_->GetSamplerParameters(shader_sampler_binding),
               VK_NULL_HANDLE);

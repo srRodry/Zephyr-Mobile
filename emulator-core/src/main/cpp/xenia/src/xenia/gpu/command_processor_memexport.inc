@@ -15,6 +15,35 @@
 // No include guard: this is injected into a class body, not a standalone
 // header.
 
+// Return the mask through the last page of a bitmap word, inclusive.
+static constexpr uint64_t MemexportLastWordMask(uint32_t last_page) {
+  return ~uint64_t{0} >> (63 - (last_page & 63));
+}
+
+template <bool kWritten>
+void UpdateMemexportPageBits(uint32_t first_page, uint32_t last_page) {
+  const uint32_t first_word = first_page >> 6;
+  const uint32_t last_word = last_page >> 6;
+  const uint64_t first_mask = ~uint64_t{0} << (first_page & 63);
+  const uint64_t last_mask = MemexportLastWordMask(last_page);
+  const auto update_word = [this](uint32_t word, uint64_t mask) {
+    if constexpr (kWritten) {
+      memexport_written_pages_[word] |= mask;
+    } else {
+      memexport_written_pages_[word] &= ~mask;
+    }
+  };
+  if (first_word == last_word) {
+    update_word(first_word, first_mask & last_mask);
+    return;
+  }
+  update_word(first_word, first_mask);
+  std::fill(memexport_written_pages_.begin() + first_word + 1,
+            memexport_written_pages_.begin() + last_word,
+            kWritten ? ~uint64_t{0} : uint64_t{0});
+  update_word(last_word, last_mask);
+}
+
 // Records the guest pages any memexport draw wrote so geometry draws consuming
 // that output route to the host-imported buffer. Marking rounds outward.
 void MarkMemexportPagesWritten(uint32_t base_bytes, uint32_t size_bytes) {
@@ -24,9 +53,7 @@ void MarkMemexportPagesWritten(uint32_t base_bytes, uint32_t size_bytes) {
   size_bytes = std::min(size_bytes, SharedMemory::kBufferSize - base_bytes);
   uint32_t first_page = base_bytes >> 12;
   uint32_t last_page = (base_bytes + size_bytes - 1) >> 12;
-  for (uint32_t page = first_page; page <= last_page; ++page) {
-    memexport_written_pages_[page >> 6] |= uint64_t(1) << (page & 63);
-  }
+  UpdateMemexportPageBits<true>(first_page, last_page);
   any_memexport_pages_written_ = true;
   memexport_await_pending_ = true;
   memexport_written_page_min_ =
@@ -113,8 +140,8 @@ void ClearMemexportPages(uint32_t base_bytes, uint32_t size_bytes) {
   size_bytes = std::min(size_bytes, SharedMemory::kBufferSize - base_bytes);
   uint32_t first_page = (base_bytes + 0xFFF) >> 12;
   uint32_t end_page = (base_bytes + size_bytes) >> 12;
-  for (uint32_t page = first_page; page < end_page; ++page) {
-    memexport_written_pages_[page >> 6] &= ~(uint64_t(1) << (page & 63));
+  if (first_page < end_page) {
+    UpdateMemexportPageBits<false>(first_page, end_page - 1);
   }
 }
 
@@ -129,12 +156,29 @@ bool IsMemexportRange(uint32_t base_bytes, uint32_t size_bytes) const {
   uint32_t first_page = std::max(base_bytes >> 12, memexport_written_page_min_);
   uint32_t last_page = std::min((base_bytes + size_bytes - 1) >> 12,
                                 memexport_written_page_max_);
-  for (uint32_t page = first_page; page <= last_page; ++page) {
-    if (memexport_written_pages_[page >> 6] & (uint64_t(1) << (page & 63))) {
+  if (first_page > last_page) {
+    return false;
+  }
+  if (first_page == last_page) {
+    return (memexport_written_pages_[first_page >> 6] &
+            (uint64_t{1} << (first_page & 63))) != 0;
+  }
+  const uint32_t first_word = first_page >> 6;
+  const uint32_t last_word = last_page >> 6;
+  const uint64_t first_mask = ~uint64_t{0} << (first_page & 63);
+  const uint64_t last_mask = MemexportLastWordMask(last_page);
+  if (first_word == last_word) {
+    return (memexport_written_pages_[first_word] & first_mask & last_mask) != 0;
+  }
+  if (memexport_written_pages_[first_word] & first_mask) {
+    return true;
+  }
+  for (uint32_t word = first_word + 1; word < last_word; ++word) {
+    if (memexport_written_pages_[word]) {
       return true;
     }
   }
-  return false;
+  return (memexport_written_pages_[last_word] & last_mask) != 0;
 }
 
 bool VertexFetchInMemexportRange(const RegisterFile& regs,

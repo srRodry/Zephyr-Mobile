@@ -537,6 +537,33 @@ void A64Emitter::UnimplementedInstr(const hir::Instr* i) {
   DebugBreak();
 }
 
+void A64Emitter::LoadIndirectCallTarget() {
+  if (!code_cache_->encoded_indirection()) {
+    // The table is mapped at the guest address and stores raw 32-bit targets.
+    ldr(w9, ptr(x16, static_cast<uint32_t>(0)));
+    return;
+  }
+
+  Label internal_target;
+  Label target_ready;
+  mov(x14, code_cache_->indirection_table_base_bias());
+  ldr(w9, ptr(x14, w16, UXTW));
+  // The label is local to this sequence, within the TBZ immediate range.
+  CodeGenerator::tbz(w9, 31, internal_target);
+
+  // External target: clear the tag and read the 64-bit host pointer.
+  and_(w15, w9, A64CodeCache::kIndirectionExternalIndexMask);
+  mov(x14, code_cache_->external_indirection_table_base_address());
+  ldr(x9, ptr(x14, w15, UXTW, 3));
+  b(target_ready);
+
+  L(internal_target);
+  // Internal target: byte offset from the executable code cache base.
+  mov(x14, code_cache_->execute_base_address());
+  add(x9, x14, w9, UXTW);
+  L(target_ready);
+}
+
 void A64Emitter::Call(const hir::Instr* instr, GuestFunction* function) {
   assert_not_null(function);
   ForgetFpcrMode();
@@ -569,35 +596,7 @@ void A64Emitter::Call(const hir::Instr* instr, GuestFunction* function) {
   if (code_cache_->has_indirection_table()) {
     // Must leave the guest address in w16 for the resolve thunk to read.
     mov(w16, function->address());
-    if (!code_cache_->encoded_indirection()) {
-      // Fast path: table mapped at host VA == guest addr; slot holds raw
-      // 32-bit host target.
-      ldr(w9, ptr(x16, static_cast<uint32_t>(0)));
-    } else {
-      // Encoded path: see A64CodeCache for the entry format.
-      Label external_target;
-      Label indirection_ready;
-
-      mov(x14, code_cache_->indirection_table_base_bias());
-      add(x14, x14, w16, UXTW);
-      ldr(w9, ptr(x14, static_cast<uint32_t>(0)));
-      tbnz(w9, 31, external_target);
-
-      // Internal: rel32 from code cache base.
-      mov(x14, code_cache_->execute_base_address());
-      add(x9, x14, w9, UXTW);
-      b(indirection_ready);
-
-      // External: tagged index into the side table.
-      L(external_target);
-      and_(w15, w9, A64CodeCache::kIndirectionExternalIndexMask);
-      mov(x14, code_cache_->external_indirection_table_base_address());
-      lsl(x15, x15, 3);
-      add(x14, x14, x15);
-      ldr(x9, ptr(x14, static_cast<uint32_t>(0)));
-
-      L(indirection_ready);
-    }
+    LoadIndirectCallTarget();
   } else {
     // No indirection table: resolve at runtime.
     mov(x0, x20);  // context
@@ -643,35 +642,7 @@ void A64Emitter::CallIndirect(const hir::Instr* instr, int reg_index) {
     if (target_w.getIdx() != w16.getIdx()) {
       mov(w16, target_w);
     }
-    if (!code_cache_->encoded_indirection()) {
-      // Fast path: table mapped at host VA == guest addr; slot holds raw
-      // 32-bit host target.
-      ldr(w9, ptr(x16, static_cast<uint32_t>(0)));
-    } else {
-      // Encoded path: see A64CodeCache for the entry format.
-      Label external_target;
-      Label indirection_ready;
-
-      mov(x14, code_cache_->indirection_table_base_bias());
-      add(x14, x14, w16, UXTW);
-      ldr(w9, ptr(x14, static_cast<uint32_t>(0)));
-      tbnz(w9, 31, external_target);
-
-      // Internal: rel32 from code cache base.
-      mov(x14, code_cache_->execute_base_address());
-      add(x9, x14, w9, UXTW);
-      b(indirection_ready);
-
-      // External: tagged index into the side table.
-      L(external_target);
-      and_(w15, w9, A64CodeCache::kIndirectionExternalIndexMask);
-      mov(x14, code_cache_->external_indirection_table_base_address());
-      lsl(x15, x15, 3);
-      add(x14, x14, x15);
-      ldr(x9, ptr(x14, static_cast<uint32_t>(0)));
-
-      L(indirection_ready);
-    }
+    LoadIndirectCallTarget();
   } else {
     // No indirection table: resolve at runtime.
     mov(w16, target_w);

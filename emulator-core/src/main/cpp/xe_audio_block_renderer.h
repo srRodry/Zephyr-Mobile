@@ -23,8 +23,17 @@ class AudioBlockRenderer {
   // frames: per guest block. guest_channels: 6 for the game's frames (sequential big endian
   // 5.1), 2 for the media player's (interleaved host endian stereo).
   AudioBlockRenderer(uint32_t frames, uint32_t guest_channels)
-      : frames_(frames), guest_channels_(guest_channels), block_(size_t(frames) * 2, 0.0f),
-        pos_(frames) {}
+      : frames_(frames),
+        guest_channels_(guest_channels),
+        block_(size_t(frames) * 2, 0.0f),
+        conceal_fade_(frames),
+        pos_(frames) {
+    // Build the raised-cosine window before starting the audio callback.
+    const float step = frames_ > 1 ? 3.14159265f / float(frames_ - 1) : 0.0f;
+    for (uint32_t f = 0; f < frames_; ++f) {
+      conceal_fade_[f] = 0.5f + 0.5f * std::cos(step * float(f));
+    }
+  }
 
   struct Result {
     uint32_t blocks = 0;   // guest blocks taken in
@@ -124,9 +133,8 @@ class AudioBlockRenderer {
       std::swap(block_[size_t(f) * 2], block_[size_t(g) * 2]);
       std::swap(block_[size_t(f) * 2 + 1], block_[size_t(g) * 2 + 1]);
     }
-    const float step = frames_ > 1 ? 3.14159265f / float(frames_ - 1) : 0.0f;
     for (uint32_t f = 0; f < frames_; ++f) {
-      const float fade = 0.5f + 0.5f * std::cos(step * float(f));
+      const float fade = conceal_fade_[f];
       block_[size_t(f) * 2] *= fade;
       block_[size_t(f) * 2 + 1] *= fade;
     }
@@ -145,6 +153,7 @@ class AudioBlockRenderer {
   const uint32_t guest_channels_;
   // The block being played, host stereo after gain; pos_ = its frames already consumed.
   std::vector<float> block_;
+  std::vector<float> conceal_fade_;
   uint32_t pos_;
   // The last block was real audio, which a gap can continue (mirrored) from.
   bool continues_ = false;
