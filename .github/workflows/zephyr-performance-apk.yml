@@ -357,7 +357,16 @@ jobs:
             'dll_notifications_title_threads_only': True,
             'android_fatal_modal_dialog': False,
             'rendering_fix': 'track CPU uploads in page refresh dirty chunks',
-            'title_defaults': {'454107F8': {'GPU|clear_memory_page_state': True}},
+            'title_defaults': {
+                '454107F8': {'GPU|clear_memory_page_state': True},
+                '454109AB': {
+                    'GPU|memexport_enable': True,
+                    'GPU|readback_resolve': 'uma',
+                    'GPU|memexport_await_fences': True,
+                    'GPU|async_shader_skip_draws': False,
+                    'Vulkan|vulkan_async_skip_draws': False,
+                },
+            },
         }
         pathlib.Path(os.environ['NAME'] + '.json').write_text(json.dumps(result, indent=2) + '\n')
         PYIDENTITY

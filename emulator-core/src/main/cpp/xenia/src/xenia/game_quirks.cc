@@ -29,6 +29,18 @@ static const Quirk kQuirks[] = {
     // Zephyr Edge30 corruption report; device confirmation still pending.
     {0x454107F8, "clear_memory_page_state", true,
      "refresh uploaded page state for Army of Two rendering corruption"},
+    // The Devil's Cartel consumes shader export data on the guest CPU.
+    // Use the existing host-mapped readback path if direct import is unavailable.
+    {0x454109AB, "memexport_enable", true,
+     "make shader exports visible to the Army TDC guest CPU"},
+    {0x454109AB, "readback_resolve", "uma",
+     "provide the host-mapped fallback for Army TDC shader exports"},
+    {0x454109AB, "memexport_await_fences", true,
+     "publish Army TDC shader exports before guest-visible fences"},
+    {0x454109AB, "async_shader_skip_draws", false,
+     "preserve Army TDC draws while shader translation is pending"},
+    {0x454109AB, "vulkan_async_skip_draws", false,
+     "preserve Army TDC draws while Vulkan pipelines compile"},
     // Ninja Gaiden 2: the opening FMV renders as three time-skewed vertical
     // slices when the restore half of the saverest inline is active. Every
     // emitted expansion verifies correct, so the current reading is a latent

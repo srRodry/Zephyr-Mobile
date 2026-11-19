@@ -36,15 +36,16 @@ extern std::unordered_map<std::string, IConfigVar*>* ConfigVars;
 #include "xenia/game_quirks.h"
 #include "xenia/base/cvar.h"
 namespace cvar {std::unordered_map<std::string, IConfigVar*>* ConfigVars = nullptr;}
-struct BoolVar : cvar::IConfigVar {
- bool current = false; int writes = 0;
+template<class T> struct Var : cvar::IConfigVar {
+ T current{}; int writes = 0;
  void LoadGameConfigValue(const toml::node* node) override {
-   auto typed = dynamic_cast<const toml::value<bool>*>(node);
+   auto typed = dynamic_cast<const toml::value<T>*>(node);
    assert(typed); current = typed->val; ++writes;
  }
 };
 int main() {
- BoolVar refresh;
+ Var<bool> refresh, exports, fences, skip_shader, skip_pipeline;
+ Var<std::string> resolve;
  std::unordered_map<std::string, cvar::IConfigVar*> variables{{"clear_memory_page_state", &refresh}};
  cvar::ConfigVars = &variables;
  assert(xe::game_quirks::Apply(0x454107F8) == 1);
@@ -53,6 +54,18 @@ int main() {
  for (uint32_t title : {0x454108D8u, 0x454109ABu, 0x41560815u, 0x4D5309C9u}) {
    xe::game_quirks::Apply(title); assert(refresh.writes == 1);
  }
+ variables.insert({{"memexport_enable", &exports}, {"memexport_await_fences", &fences},
+                   {"readback_resolve", &resolve}, {"async_shader_skip_draws", &skip_shader},
+                   {"vulkan_async_skip_draws", &skip_pipeline}});
+ for (uint32_t title : {0x454107F8u, 0x454108D8u, 0x41560815u, 0x4D5309C9u}) {
+   xe::game_quirks::Apply(title);
+   assert(exports.writes == 0 && fences.writes == 0 && skip_shader.writes == 0 &&
+          skip_pipeline.writes == 0 && resolve.writes == 0);
+ }
+ assert(xe::game_quirks::Apply(0x454109AB) == 5);
+ assert(exports.current && fences.current && resolve.current == "uma");
+ assert(skip_shader.writes == 1 && !skip_shader.current);
+ assert(skip_pipeline.writes == 1 && !skip_pipeline.current);
  // Config.cc applies the user's game file after dispatch; it must still win.
  toml::value<bool> explicit_user_override(false);
  refresh.LoadGameConfigValue(&explicit_user_override);
@@ -68,4 +81,4 @@ int main() {
                     str(base / 'xenia/game_quirks.cc'), str(path / 'test.cc'),
                     '-o', str(binary)], check=True)
     subprocess.run([str(binary)], check=True)
-print('Army quirk: real dispatcher applies only to 454107F8; user-file priority and unrelated titles preserved.')
+print('Army quirks: original page refresh and TDC GPU compatibility are scoped separately.')

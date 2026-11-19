@@ -1013,6 +1013,12 @@ bool COMMAND_PROCESSOR::ExecutePacketType3_WAIT_REG_MEM(
       if (!progress_writeback_attempted && count == 5) {
         progress_writeback_attempted = true;
         COMMAND_PROCESSOR::PublishPrimaryProgressBeforeWait();
+        // A direct guest-RAM export does not put anything on the readback
+        // queue. Submit it if the wait itself is polling that exported page.
+        if (is_memory) {
+          COMMAND_PROCESSOR::AwaitMemexportForCoherency(
+              poll_reg_addr & 0x1FFFFFFCu, sizeof(uint32_t));
+        }
       }
       // Export output read back once its submission completes may be what
       // this waits for - in memory, or in a register the guest CPU writes
@@ -1174,6 +1180,10 @@ XE_NOINLINE
 bool COMMAND_PROCESSOR::ExecutePacketType3_MEM_WRITE(
     uint32_t packet, uint32_t count) XE_RESTRICT {
   uint32_t write_addr = reader_.ReadAndSwap<uint32_t>();
+  if (count > 1 && (cvars::memexport_await_fences ||
+                    COMMAND_PROCESSOR::MemexportReadbacksPending())) {
+    COMMAND_PROCESSOR::AwaitMemexportForFence("memory write");
+  }
 
   if (COMMAND_PROCESSOR::debug_markers_enabled()) {
     COMMAND_PROCESSOR::InsertDebugMarker("PM4_MEM_WRITE: 0x%08X (%u dwords)",
@@ -1276,6 +1286,10 @@ bool COMMAND_PROCESSOR::ExecutePacketType3_EVENT_WRITE(
     // value would deadlock with the command processor idle.
     uint32_t address = reader_.ReadAndSwap<uint32_t>();
     uint32_t value = reader_.ReadAndSwap<uint32_t>();
+    if (cvars::memexport_await_fences ||
+        COMMAND_PROCESSOR::MemexportReadbacksPending()) {
+      COMMAND_PROCESSOR::AwaitMemexportForFence("event write fence");
+    }
     XELOGI("EVENT_WRITE fence: initiator={:02X} address={:08X} value={:08X}",
            initiator & 0x3F, address, value);
     auto endianness = static_cast<xenos::Endian>(address & 0x3);

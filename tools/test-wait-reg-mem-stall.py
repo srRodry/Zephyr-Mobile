@@ -29,7 +29,7 @@ harness = r'''
 #define XE_PLATFORM_WIN32 0
 #define assert_true(x) assert(x)
 #define assert_zero(x) assert(!(x))
-static int reports=0, polls=0, until_write=0;
+static int reports=0, polls=0, until_write=0, coherency_checks=0;
 static uint64_t now=1000000000ull;
 static uint32_t guest_value=0, guest_rptr=0;
 static bool release_on_progress=false;
@@ -72,7 +72,12 @@ struct CP {
  struct {bool frames_left=false;} bin_trace_;
  uint32_t wrm_log_left_=0,read_ptr_index_=12;std::atomic<uint32_t>write_ptr_index_{13};std::atomic<bool>paused_{true};bool worker_running_=true;
  bool debug_markers_enabled(){return false;}template<class...T>void InsertDebugMarker(T...){}
- bool MemexportReadbacksPending(){return false;}void AwaitMemexportForCoherency(uint32_t,uint32_t){}void MakeCoherent(){}
+ bool MemexportReadbacksPending(){return false;}
+ void AwaitMemexportForCoherency(uint32_t address,uint32_t bytes){
+   assert(address==0x1000 && bytes==sizeof(uint32_t));
+   ++coherency_checks;
+ }
+ void MakeCoherent(){}
  bool AwaitMemexportReadbacks(const char*){return false;}
  uint64_t FrameWaitBegin(){return 0;}static uint64_t FrameStatsNow(){return now;}
  void WrmWriterArm(uint32_t){}std::string WrmWriterTake(){return {};}
@@ -115,9 +120,11 @@ int main(){
  until_write=16;
  assert(cp.ExecutePacketType3_WAIT_REG_MEM(0,5));
  assert(polls==16); assert(reports==3); assert(guest_value==0xABCD0007);
+ assert(coherency_checks==1);
  // Already matched: no sleep and no spurious stall warning.
  polls=reports=0;cp.reader_.i=0;
  assert(cp.ExecutePacketType3_WAIT_REG_MEM(0,5));assert(polls==0);assert(reports==0);
+ assert(coherency_checks==1);
  assert(writebacks.empty());
 
  cp.kernel.title=0x454109AB;
