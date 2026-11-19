@@ -7,6 +7,7 @@
  ******************************************************************************
  */
 
+#include <algorithm>
 #include <atomic>
 #include <set>
 
@@ -532,6 +533,17 @@ class PosixConditionBase {
       return std::make_pair(result, 0);
     }
 
+    // Lock aliased conditions once, but retain the caller's indices for
+    // WaitAny. WaitAll rejects duplicates instead of consuming twice.
+    // See Xenia Edge 153882090c68be9b781744998d3188286103c4aa.
+    std::vector<bool> duplicate(handles.size(), false);
+    for (size_t i = 1; i < handles.size(); ++i) {
+      const auto end = handles.begin() + i;
+      duplicate[i] = std::find(handles.begin(), end, handles[i]) != end;
+      if (duplicate[i] && wait_all) {
+        return {WaitResult::kFailed, 0};
+      }
+    }
     MultiWaitRegistration registration(handles);
 
     // For multiple handles, we need to poll since we can't wait on multiple
@@ -561,6 +573,9 @@ class PosixConditionBase {
       bool all_locked = true;
 
       for (size_t i = 0; i < handles.size(); ++i) {
+        if (duplicate[i]) {
+          continue;
+        }
 #if XE_PLATFORM_MAC
         // macOS: no robust mutex support.
         std::unique_lock<std::mutex> lk(handles[i]->mutex_, std::try_to_lock);
@@ -598,6 +613,9 @@ class PosixConditionBase {
       // If we couldn't acquire all locks, release what we have and retry.
       if (!all_locked) {
         locks.clear();
+        if (std::chrono::steady_clock::now() >= end_time) {
+          return {WaitResult::kTimeout, 0};
+        }
         std::this_thread::yield();
         continue;
       }
@@ -704,6 +722,12 @@ class PosixCondition<Event> : public PosixConditionBase {
   PosixCondition(bool manual_reset, bool initial_state)
       : signal_(initial_state), manual_reset_(manual_reset) {}
   ~PosixCondition() override = default;
+
+  EventInfo Query() {
+    auto lock = GuardedLock();
+    // EVENT_TYPE: NotificationEvent (manual) = 0, SynchronizationEvent = 1.
+    return {manual_reset_ ? 0u : 1u, signal_ ? 1u : 0u};
+  }
 
   // SetEvent.
   bool Signal() override {
@@ -1836,11 +1860,7 @@ class PosixEvent final : public PosixConditionHandle<Event> {
   ~PosixEvent() override = default;
   void Set() override { handle_.Signal(); }
   void Reset() override { handle_.Reset(); }
-  EventInfo Query() override {
-    EventInfo result{};
-    assert_always();
-    return result;
-  }
+  EventInfo Query() override { return handle_.Query(); }
   void Pulse() override {
     using namespace std::chrono_literals;
     handle_.Signal();

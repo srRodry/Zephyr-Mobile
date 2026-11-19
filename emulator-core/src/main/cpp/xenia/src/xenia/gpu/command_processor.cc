@@ -1423,17 +1423,43 @@ void CommandProcessor::WorkerThreadMain() {
     //     that many indices.
     // Keep in mind that the gpu also updates the cpu-side copy if the write
     // pointer and read pointer would be equal
-    if (read_ptr_writeback_ptr_) {
-      xe::store_and_swap<uint32_t>(
-          memory_->TranslatePhysical(read_ptr_writeback_ptr_), read_ptr_index_);
-      NotifyGuestGpuProgress();
-    }
+    WritePrimaryReadPointer(read_ptr_index_);
 
     // FIXME: We're supposed to process the WAIT_UNTIL register at this point,
     // but no games seem to actually use it.
   }
 
   ShutdownContext();
+}
+
+void CommandProcessor::WritePrimaryReadPointer(uint32_t index) {
+  if (read_ptr_writeback_ptr_) {
+    xe::store_and_swap<uint32_t>(
+        memory_->TranslatePhysical(read_ptr_writeback_ptr_), index);
+    NotifyGuestGpuProgress();
+  }
+}
+
+void CommandProcessor::PublishPrimaryProgressBeforeWait() {
+  // The Devil's Cartel waits for primary ring progress before the CPU write
+  // that releases an in-batch WAIT_REG_MEM. Report consumed command bytes,
+  // without retiring the wait or changing the worker's internal read index.
+  if (!primary_buffer_active_ || !read_ptr_writeback_ptr_ || !kernel_state_ ||
+      kernel_state_->title_id() != 0x454109AB) {
+    return;
+  }
+  if (ib_call_depth_ && !primary_indirect_read_index_) {
+    return;
+  }
+  const uint32_t index = ib_call_depth_ ? *primary_indirect_read_index_
+                                        : reader_.read_offset() /
+                                              sizeof(uint32_t);
+  WritePrimaryReadPointer(index);
+  if (!primary_wait_writeback_logged_) {
+    primary_wait_writeback_logged_ = true;
+    XELOGI("Army TDC: pre-wait primary ring writeback rptr={} depth={}", index,
+           ib_call_depth_);
+  }
 }
 
 void CommandProcessor::Pause() {

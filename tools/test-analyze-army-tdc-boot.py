@@ -24,6 +24,7 @@ i> Module \Device\Package_0\Engine.BuildInfo.xex:
 w> GuestScheduler: 59 gated waits were only re-readied by the 64ms backstop
 w> GuestScheduler: 3 gated waits were only re-readied by the 64ms backstop
 w> GuestScheduler: no guest frame presented in 2000 watchdog ticks
+i> Army TDC: pre-wait primary ring writeback rptr=28 depth=2
 i> XEvent signal: handle=F8000000
 i> XEvent signal: handle=F8000001
 i> MemoryPollPark: parked poll loop at guest 82014F8C
@@ -42,6 +43,8 @@ class ArmyBootTests(unittest.TestCase):
         self.assertEqual(report["missing_xam_background_download_calls"], 1)
         self.assertEqual(report["rescued_wait_total_across_reported_windows"], 62)
         self.assertEqual(report["watchdog_no_frame_reports"], 1)
+        self.assertEqual(report["pre_wait_ring_writeback_markers"],
+                         [{"dword_index": 28, "indirect_buffer_depth": 2}])
         self.assertEqual(report["xevent_trace_lines"], 2)
         self.assertEqual(report["memory_poll_trace_lines"], 1)
         self.assertFalse(report["vulkan_frame_or_pipeline_timings_present"])
@@ -50,6 +53,7 @@ class ArmyBootTests(unittest.TestCase):
         report = mod.analyze("hello world")
         self.assertEqual(report["launches"], [])
         self.assertEqual(report["loaded_modules"], [])
+        self.assertEqual(report["pre_wait_ring_writeback_markers"], [])
         self.assertFalse(report["vulkan_frame_or_pipeline_timings_present"])
         self.assertGreater(len(report["caveats"]), 2)
 

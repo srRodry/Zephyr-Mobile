@@ -891,7 +891,15 @@ bool COMMAND_PROCESSOR::ExecutePacketType3_INDIRECT_BUFFER(
                                               (packet & 1) != 0, true);
   }
 
+  const bool save_primary_index =
+      primary_buffer_active_ && !ib_call_depth_ && count == 2;
+  if (save_primary_index) {
+    primary_indirect_read_index_ = reader_.read_offset() / sizeof(uint32_t);
+  }
   COMMAND_PROCESSOR::ExecuteIndirectBuffer(GpuToCpu(list_ptr), list_length);
+  if (save_primary_index) {
+    primary_indirect_read_index_.reset();
+  }
   return true;
 }
 
@@ -959,6 +967,7 @@ bool COMMAND_PROCESSOR::ExecutePacketType3_WAIT_REG_MEM(
   uint32_t first_value = 0;
   uint64_t log_begin_ns = 0;
   bool first_check = true;
+  bool progress_writeback_attempted = false;
   uint32_t value;
   // Diagnose waits that never finish too: the existing optional report only
   // runs after a match. Probe short spin waits once per 1024 polls, and sleeping
@@ -993,6 +1002,10 @@ bool COMMAND_PROCESSOR::ExecutePacketType3_WAIT_REG_MEM(
     matched = MatchValueAndRef(value & mask, ref, wait_info);
 
     if (!matched) {
+      if (!progress_writeback_attempted && count == 5) {
+        progress_writeback_attempted = true;
+        COMMAND_PROCESSOR::PublishPrimaryProgressBeforeWait();
+      }
       // Export output read back once its submission completes may be what
       // this waits for - in memory, or in a register the guest CPU writes
       // after reading it (short register waits spin without PrepareForWait).
@@ -2001,6 +2014,7 @@ uint32_t COMMAND_PROCESSOR::ExecutePrimaryBuffer(uint32_t read_index,
   // chiplets l3
   reader_.BeginPrefetchedRead<swcache::PrefetchTag::Level2>(
       GetCurrentRingReadCount());
+  primary_buffer_active_ = true;
   do {
     if (!COMMAND_PROCESSOR::ExecutePacket()) {
       // This probably should be fatal - but we're going to continue anyways.
@@ -2009,6 +2023,7 @@ uint32_t COMMAND_PROCESSOR::ExecutePrimaryBuffer(uint32_t read_index,
       break;
     }
   } while (reader_.read_count());
+  primary_buffer_active_ = false;
 
   COMMAND_PROCESSOR::OnPrimaryBufferEnd();
 
@@ -2020,6 +2035,8 @@ uint32_t COMMAND_PROCESSOR::ExecutePrimaryBuffer(uint32_t read_index,
 
 void COMMAND_PROCESSOR::ExecutePacket(uint32_t ptr, uint32_t count) {
   // Execute commands!
+  const bool was_primary_buffer_active = primary_buffer_active_;
+  primary_buffer_active_ = false;
   RingBuffer old_reader = reader_;
 
   new (&reader_)
@@ -2035,4 +2052,5 @@ void COMMAND_PROCESSOR::ExecutePacket(uint32_t ptr, uint32_t count) {
     }
   } while (reader_.read_count());
   reader_ = old_reader;
+  primary_buffer_active_ = was_primary_buffer_active;
 }

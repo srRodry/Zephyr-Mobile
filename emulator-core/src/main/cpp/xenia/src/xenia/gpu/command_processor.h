@@ -16,6 +16,7 @@
 #include <functional>
 #include <memory>
 #include <mutex>
+#include <optional>
 #include <queue>
 #include <string>
 #include <tuple>
@@ -133,6 +134,8 @@ class CommandProcessor {
                 // also reduces the number of params we need to pass
   // Converts the reader's host pointer (+ offset) to a guest physical address.
   uint32_t GuestReadPtrOffset(int32_t offset = 0) const;
+  void WritePrimaryReadPointer(uint32_t index);
+  void PublishPrimaryProgressBeforeWait();
 
   // merge_tiling_bands: the bands of predicated tiling (bin selects other than
   // all ones between all-ones ones) drawn as one. Every draw (resolves aside)
@@ -828,6 +831,11 @@ class CommandProcessor {
   uint32_t read_ptr_index_ = 0;
   uint32_t read_ptr_update_freq_ = 0;
   uint32_t read_ptr_writeback_ptr_ = 0;
+  bool primary_buffer_active_ = false;
+  bool primary_wait_writeback_logged_ = false;
+  // Primary cursor after consuming an outer INDIRECT_BUFFER packet. reader_
+  // describes the indirect list, not the primary ring, while executing it.
+  std::optional<uint32_t> primary_indirect_read_index_;
 
   std::unique_ptr<xe::threading::Event> write_ptr_index_event_;
   std::atomic<uint32_t> write_ptr_index_;
