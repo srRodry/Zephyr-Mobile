@@ -98,11 +98,15 @@ bool MemoryPollParkPass::TryInstrumentLoop(HIRBuilder* builder, Block* block) {
     return false;
   }
 
+  // The guest PC exists only for diagnostic messages. Do not rescan the
+  // instructions of every eligible self-loop when tracing is disabled.
   uint64_t guest_address = 0;
-  for (Instr* instr = block->instr_head; instr; instr = instr->next) {
-    if (instr->opcode == &OPCODE_SOURCE_OFFSET_info) {
-      guest_address = instr->src1.offset;
-      break;
+  if (cvars::log_memory_poll_park) {
+    for (Instr* instr = block->instr_head; instr; instr = instr->next) {
+      if (instr->opcode == &OPCODE_SOURCE_OFFSET_info) {
+        guest_address = instr->src1.offset;
+        break;
+      }
     }
   }
   auto reject = [&](const char* reason, const char* detail) {
