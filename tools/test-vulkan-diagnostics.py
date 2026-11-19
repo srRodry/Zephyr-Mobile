@@ -73,6 +73,39 @@ class VulkanDiagnosticsTests(unittest.TestCase):
         self.assertEqual(report["windows"][0]["gpu_ms_per_submission_avg"], 0)
         self.assertTrue(any("Zero GPU" in note for note in report["limitations"]))
 
+    def test_append_only_log_isolates_latest_session_for_both_log_types(self):
+        report = summarize([
+            "I> Storage root: /sdcard/old_game",
+            line(100, 85, 55), pipeline_line(100, 9, 90, 120),
+            "I> VkFrameSync: truncated",
+            "I> Storage root: /sdcard/current_game",
+            line(30, 3, 4), pipeline_line(30, 2, 3, 5),
+        ])
+        self.assertEqual(report["session_boundaries_seen"], 2)
+        self.assertEqual(report["analysis_scope"], "latest_session")
+        self.assertEqual(report["frames_selected"], 30)
+        self.assertEqual(report["pipeline_waits"]["frames_selected"], 30)
+        self.assertEqual(report["malformed_windows_rejected"], 0)
+        self.assertEqual(report["approximate_frame_weighted_cpu"]["cpu_await_ms_per_frame"], 3)
+        self.assertEqual(report["pipeline_waits"]["approximate_frame_weighted"]["submission_wait_ms_per_frame"], 3)
+
+    def test_last_uses_latest_session_only_and_excludes_invalid_previous(self):
+        report = summarize([
+            line(70), "VkPipelineWait: bad",
+            "Storage root: /sdcard/games",
+            line(10, 2), line(20, 4), pipeline_line(10, 1, 2, 3),
+            "VkPipelineWait: truncated", pipeline_line(20, 1, 4, 7),
+        ], last=1)
+        self.assertEqual(report["frames_selected"], 20)
+        self.assertEqual(report["pipeline_waits"]["frames_selected"], 20)
+        self.assertEqual(report["pipeline_waits"]["malformed_windows_rejected"], 1)
+
+    def test_unmarked_legacy_logs_keep_all_windows(self):
+        report = summarize([line(10), line(20), pipeline_line(8)])
+        self.assertEqual(report["analysis_scope"], "entire_log_unmarked")
+        self.assertEqual(report["session_boundaries_seen"], 0)
+        self.assertEqual(report["frames_selected"], 30)
+
     def test_cli_json_and_invalid_window_argument(self):
         script = Path(__file__).with_name("vulkan_diagnostics.py")
         with tempfile.TemporaryDirectory(prefix="zephyr-vulkan-log-") as directory:

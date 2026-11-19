@@ -14,6 +14,7 @@ import androidx.compose.ui.test.onFirst
 import androidx.compose.ui.test.performClick
 import androidx.test.ext.junit.runners.AndroidJUnit4
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
@@ -73,8 +74,12 @@ class FirstRunReturnTest {
         compose.waitForIdle()
         assertTrue("the browser is open", !shown(R.string.fr_your_games))
         compose.onAllNodesWithContentDescription(text(R.string.xd_back)).onFirst().performClick()
-        compose.waitForIdle()
+        // The assistant is rendered in a separate Dialog window. Robolectric's
+        // immediate idle barrier can complete before that window is attached;
+        // await the observable step, but still fail on a real lost state.
+        compose.waitUntil(timeoutMillis = 5_000) { shown(R.string.fr_your_games) }
         assertTrue("back on the same step", shown(R.string.fr_your_games))
+        assertFalse("return must not restart the wizard", shown(R.string.fr_welcome))
     }
 
     @Test fun aboutsRequestOpensTheAssistantOnce() {

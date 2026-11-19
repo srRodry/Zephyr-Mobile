@@ -1,7 +1,7 @@
 name: Zephyr research tools
 on:
   push:
-    branches: [research/android-x360-foundation, research/android-x360-gpu-candidate, perf/edge30-beta1, research/edge30-diagnostics-audit-20261117]
+    branches: [research/android-x360-foundation, research/android-x360-gpu-candidate, perf/edge30-beta1, research/edge30-diagnostics-audit-20261117, research/native-recomp-semantics-20261118]
     paths:
       - 'tools/compare-benchmarks.py'
       - 'tools/test-compare-benchmarks.py'
@@ -9,6 +9,11 @@ on:
       - 'tools/test-zephyr-graphics-ab.py'
       - 'tools/scheduler-diagnostics.py'
       - 'tools/test-scheduler-diagnostics.py'
+      - 'tools/test-native-ppc-edgecases.py'
+      - 'tools/vulkan_diagnostics.py'
+      - 'tools/test-vulkan-diagnostics.py'
+      - 'emulator-core/src/main/cpp/xenia/src/xenia/cpu/ppc/ppc_emit_alu.cc'
+      - 'emulator-core/src/main/cpp/xenia/src/xenia/cpu/ppc/ppc_emit_altivec.cc'
       - 'tools/test-edge30-policy.py'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/base/zephyr_edge30_policy.h'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/kernel/guest_scheduler.cc'
@@ -25,6 +30,11 @@ on:
       - 'tools/test-zephyr-graphics-ab.py'
       - 'tools/scheduler-diagnostics.py'
       - 'tools/test-scheduler-diagnostics.py'
+      - 'tools/test-native-ppc-edgecases.py'
+      - 'tools/vulkan_diagnostics.py'
+      - 'tools/test-vulkan-diagnostics.py'
+      - 'emulator-core/src/main/cpp/xenia/src/xenia/cpu/ppc/ppc_emit_alu.cc'
+      - 'emulator-core/src/main/cpp/xenia/src/xenia/cpu/ppc/ppc_emit_altivec.cc'
       - 'tools/test-edge30-policy.py'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/base/zephyr_edge30_policy.h'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/kernel/guest_scheduler.cc'
@@ -46,6 +56,10 @@ jobs:
         run: python3 tools/test-compare-benchmarks.py
       - name: Test graphics A/B CVAR categories
         run: python3 tools/test-zephyr-graphics-ab.py
+      - name: Execute real PPC emitter semantics under UBSan
+        run: python3 tools/test-native-ppc-edgecases.py
+      - name: Test Vulkan frame and pipeline diagnostics
+        run: python3 tools/test-vulkan-diagnostics.py
       - name: Test Edge30 CPU0 phase log analysis
         run: python3 tools/test-scheduler-diagnostics.py
       - name: Test opt-in Edge30 scheduler stats and IO completion

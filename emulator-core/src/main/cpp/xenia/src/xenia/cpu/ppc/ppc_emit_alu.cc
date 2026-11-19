@@ -1214,11 +1214,13 @@ int InstrEmit_sradx(PPCHIRBuilder& f, const InstrData& i) {
   Value* clamp_sh = f.Min(sh, f.LoadConstantInt8(0x3F));
   Value* v = f.Sha(rt, clamp_sh);
 
-  // CA is set if any bits are shifted out of the right and if the result
-  // is negative.
-  Value* ca =
-      f.And(f.IsTrue(f.Shr(rt, 63)), f.CompareNE(f.Shl(v, clamp_sh), rt));
-  f.StoreCA(ca);
+  // With a count >= 64 the whole word is shifted out: PowerPC sets
+  // XER.CA to the sign bit even when the 63-bit reconstruction is exact
+  // (for example, 0x8000000000000000 >> 64).
+  Value* shifted_out = f.Or(
+      f.IsTrue(f.And(sh, f.LoadConstantInt8(0x40))),
+      f.CompareNE(f.Shl(v, clamp_sh), rt));
+  f.StoreCA(f.And(f.IsTrue(f.Shr(rt, 63)), shifted_out));
 
   f.StoreGPR(i.X.RA, v);
   if (i.X.Rc) {
@@ -1272,13 +1274,14 @@ int InstrEmit_srawx(PPCHIRBuilder& f, const InstrData& i) {
   Value* sh =
       f.And(f.Truncate(f.LoadGPR(i.X.RB), INT8_TYPE), f.LoadConstantInt8(0x3F));
   Value* clamp_sh = f.Min(sh, f.LoadConstantInt8(0x1F));
-  Value* v = f.Sha(rt, f.Min(sh, clamp_sh));
+  Value* v = f.Sha(rt, clamp_sh);
 
-  // CA is set if any bits are shifted out of the right and if the result
-  // is negative.
-  Value* ca =
-      f.And(f.IsTrue(f.Shr(rt, 31)), f.CompareNE(f.Shl(v, clamp_sh), rt));
-  f.StoreCA(ca);
+  // With a count >= 32 all source bits are shifted out, so XER.CA
+  // equals the source sign (including 0x80000000 >> 32).
+  Value* shifted_out = f.Or(
+      f.IsTrue(f.And(sh, f.LoadConstantInt8(0x20))),
+      f.CompareNE(f.Shl(v, clamp_sh), rt));
+  f.StoreCA(f.And(f.IsTrue(f.Shr(rt, 31)), shifted_out));
 
   v = f.SignExtend(v, INT64_TYPE);
   f.StoreGPR(i.X.RA, v);
