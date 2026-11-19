@@ -1308,6 +1308,12 @@ void GuestScheduler::BlockCurrentThread(uint64_t deadline_ms,
   }
   {
     std::lock_guard<std::mutex> lock(lock_);
+    Cpu& cpu = cpus_[cpu_index];
+    // Publish the hint before sampling the epoch. A notifier that bumped the
+    // epoch but still saw no blocked CPU must precede the sample in the
+    // sequentially consistent order. A notifier that sees the hint takes
+    // lock_ and finds the waiter after we link it below.
+    cpu.has_blocked.store(true);
     // A signal between the caller's failed poll and this park bumped the epoch
     // but walked the blocked list before we joined it, so nothing would re-poll
     // us before the backstop. Compare under the walk's own lock and poke this
@@ -1324,7 +1330,7 @@ void GuestScheduler::BlockCurrentThread(uint64_t deadline_ms,
         epoch_gated = true;
       }
       if (epoch_gated && epoch_now != wait_epoch) {
-        cpus_[cpu_index].repoll_now.store(true, std::memory_order_relaxed);
+        cpu.repoll_now.store(true, std::memory_order_relaxed);
       }
     }
     auto& links = self->scheduler_links();
@@ -1339,7 +1345,6 @@ void GuestScheduler::BlockCurrentThread(uint64_t deadline_ms,
     links.wait_deadline_ms = deadline_ms;
     // A wait consumes the slice.
     links.quantum_deadline_tick = 0;
-    Cpu& cpu = cpus_[cpu_index];
     LinkTailLocked(cpu.blocked_head, cpu.blocked_tail, self);
     int prio = ClampPriority(self->priority());
     if (prio > cpu.max_blocked_prio) {
@@ -1357,9 +1362,6 @@ void GuestScheduler::BlockCurrentThread(uint64_t deadline_ms,
     if (due && due < cpu.next_timed_repoll_ms) {
       cpu.next_timed_repoll_ms = due;
     }
-    // seq_cst pairs with the wake pre-filters' loads: epoch-read-then-store
-    // here vs bump-then-load there, so at least one side always sees the other.
-    cpu.has_blocked.store(true);
   }
   self->guest_object<X_KTHREAD>()->thread_state = KTHREAD_STATE_WAITING;
   YieldToScheduler();
@@ -1399,8 +1401,12 @@ void GuestScheduler::RereadyBlocked(int cpu_index, bool poked) {
     while (t) {
       auto& links = t->scheduler_links();
       XThread* next = links.ready_next;
-      // Skip a gated waiter whose wait cannot have resolved yet.
-      if (links.wait_gated && !force_all) {
+      // Backstop polls are for object signals. A pure timed sleep has no
+      // signal to recover and can stay parked until its original deadline.
+      const bool pure_delay =
+          static_cast<XThread::CooperativeWaitKind>(links.wait_kind) ==
+          XThread::CooperativeWaitKind::kDelay;
+      if (links.wait_gated && (!force_all || pure_delay)) {
         // Three gate kinds: a single object's epoch, a multi-wait's summed
         // epoch, or (neither) a pure timed sleep that only the deadline below
         // can resolve.

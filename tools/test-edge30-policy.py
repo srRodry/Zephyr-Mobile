@@ -7,6 +7,7 @@ from pathlib import Path
 import os
 import argparse
 import json
+from itertools import permutations
 import shlex
 import shutil
 import subprocess
@@ -26,6 +27,38 @@ def extract(marker):
         depth += (source[end] == '{') - (source[end] == '}')
         end += 1
     return source[begin:end]
+
+def test_wait_publication():
+    park = extract('void GuestScheduler::BlockCurrentThread(')
+    wake = extract('void GuestScheduler::WakeForSignal(')
+    signal = (base / 'xenia/kernel/xobject.cc').read_text()
+    signal = signal.split('void XObject::WakeCooperativeWaiters()', 1)[1]
+    assert signal.index('cooperative_signal_epoch_.fetch_add(1)') < signal.index('WakeForSignal(')
+    assert 'has_blocked.load()' in wake
+
+    # Model the first waiter on an idle CPU after a failed poll. The blocked
+    # list is guarded by the same lock for insertion and the notifier's walk,
+    # so a notifier observing publication will find the parked waiter.
+    publish = park.index('cpu.has_blocked.store(true)')
+    for sample in ('wait_object->cooperative_signal_epoch()',
+                   'self->cooperative_wait_set_epoch()'):
+        read = park.index(sample)
+        park_order = ('publish', 'sample') if publish < read else ('sample', 'publish')
+        for order in permutations(('publish', 'sample', 'signal', 'probe')):
+            if order.index('signal') > order.index('probe'):
+                continue
+            if order.index(park_order[0]) > order.index(park_order[1]):
+                continue
+            park_repolls = order.index('signal') < order.index('sample')
+            wake_repolls = order.index('publish') < order.index('probe')
+            assert park_repolls or wake_repolls, f'lost cooperative wake: {order}'
+
+    reready = extract('void GuestScheduler::RereadyBlocked(')
+    assert 'links.wait_gated && (!force_all || pure_delay)' in reready
+    assert 'links.wait_deadline_ms && now_ms >= links.wait_deadline_ms' in reready
+
+
+test_wait_publication()
 
 collector = extract('static bool CollectSchedulerStats()')
 worker = extract('void GuestScheduler::IoWorkerLoop()')
