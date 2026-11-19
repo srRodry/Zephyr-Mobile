@@ -1089,6 +1089,15 @@ dword_result_t XamContentGetDeviceVolumePath_entry(dword_t device_id,
   return X_ERROR_SUCCESS;
 }
 DECLARE_XAM_EXPORT1(XamContentGetDeviceVolumePath, kContent, kStub);
+
+// Title boot services may request the download mode even when background
+// downloads are not implemented by the emulator. This is a no-op, not an
+// unsupported kernel export: there is no dashboard download queue to change.
+// XAM ordinal 0x9C4, required by games including Army of Two: The Devil's Cartel.
+dword_result_t XamBackgroundDownloadSetMode_entry(dword_t /*mode*/) {
+  return X_ERROR_SUCCESS;
+}
+DECLARE_XAM_EXPORT1(XamBackgroundDownloadSetMode, kContent, kStub);
 }  // namespace xam
 }  // namespace kernel
 }  // namespace xe
