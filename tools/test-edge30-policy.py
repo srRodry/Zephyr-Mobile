@@ -56,6 +56,17 @@ def test_wait_publication():
     reready = extract('void GuestScheduler::RereadyBlocked(')
     assert 'links.wait_gated && (!force_all || pure_delay)' in reready
     assert 'links.wait_deadline_ms && now_ms >= links.wait_deadline_ms' in reready
+    # Guard both ends of the backstop lifetime: the first object waiter
+    # arms it, and a pass keeping only delays must stop scheduling it.
+    assert 'epoch_gated && cpu.next_force_repoll_ms == kNoRepoll' in park
+    assert 'std::min(cpu.next_timed_repoll_ms, cpu.next_force_repoll_ms)' in park
+    assert 'needs_backstop |= !pure_delay' in reready
+    assert 'if (!needs_backstop)' in reready
+    assert 'cpu.next_force_repoll_ms = kNoRepoll' in reready
+    assert 'std::min(next_due, cpu.next_force_repoll_ms)' in reready
+    run_loop = extract('void GuestScheduler::RunLoop(')
+    assert run_loop.index('cpu.next_timed_repoll_ms != kNoRepoll') < run_loop.index(
+        'Clock::QueryHostUptimeMillis()')
 
 
 test_wait_publication()

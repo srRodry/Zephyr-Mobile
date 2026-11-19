@@ -13,6 +13,7 @@
 #include <atomic>
 #include <chrono>
 #include <functional>
+#include <limits>
 #include <memory>
 #include <mutex>
 #include <queue>
@@ -176,6 +177,7 @@ class GuestScheduler {
   // At least this often every blocked fiber re-polls regardless of the epoch
   // gate, so a missed epoch bump costs a latency blip, not a hang.
   static constexpr uint64_t kRepollBackstopMs = 64;
+  static constexpr uint64_t kNoRepoll = std::numeric_limits<uint64_t>::max();
   // Backstop rescues per 5s window before the missed-wake tripwire warns.
   // Above the benign signal/park race rate, far below a real regression.
   static constexpr uint64_t kBackstopRescueWarnThreshold = 50;
@@ -227,12 +229,12 @@ class GuestScheduler {
     // anything else ran before it resumed.
     std::atomic<uint64_t> switch_seq{0};
     // Absolute host ms of the next forced full re-poll. Guarded by lock_.
-    uint64_t next_force_repoll_ms = 0;
+    uint64_t next_force_repoll_ms = kNoRepoll;
     // Absolute host ms of the next timed re-poll: the earliest gated
     // deadline, the poll cadence while ungated or alertable waiters are
     // parked, or the backstop. Written only by this CPU's dispatch thread,
-    // which also reads it to size the idle sleep. 0 = due now.
-    uint64_t next_timed_repoll_ms = 0;
+    // which also reads it to size the idle sleep. kNoRepoll = no timer.
+    uint64_t next_timed_repoll_ms = kNoRepoll;
     // Highest blocked-fiber priority, so WakeAll only preempts a runner a
     // waiter could outrank. Raised on block, recomputed by RereadyBlocked.
     // Guarded by lock_.

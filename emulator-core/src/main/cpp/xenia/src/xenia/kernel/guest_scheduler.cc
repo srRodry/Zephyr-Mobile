@@ -1332,6 +1332,12 @@ void GuestScheduler::BlockCurrentThread(uint64_t deadline_ms,
       if (epoch_gated && epoch_now != wait_epoch) {
         cpu.repoll_now.store(true, std::memory_order_relaxed);
       }
+      if (epoch_gated && cpu.next_force_repoll_ms == kNoRepoll) {
+        cpu.next_force_repoll_ms =
+            Clock::QueryHostUptimeMillis() + kRepollBackstopMs;
+        cpu.next_timed_repoll_ms =
+            std::min(cpu.next_timed_repoll_ms, cpu.next_force_repoll_ms);
+      }
     }
     auto& links = self->scheduler_links();
     // Park self (running, in no list) on this CPU's blocked list.
@@ -1373,7 +1379,8 @@ void GuestScheduler::BlockCurrentThread(uint64_t deadline_ms,
 
 void GuestScheduler::RereadyBlocked(int cpu_index, bool poked) {
   uint32_t wake_mask = 0;
-  if (CollectSchedulerStats()) {
+  const bool collect_stats = CollectSchedulerStats();
+  if (collect_stats) {
     stats_.repolls.fetch_add(1, std::memory_order_relaxed);
   }
   // Missed-wake tripwire, logged after the lock is released.
@@ -1390,10 +1397,10 @@ void GuestScheduler::RereadyBlocked(int cpu_index, bool poked) {
     if (force_all) {
       cpu.next_force_repoll_ms = now_ms + kRepollBackstopMs;
     }
-    // Earliest timed need among the waiters kept parked, the backstop bounds
-    // it. Waiters re-readied below re-park through BlockCurrentThread, which
-    // lowers it again before this CPU can sleep.
-    uint64_t next_due = cpu.next_force_repoll_ms;
+    // Only a retained object wait needs the fallback timer. Runnable waiters
+    // re-arm it on their next park if they still cannot acquire their object.
+    uint64_t next_due = kNoRepoll;
+    bool needs_backstop = false;
     XThread* kept_head = nullptr;
     XThread* kept_tail = nullptr;
     int kept_max_prio = -1;
@@ -1423,6 +1430,7 @@ void GuestScheduler::RereadyBlocked(int cpu_index, bool poked) {
             !(links.wait_alertable && t->HasPendingUserApc())) {
           links.ready_next = nullptr;
           LinkTailLocked(kept_head, kept_tail, t);
+          needs_backstop |= !pure_delay;
           int prio = ClampPriority(t->priority());
           if (prio > kept_max_prio) {
             kept_max_prio = prio;
@@ -1459,7 +1467,7 @@ void GuestScheduler::RereadyBlocked(int cpu_index, bool poked) {
       }
       links.blocked = false;
       links.queued = true;
-      if (CollectSchedulerStats()) {
+      if (collect_stats) {
         stats_.rereadied.fetch_add(1, std::memory_order_relaxed);
       }
       // Its current guest CPU, not the one it blocked on, since
@@ -1477,10 +1485,13 @@ void GuestScheduler::RereadyBlocked(int cpu_index, bool poked) {
     cpu.blocked_head = kept_head;
     cpu.blocked_tail = kept_tail;
     cpu.max_blocked_prio = kept_max_prio;
-    cpu.next_timed_repoll_ms = next_due;
+    if (!needs_backstop) {
+      cpu.next_force_repoll_ms = kNoRepoll;
+    }
+    cpu.next_timed_repoll_ms = std::min(next_due, cpu.next_force_repoll_ms);
     cpu.has_blocked.store(kept_head != nullptr, std::memory_order_relaxed);
     if (rescued) {
-      if (CollectSchedulerStats()) {
+      if (collect_stats) {
         stats_.backstop_rescues.fetch_add(rescued, std::memory_order_relaxed);
       }
       backstop_rescue_count_ += rescued;
@@ -1534,9 +1545,9 @@ void GuestScheduler::RunLoop(int cpu_index) {
     // Re-poll blocked waiters on a timer even while other fibers run, or a
     // busy fiber that rarely waits would starve them. The timer runs at what
     // the parked waiters actually need, a wake skips it entirely.
-    uint64_t now = Clock::QueryHostUptimeMillis();
     bool poked = cpu.repoll_now.exchange(false, std::memory_order_relaxed);
-    if (poked || now >= cpu.next_timed_repoll_ms) {
+    if (poked || (cpu.next_timed_repoll_ms != kNoRepoll &&
+                  Clock::QueryHostUptimeMillis() >= cpu.next_timed_repoll_ms)) {
       cpu0_phase_stats_.Measure(
           cpu_index == 0 && CollectSchedulerStats(),
           SchedulerPhaseStats::Kind::kRepoll,
@@ -1628,7 +1639,7 @@ void GuestScheduler::RunLoop(int cpu_index) {
       }
       continue;
     }
-    now = Clock::QueryHostUptimeMillis();
+    uint64_t now = Clock::QueryHostUptimeMillis();
     uint64_t due = cpu.next_timed_repoll_ms;
     uint64_t sleep_ms = due > now ? due - now : 0;
     cpu0_phase_stats_.Measure(
