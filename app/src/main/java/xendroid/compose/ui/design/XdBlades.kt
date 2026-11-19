@@ -64,7 +64,7 @@ private val bladeShape = GenericShape { size, _ ->
 fun BTopAreaBar(current: XdArea?, modifier: Modifier = Modifier) {
     val c = Xd.colors
     val enlargedText = LocalDensity.current.fontScale > 1.15f
-    Column(modifier.fillMaxWidth().zephyrBackdrop().testTag("zephyr-navigation-portrait")
+    Column(modifier.fillMaxWidth().zephyrBackdrop(animated = false).testTag("zephyr-navigation-portrait")
         .windowInsetsPadding(WindowInsets.safeDrawing.part(top = true, start = true, end = true))) {
         BladeIdentity(Modifier.fillMaxWidth())
         Row(Modifier.fillMaxWidth().then(if (enlargedText) Modifier.horizontalScroll(rememberScrollState()) else Modifier)
@@ -82,7 +82,7 @@ fun BTopAreaBar(current: XdArea?, modifier: Modifier = Modifier) {
 @Composable
 fun ZephyrBladeRail(current: XdArea?, modifier: Modifier = Modifier) {
     val c = Xd.colors
-    Column(modifier.width(128.dp).fillMaxHeight().zephyrBackdrop().testTag("zephyr-navigation-landscape")
+    Column(modifier.width(128.dp).fillMaxHeight().zephyrBackdrop(animated = false).testTag("zephyr-navigation-landscape")
         .windowInsetsPadding(WindowInsets.safeDrawing.part(top = true, bottom = true, start = true))) {
         Column(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
             ZephyrOrbitMark(48.dp)

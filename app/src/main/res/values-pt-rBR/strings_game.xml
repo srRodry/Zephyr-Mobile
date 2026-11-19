@@ -174,4 +174,6 @@
     <string name="xd_hud_battery_time">Autonomia</string>
     <string name="menu_chip_charge">Carga</string>
     <string name="menu_chip_battery_time">Autonomia</string>
+    <string name="zephyr_game_download_diagnostics">Baixar diagnóstico completo</string>
+    <string name="zephyr_game_download_diagnostics_failed">Não foi possível salvar o diagnóstico em Downloads.</string>
 </resources>

@@ -138,6 +138,7 @@ class GameCards(
                         icon = XdIcons.play, enabled = !actions.preparing)
                     activeProfile?.let { Text(stringResource(R.string.lib_signs_in_as, it), style = XdText.small, color = c.fg3) }
                 }
+                DownloadGameDiagnostics()
             }
         }
     }

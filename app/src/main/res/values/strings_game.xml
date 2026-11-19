@@ -174,4 +174,6 @@
     <string name="xd_hud_battery_time">Battery time</string>
     <string name="menu_chip_charge">Charge</string>
     <string name="menu_chip_battery_time">Battery time</string>
+    <string name="zephyr_game_download_diagnostics">Download diagnostics ZIP</string>
+    <string name="zephyr_game_download_diagnostics_failed">Could not save diagnostics to Downloads.</string>
 </resources>

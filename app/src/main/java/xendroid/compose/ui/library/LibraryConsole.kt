@@ -9,6 +9,8 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.splineBasedDecay
 import androidx.compose.foundation.gestures.Orientation
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.*
@@ -18,6 +20,7 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Icon
+import androidx.compose.material3.ripple
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -355,11 +358,15 @@ private fun ConsoleIdentity(
 private fun ConsolePlay(onClick: () -> Unit, enabled: Boolean, modifier: Modifier) {
     val c = Xd.colors
     val shape = RoundedCornerShape(topStart = 24.dp, topEnd = 12.dp, bottomStart = 12.dp, bottomEnd = 24.dp)
-    Row(modifier.heightIn(min = 58.dp).shadow(12.dp, shape, ambientColor = c.acc, spotColor = c.acc)
+    val source = remember { MutableInteractionSource() }
+    val pressed by source.collectIsPressedAsState()
+    Row(modifier.zephyrPressMotion(enabled && pressed).heightIn(min = 58.dp)
+        .shadow(12.dp, shape, ambientColor = c.acc, spotColor = c.acc)
         .clip(shape).background(Brush.verticalGradient(listOf(Color(0xFF73DC49), Color(0xFF176A32),
             Color(0xFF073D22), Color(0xFF258944))))
         .border(1.5.dp, c.acc, shape).focusRing(shape, c.fg)
-        .clickable(enabled = enabled, role = Role.Button, onClick = onClick)
+        .clickable(interactionSource = source, indication = ripple(), enabled = enabled,
+            role = Role.Button, onClick = onClick)
         .testTag("library-featured-play").padding(horizontal = 20.dp, vertical = 14.dp),
         verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally)) {
         Icon(XdIcons.play, null, tint = Color.White, modifier = Modifier.size(23.dp))

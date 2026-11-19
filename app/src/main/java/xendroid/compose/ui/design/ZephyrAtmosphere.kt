@@ -1,6 +1,10 @@
 package xendroid.compose.ui.design
 
-import androidx.compose.foundation.Canvas
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -14,21 +18,29 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithCache
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.drawscope.Stroke
+import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import xendroid.compose.R
 
-/** Emerald current: cached vector geometry, no live blur, timers or particle loops. */
+/** Slow dashboard motion reads its phase in draw, leaving composition and layout alone. */
 @Composable
-fun Modifier.zephyrBackdrop(): Modifier {
+fun Modifier.zephyrBackdrop(animated: Boolean = true): Modifier {
     val c = Xd.colors
+    val drift = if (animated) {
+        rememberInfiniteTransition(label = "Zephyr atmosphere").animateFloat(
+            initialValue = 0f,
+            targetValue = 1f,
+            animationSpec = infiniteRepeatable(tween(12000), RepeatMode.Reverse),
+            label = "Ribbon drift",
+        )
+    } else null
     return drawWithCache {
         val atmosphere = Brush.linearGradient(
             listOf(Color(0xFF19513C), c.bg, Color(0xFF0B2D27)),
@@ -46,9 +58,12 @@ fun Modifier.zephyrBackdrop(): Modifier {
         )
         onDrawBehind {
             drawRect(atmosphere)
-            drawRect(halo)
-            drawPath(current, c.acc.copy(alpha = .045f), style = Stroke(64.dp.toPx()))
-            drawPath(current, c.acc.copy(alpha = .28f), style = Stroke(1.dp.toPx()))
+            val phase = drift?.value ?: 0f
+            drawRect(halo, alpha = .78f + phase * .22f)
+            translate(top = (phase - .5f) * minOf(size.height * .07f, 36.dp.toPx())) {
+                drawPath(current, c.acc.copy(alpha = .045f), style = Stroke(64.dp.toPx()))
+                drawPath(current, c.acc.copy(alpha = .26f), style = Stroke(1.dp.toPx()))
+            }
             drawLine(c.chrome.copy(alpha = .085f), Offset(size.width * .08f, 0f),
                 Offset(size.width * .42f, 0f), .75.dp.toPx())
         }

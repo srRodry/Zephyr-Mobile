@@ -1,6 +1,10 @@
 package xendroid.compose.ui
 
 import android.net.Uri
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.slideInHorizontally
+import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.LaunchedEffect
@@ -149,7 +153,14 @@ fun AppNavHost(container: AppContainer) {
         val game = games.firstOrNull { titleId != null && it.titleId.equals(titleId, ignoreCase = true) } ?: games.firstOrNull { it.launchUri == path }
         game?.titleId to game?.name
     }
-    NavHost(navController = nav, startDestination = Routes.LIBRARY) {
+    NavHost(
+        navController = nav,
+        startDestination = Routes.LIBRARY,
+        enterTransition = { fadeIn(tween(190)) + slideInHorizontally(tween(220)) { it / 32 } },
+        exitTransition = { fadeOut(tween(120)) },
+        popEnterTransition = { fadeIn(tween(190)) + slideInHorizontally(tween(220)) { -it / 32 } },
+        popExitTransition = { fadeOut(tween(120)) },
+    ) {
         composable(Routes.LIBRARY) { libraryEntry ->
             val vm: GameLibraryViewModel =
                 viewModel(factory = container.libraryViewModelFactory())

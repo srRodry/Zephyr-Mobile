@@ -2,7 +2,10 @@ package xendroid.compose.core
 
 import android.app.ActivityManager
 import android.app.ApplicationExitInfo
+import android.content.ContentValues
 import android.content.Context
+import android.os.Environment
+import android.provider.MediaStore
 import android.os.Build
 import android.util.Log
 import xendroid.compose.Utils
@@ -195,7 +198,7 @@ object SessionLogs {
 
     /** Exit reasons newer than the last shelve (crash/ANR/OOM/...), API 30+,
      *  with the platform trace attached for crashes and ANRs. */
-    private fun writeExitInfo(context: Context, logsDir: File, zip: ZipOutputStream) {
+    private fun writeExitInfo(context: Context, logsDir: File, zip: ZipOutputStream, markSeen: Boolean = true) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) return
         runCatching {
             val marker = File(logsDir, EXIT_TS_MARKER)
@@ -229,7 +232,7 @@ object SessionLogs {
                     }
                 }
             }
-            marker.writeText(infos.maxOf { it.timestamp }.toString())
+            if (markSeen) marker.writeText(infos.maxOf { it.timestamp }.toString())
         }
     }
 
@@ -280,6 +283,51 @@ object SessionLogs {
             Log.w(TAG, "Log export failed", it)
             tmp.delete()
         }.getOrNull()
+    }
+
+    /** Download the current capture and retained history, including untagged early failures. */
+    fun downloadDiagnostics(context: Context): String? {
+        val xeLog = File(Utils.get_log_file_path())
+        val logsDir = File(xeLog.parentFile, "logs")
+        val archived = logsDir.listFiles { f ->
+            f.isFile && f.name.startsWith("session_") &&
+                (f.name.endsWith(".zip") || f.name.endsWith("-xe.log") || f.name.endsWith("-logcat.txt"))
+        }.orEmpty().sortedBy { it.name }
+        val current = listOf(
+            xeLog to "current/xe.log",
+            File(logsDir, CAPTURE_NAME) to "current/logcat.txt",
+            File(logsDir, CONTEXT_NAME) to "current/context.json",
+        ).filter { (file, _) -> file.isFile && file.length() > 0 }
+        if (archived.isEmpty() && current.isEmpty()) return null
+
+        val stamp = SimpleDateFormat("yyyyMMdd-HHmmss-SSS", Locale.US).format(Date())
+        val name = "zephyr-diagnostics-$stamp.zip"
+        val resolver = context.contentResolver
+        val values = ContentValues().apply {
+            put(MediaStore.Downloads.DISPLAY_NAME, name)
+            put(MediaStore.Downloads.MIME_TYPE, "application/zip")
+            put(MediaStore.Downloads.RELATIVE_PATH, Environment.DIRECTORY_DOWNLOADS)
+            put(MediaStore.Downloads.IS_PENDING, 1)
+        }
+        val uri = checkNotNull(resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, values))
+        try {
+            ZipOutputStream(checkNotNull(resolver.openOutputStream(uri)).buffered()).use { zip ->
+                for ((file, entry) in current + archived.map { it to "history/${it.name}" }) {
+                    zip.putNextEntry(ZipEntry(entry))
+                    if (file.name.endsWith(".zip")) file.inputStream().use { it.copyTo(zip) }
+                    else copyTail(file, zip, MAX_SHELVED_BYTES)
+                    zip.closeEntry()
+                }
+                writeExitInfo(context, logsDir, zip, markSeen = false)
+            }
+            values.clear()
+            values.put(MediaStore.Downloads.IS_PENDING, 0)
+            check(resolver.update(uri, values, null, null) == 1)
+            return name
+        } catch (e: Exception) {
+            runCatching { resolver.delete(uri, null, null) }
+            throw e
+        }
     }
 
     /** A separate, redacted ZIP for Android share sheets. Raw exports remain local. */

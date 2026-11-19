@@ -2,6 +2,8 @@ package xendroid.compose.ui.design
 
 import androidx.compose.animation.animateColorAsState
 import androidx.compose.animation.core.animateDpAsState
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.gestures.awaitEachGesture
 import androidx.compose.foundation.gestures.awaitFirstDown
 import androidx.compose.ui.focus.FocusRequester
@@ -59,6 +61,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shape
 import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.compositeOver
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.semantics.contentDescription
@@ -81,6 +84,19 @@ fun Modifier.focusRing(shape: Shape, color: Color? = null, width: Dp = 2.dp): Mo
     this
         .onFocusChanged { focused = it.isFocused || it.hasFocus }
         .then(if (focused) Modifier.border(w, ring, shape) else Modifier)
+}
+
+@Composable
+internal fun Modifier.zephyrPressMotion(pressed: Boolean): Modifier {
+    val scale = animateFloatAsState(
+        if (pressed) .975f else 1f,
+        tween(if (pressed) 85 else 160),
+        label = "Zephyr button press",
+    )
+    return graphicsLayer {
+        scaleX = scale.value
+        scaleY = scale.value
+    }
 }
 
 enum class XdButtonKind { PRIMARY, SECONDARY, GHOST, DANGER }
@@ -122,6 +138,7 @@ fun XdButton(
     val shape = LocalXdButtonShape.current
     Row(
         modifier
+            .zephyrPressMotion(enabled && pressed)
             // An accent ring would vanish on the accent fill of a primary button.
             .focusRing(shape, color = if (kind == XdButtonKind.PRIMARY) c.fg else null)
             .defaultMinSize(minHeight = height)

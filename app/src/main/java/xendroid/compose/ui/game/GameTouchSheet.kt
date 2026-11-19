@@ -1,5 +1,7 @@
 package xendroid.compose.ui.game
 
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -18,6 +20,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -80,8 +83,14 @@ internal fun GameTouchSheet(
                         // Existing warnings, charts and setting widgets keep their dark semantic tokens.
                         if (current != null) CompositionLocalProvider(LocalXd provides frameColors) {
                             val contentShape = ZephyrPanelShape
+                            val contentReveal = remember { Animatable(1f) }
+                            LaunchedEffect(current.id) {
+                                contentReveal.snapTo(.82f)
+                                contentReveal.animateTo(1f, tween(170))
+                            }
                             Column(
                                 Modifier.fillMaxWidth().testTag("game-sheet-content:${current.id}")
+                                    .graphicsLayer { alpha = contentReveal.value }
                                     .clip(contentShape).background(frameColors.s1)
                                     .border(1.dp, frameColors.line, contentShape)
                                     .padding(14.dp),
@@ -158,6 +167,7 @@ private fun SheetIdentity(game: Game, art: CoverArt, data: LibraryData, preparin
                     }
                 }
             }
+            DownloadGameDiagnostics(Modifier.fillMaxWidth())
         }
         XdButton(stringResource(R.string.zephyr_game_identifiers), { identifiers = !identifiers },
             Modifier.heightIn(min = 48.dp).testTag("game-sheet-identifiers"), kind = XdButtonKind.GHOST, icon = XdIcons.info)
