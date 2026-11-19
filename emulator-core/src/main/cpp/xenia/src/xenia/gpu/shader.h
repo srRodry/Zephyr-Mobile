@@ -793,9 +793,8 @@ class Shader {
     // True if the shader was translated and prepared without error.
     bool is_valid() const { return is_valid_.load(std::memory_order_relaxed); }
 
-    // True if the shader has already been translated. Published last by the
-    // translating thread (release), so once this is true, the binary, the
-    // validity and the shader's bindings are complete.
+    // True once translation succeeded or failed. Published last by the
+    // translating thread (release); successful output is then safe to read.
     bool is_translated() const {
       return is_translated_.load(std::memory_order_acquire);
     }
@@ -805,6 +804,10 @@ class Shader {
     // thread already claimed it (and is_translated() should be awaited).
     bool TryClaimTranslation() {
       return !translation_claimed_.test_and_set(std::memory_order_acq_rel);
+    }
+
+    void WaitForTranslation() const {
+      is_translated_.wait(false, std::memory_order_acquire);
     }
 
     // Errors that occurred during translation.
@@ -847,6 +850,11 @@ class Shader {
    private:
     friend class Shader;
     friend class ShaderTranslator;
+
+    void PublishTranslationComplete() {
+      is_translated_.store(true, std::memory_order_release);
+      is_translated_.notify_all();
+    }
 
     Shader& shader_;
     uint64_t modification_;

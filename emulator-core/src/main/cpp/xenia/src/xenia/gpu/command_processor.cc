@@ -1418,6 +1418,9 @@ void CommandProcessor::WorkerThreadMain() {
     if (fs_exec_begin) {
       frame_time_stats_.exec_ns += FrameStatsNow() - fs_exec_begin;
     }
+    if (!worker_running_) {
+      break;
+    }
 
     // TODO(benvanik): use reader->Read_update_freq_ and only issue after moving
     //     that many indices.
@@ -1433,9 +1436,10 @@ void CommandProcessor::WorkerThreadMain() {
 }
 
 void CommandProcessor::WritePrimaryReadPointer(uint32_t index) {
-  if (read_ptr_writeback_ptr_) {
+  const uint32_t writeback_ptr = read_ptr_writeback_ptr_;
+  if (writeback_ptr) {
     xe::store_and_swap<uint32_t>(
-        memory_->TranslatePhysical(read_ptr_writeback_ptr_), index);
+        memory_->TranslatePhysical(writeback_ptr), index);
     NotifyGuestGpuProgress();
   }
 }
@@ -1451,9 +1455,12 @@ void CommandProcessor::PublishPrimaryProgressBeforeWait() {
   if (ib_call_depth_ && !primary_indirect_read_index_) {
     return;
   }
-  const uint32_t index = ib_call_depth_ ? *primary_indirect_read_index_
-                                        : reader_.read_offset() /
-                                              sizeof(uint32_t);
+  const uint32_t index =
+      ib_call_depth_ ? *primary_indirect_read_index_
+                     : reader_.read_offset() / sizeof(uint32_t);
+  // This returns ring space to the guest CPU. On ARM the read-pointer store
+  // must not become visible before the command processor's operand reads.
+  std::atomic_thread_fence(std::memory_order_release);
   WritePrimaryReadPointer(index);
   if (!primary_wait_writeback_logged_) {
     primary_wait_writeback_logged_ = true;

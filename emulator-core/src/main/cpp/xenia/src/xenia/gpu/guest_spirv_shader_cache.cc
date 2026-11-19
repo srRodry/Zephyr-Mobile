@@ -242,9 +242,7 @@ Shader::Translation* GuestSpirvShaderCache::TranslateSpirv(
       should_translate = translation.TryClaimTranslation();
       if (!should_translate) {
         // Another thread is translating this same modification - wait for it.
-        while (!translation.is_translated()) {
-          std::this_thread::yield();
-        }
+        translation.WaitForTranslation();
       }
     }
     if (should_translate && !translator.TranslateAnalyzedShader(translation)) {

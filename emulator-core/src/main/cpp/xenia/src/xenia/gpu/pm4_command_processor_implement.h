@@ -79,10 +79,11 @@ inline const char* GetEventName(uint32_t event) {
       return "UNKNOWN";
   }
 }
-void COMMAND_PROCESSOR::ExecuteIndirectBuffer(uint32_t ptr,
+bool COMMAND_PROCESSOR::ExecuteIndirectBuffer(uint32_t ptr,
                                               uint32_t count) XE_RESTRICT {
   SCOPE_profile_cpu_f("gpu");
 
+  bool cancelled = false;
   trace_writer_.WriteIndirectBufferStart(ptr, count * sizeof(uint32_t));
   if (count != 0) {
     // merge_tiling_bands_call_sites: where this buffer is called from (the
@@ -107,9 +108,12 @@ void COMMAND_PROCESSOR::ExecuteIndirectBuffer(uint32_t ptr,
       if (COMMAND_PROCESSOR::ExecutePacket()) {
         continue;
       } else {
-        // Return up a level if we encounter a bad packet.
-        XELOGE("**** INDIRECT RINGBUFFER: Failed to execute packet.");
-        assert_always();
+        cancelled = !worker_running_;
+        if (!cancelled) {
+          // Return up a level if we encounter a bad packet.
+          XELOGE("**** INDIRECT RINGBUFFER: Failed to execute packet.");
+          assert_always();
+        }
         break;
       }
     } while (reader_.read_count());
@@ -117,10 +121,8 @@ void COMMAND_PROCESSOR::ExecuteIndirectBuffer(uint32_t ptr,
     trace_writer_.WriteIndirectBufferEnd();
     reader_ = old_reader;
     ib_call_depth_ = call_depth;
-  } else {
-    // rare, but i've seen it happen! (and then a division by 0 occurs)
-    return;
   }
+  return !cancelled;
 }
 XE_NOINLINE
 static void LOGU32s(logging::LoggerBatch<LogLevel::Debug>& logger,
@@ -896,11 +898,12 @@ bool COMMAND_PROCESSOR::ExecutePacketType3_INDIRECT_BUFFER(
   if (save_primary_index) {
     primary_indirect_read_index_ = reader_.read_offset() / sizeof(uint32_t);
   }
-  COMMAND_PROCESSOR::ExecuteIndirectBuffer(GpuToCpu(list_ptr), list_length);
+  const bool completed =
+      COMMAND_PROCESSOR::ExecuteIndirectBuffer(GpuToCpu(list_ptr), list_length);
   if (save_primary_index) {
     primary_indirect_read_index_.reset();
   }
-  return true;
+  return completed;
 }
 
 /*
@@ -977,6 +980,11 @@ bool COMMAND_PROCESSOR::ExecutePacketType3_WAIT_REG_MEM(
   uint32_t stall_probe = 0;
 
   do {
+    // Both short spinning waits and long waits must unblock shutdown, even
+    // when the backend retries immediately after applying a readback.
+    if (!worker_running_) {
+      return false;
+    }
     value = value_ref;
     if (is_memory) {
       trace_writer_.WriteMemoryRead(CpuToGpu(poll_reg_addr & ~uint32_t(0x3)),
@@ -1077,11 +1085,6 @@ bool COMMAND_PROCESSOR::ExecutePacketType3_WAIT_REG_MEM(
         // Unlimited vblank mode (guest_display_refresh_cap=false) - spin since
         // counter updates rapidly
         ReturnFromWait();
-
-        if (!worker_running_) {
-          // Short-circuited exit.
-          return false;
-        }
       }
     }
   } while (!matched);
@@ -2017,9 +2020,11 @@ uint32_t COMMAND_PROCESSOR::ExecutePrimaryBuffer(uint32_t read_index,
   primary_buffer_active_ = true;
   do {
     if (!COMMAND_PROCESSOR::ExecutePacket()) {
-      // This probably should be fatal - but we're going to continue anyways.
-      XELOGE("**** PRIMARY RINGBUFFER: Failed to execute packet.");
-      assert_always();
+      if (worker_running_) {
+        // This probably should be fatal - but we're going to continue anyways.
+        XELOGE("**** PRIMARY RINGBUFFER: Failed to execute packet.");
+        assert_always();
+      }
       break;
     }
   } while (reader_.read_count());
@@ -2046,8 +2051,10 @@ void COMMAND_PROCESSOR::ExecutePacket(uint32_t ptr, uint32_t count) {
 
   do {
     if (!COMMAND_PROCESSOR::ExecutePacket()) {
-      XELOGE("**** ExecutePacket: Failed to execute packet.");
-      assert_always();
+      if (worker_running_) {
+        XELOGE("**** ExecutePacket: Failed to execute packet.");
+        assert_always();
+      }
       break;
     }
   } while (reader_.read_count());

@@ -80,7 +80,7 @@ struct CP {
  uint32_t CpuToGpu(uint32_t x){return x;}
  uint32_t GpuToCpu(uint32_t x){return x;}
  void BinTraceIndirectBuffer(uint32_t,uint32_t,bool,bool){}
- void ExecuteIndirectBuffer(uint32_t,uint32_t);
+ bool ExecuteIndirectBuffer(uint32_t,uint32_t);
  bool ExecutePacketType3_INDIRECT_BUFFER(uint32_t,uint32_t);
  bool ExecutePacketType3_WAIT_REG_MEM(uint32_t,uint32_t);
  void WritePrimaryReadPointer(uint32_t);
@@ -91,19 +91,21 @@ static const std::vector<uint32_t> wait_data={0x13,0x1000,7,0xff,0x100};
 
 // Zephyr replaces reader_ in-place for an indirect list and restores it on
 // return. Exercise the real dispatch wrapper around the same reader swap.
-void CP::ExecuteIndirectBuffer(uint32_t ptr,uint32_t){
+bool CP::ExecuteIndirectBuffer(uint32_t ptr,uint32_t){
  ++ib_call_depth_;
  Reader parent=reader_;
+ bool completed;
  if (ptr==0x2000) {
    reader_={{0x3000,5}};
-   assert(ExecutePacketType3_INDIRECT_BUFFER(0,2));
+   completed=ExecutePacketType3_INDIRECT_BUFFER(0,2);
  } else {
    assert(ptr==0x3000);
    reader_={wait_data};
-   assert(ExecutePacketType3_WAIT_REG_MEM(0,5));
+   completed=ExecutePacketType3_WAIT_REG_MEM(0,5);
  }
  reader_=parent;
  --ib_call_depth_;
+ return completed;
 }
 
 int main(){
@@ -153,10 +155,25 @@ int main(){
    assert(cp.ExecutePacketType3_WAIT_REG_MEM(0,5));
    assert(writebacks.empty() && polls==3);
  }
+
+ // Shutdown must stop short spin waits too, without claiming ring space.
+ cp.primary_buffer_active_=true;
+ cp.read_ptr_writeback_ptr_=0x1004;
+ cp.worker_running_=false;
+ for (uint32_t interval : {0u, 0x100u}) {
+   reset();
+   cp.reader_={wait_data};
+   cp.reader_.data.back()=interval;
+   assert(!cp.ExecutePacketType3_WAIT_REG_MEM(0,5));
+   assert(writebacks.empty() && polls==0);
+ }
+ cp.reader_={{0x2000,2}};
+ assert(!cp.ExecutePacketType3_INDIRECT_BUFFER(0,2));
+ assert(!cp.primary_indirect_read_index_ && cp.ib_call_depth_==0);
 }
 '''
 with tempfile.TemporaryDirectory() as d:
  p=Path(d);(p/'test.cc').write_text(harness)
  subprocess.run(['g++','-std=c++20','-O1','-fsanitize=undefined',str(p/'test.cc'),'-o',str(p/'test')],check=True)
  subprocess.run([str(p/'test')],check=True)
-print('WAIT_REG_MEM: stall diagnostics, matching, direct and nested TDC primary-ring progress passed.')
+print('WAIT_REG_MEM: stall diagnostics, matching, primary-ring progress and shutdown cancellation passed.')
