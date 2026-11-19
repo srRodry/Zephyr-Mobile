@@ -12,12 +12,19 @@
 #include <atomic>
 
 #include "xenia/base/byte_stream.h"
+#include "xenia/base/cvar.h"
 #include "xenia/base/clock.h"
 #include "xenia/base/logging.h"
 #include "xenia/kernel/guest_scheduler.h"
 #include "xenia/kernel/kernel_state.h"
 #include "xenia/kernel/xthread.h"
 #include "xenia/memory.h"
+
+DEFINE_bool(zephyr_event_signal_trace, false,
+            "Log at most 6000 event signals per process for boot diagnostics. "
+            "Opt-in only: logging every XEvent::Set adds synchronous hot-path "
+            "work and can delay thread-heavy games.",
+            "Kernel");
 
 namespace xe {
 namespace kernel {
@@ -97,16 +104,23 @@ void XEvent::RecordSetter() {
   }
   last_set_uptime_ms_ = Clock::QueryGuestUptimeMillis();
 
-  // Boot-window signal trace: which events get set, by whom, and where each
-  // was created. Lets a never-signaled event be matched against signaled
-  // "cousins" from the same creation site to name the missing signaler code
-  // path. Budgeted so steady-state titles aren't flooded.
-  static std::atomic<int> trace_budget{6000};
-  if (trace_budget.fetch_sub(1) > 0) {
-    XELOGI("XEvent signal: handle={:08X} by={:08X} lr={:08X} (creator={:08X} "
-           "lr={:08X})",
-           handle(), last_set_thread_, last_set_lr_, creator_thread_,
-           creator_lr_);
+  // Event-set is a heavily contended guest synchronization hot path. Keep
+  // the setter metadata for deadlock analysis but make the expensive string
+  // formatting and logging explicitly opt-in. A saturating counter avoids an
+  // atomic write on every subsequent signal after the diagnostic budget ends.
+  if (cvars::zephyr_event_signal_trace) {
+    static std::atomic<int> trace_budget{6000};
+    int remaining = trace_budget.load(std::memory_order_relaxed);
+    while (remaining > 0 &&
+           !trace_budget.compare_exchange_weak(remaining, remaining - 1,
+                                               std::memory_order_relaxed)) {
+    }
+    if (remaining > 0) {
+      XELOGI("XEvent signal: handle={:08X} by={:08X} lr={:08X} (creator={:08X} "
+             "lr={:08X})",
+             handle(), last_set_thread_, last_set_lr_, creator_thread_,
+             creator_lr_);
+    }
   }
 }
 

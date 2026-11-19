@@ -5,7 +5,7 @@ name: Zephyr performance beta APK
 
 on:
   push:
-    branches: [perf/edge30-beta1, integration/zephyr-beta2, research/optimization-round3, research/edge30-diagnostics-audit-20261117, research/native-recomp-semantics-20261118]
+    branches: [perf/edge30-beta1, integration/zephyr-beta2, research/optimization-round3, research/edge30-diagnostics-audit-20261117, research/native-recomp-semantics-20261118, research/army-tdc-native-hotpath-20261118]
     paths-ignore:
       - '**.md'
       - 'docs/**'
@@ -64,7 +64,7 @@ jobs:
     - name: Build settings
       id: cfg
       env:
-        RESEARCH_ARM: ${{ github.ref_name == 'research/native-recomp-semantics-20261118' && 'beta17-ppc-native' || github.ref_name == 'research/edge30-diagnostics-audit-20261117' && 'beta16-edge30' || github.ref_name == 'research/optimization-round3' && 'beta15-chrome' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
+        RESEARCH_ARM: ${{ github.ref_name == 'research/army-tdc-native-hotpath-20261118' && 'beta18-army-tdc' || github.ref_name == 'research/native-recomp-semantics-20261118' && 'beta17-ppc-native' || github.ref_name == 'research/edge30-diagnostics-audit-20261117' && 'beta16-edge30' || github.ref_name == 'research/optimization-round3' && 'beta15-chrome' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
         sha=$(git rev-parse --short=8 HEAD)
@@ -157,6 +157,9 @@ jobs:
         python3 tools/test-a64-vector-select.py
         python3 tools/test-round3-cache.py
         python3 tools/test-native-ppc-edgecases.py
+        python3 tools/test-army-tdc-native-hotpath.py
+        python3 tools/test-analyze-army-tdc-boot.py
+        python3 tools/test-verify-army-tdc-aot-inputs.py
         python3 tools/test-vulkan-diagnostics.py
         python3 tools/test-vulkan-cache-work.py
         python3 tools/test-xex-launch-module.py
@@ -323,7 +326,7 @@ jobs:
             'commit': subprocess.check_output(['git', 'rev-parse', 'HEAD'], text=True).strip(),
             'package': os.environ['PACKAGE'],
             'apk_sha256': hashlib.sha256(apk.read_bytes()).hexdigest(),
-            'experiments': ['vulkan_disjoint_memexport_barriers', 'spirv_structured_forward_jumps'],
+            'experiments': ['vulkan_disjoint_memexport_barriers', 'spirv_structured_forward_jumps', 'army_tdc_xam_0x9c4', 'xevent_trace_opt_in', 'jit_memory_poll_trace_opt_in'],
             'profiles': 'settings-profiles/experimental-beta.json',
             'experiment_default': 'off',
             'performance_validated_on_device': False,
@@ -382,6 +385,7 @@ jobs:
           const tag = 'Zephyr-Research-v' + versionCode + '-' + process.env.SHA;
           const edge30Audit = context.ref === 'refs/heads/research/edge30-diagnostics-audit-20261117';
           const nativeRecomp = context.ref === 'refs/heads/research/native-recomp-semantics-20261118';
+          const armyTdc = context.ref === 'refs/heads/research/army-tdc-native-hotpath-20261118';
           const apk = process.env.APK;
           const bytes = fs.readFileSync(apk);
           const digest = crypto.createHash('sha256').update(bytes).digest('hex');
@@ -389,7 +393,14 @@ jobs:
           fs.writeFileSync(checksums, digest + '  ' + apk + '\n');
           const body = [
             '<!-- update-summary:pt-BR',
-            ...(nativeRecomp ? [
+            ...(armyTdc ? [
+              '- Beta 18 (Research): função XAM 0x9C4 (BackgroundDownloadSetMode) implementada conforme Xenia Edge; antes aparecia como import indefinido no Army TDC.',
+              '- Inicialização: rastreamento de sinais de XEvent e logs de loops MemoryPollPark opt-in, eliminando milhares de mensagens por boot.',
+              '- JIT: varredura do endereço de origem apenas quando log de MemoryPollPark está ativo; código de jogo preservado.',
+              '- Diagnóstico Army: analisador offline de ZIPs e verificador SHA-1 dos XEX para uma pesquisa AOT futura.',
+              '- Não corrige comprovadamente o carregamento infinito nem confirma ganho de FPS; validar Default.xex e comparação no Edge30.',
+              '- Pacote, assinatura Research e main preservados; prévia experimental.'
+            ] : nativeRecomp ? [
               '- Beta 17 (Research): corrigidos XER.CA para sradx/srawx e NaN/CR6 em vcmpbfp no tradutor PowerPC.',
               '- Diagnóstico Vulkan: logs de frame/fence/pipeline isolados por sessão, evitando misturar jogos ou lançamentos anteriores.',
               '- Testes: oráculos de emissores PPC com UBSan, testes do parser Vulkan e regressões Android ARM64/Kotlin aprovadas.',
@@ -427,7 +438,7 @@ jobs:
             if (error.status !== 404) throw error;
             release = (await github.rest.repos.createRelease({
               ...context.repo, tag_name: tag, target_commitish: context.sha,
-              name: 'Zephyr-Mobile ' + (nativeRecomp ? 'beta 17 — PPC native semantics' : edge30Audit ? 'beta 16 — Edge30 diagnostics' : 'beta 15') + ' — build ' + context.runNumber,
+              name: 'Zephyr-Mobile ' + (armyTdc ? 'beta 18 — Army TDC native diagnostics' : nativeRecomp ? 'beta 17 — PPC native semantics' : edge30Audit ? 'beta 16 — Edge30 diagnostics' : 'beta 15') + ' — build ' + context.runNumber,
               body, draft: true, prerelease: true
             })).data;
           }

@@ -1,7 +1,7 @@
 name: Zephyr research tools
 on:
   push:
-    branches: [research/android-x360-foundation, research/android-x360-gpu-candidate, perf/edge30-beta1, research/edge30-diagnostics-audit-20261117, research/native-recomp-semantics-20261118]
+    branches: [research/android-x360-foundation, research/android-x360-gpu-candidate, perf/edge30-beta1, research/edge30-diagnostics-audit-20261117, research/native-recomp-semantics-20261118, research/army-tdc-native-hotpath-20261118]
     paths:
       - 'tools/compare-benchmarks.py'
       - 'tools/test-compare-benchmarks.py'
@@ -10,6 +10,14 @@ on:
       - 'tools/scheduler-diagnostics.py'
       - 'tools/test-scheduler-diagnostics.py'
       - 'tools/test-native-ppc-edgecases.py'
+      - 'tools/test-army-tdc-native-hotpath.py'
+      - 'tools/analyze-army-tdc-boot.py'
+      - 'tools/test-analyze-army-tdc-boot.py'
+      - 'tools/verify-army-tdc-aot-inputs.py'
+      - 'tools/test-verify-army-tdc-aot-inputs.py'
+      - 'emulator-core/src/main/cpp/xenia/src/xenia/kernel/xam/xam_content.cc'
+      - 'emulator-core/src/main/cpp/xenia/src/xenia/kernel/xevent.cc'
+      - 'emulator-core/src/main/cpp/xenia/src/xenia/cpu/compiler/passes/memory_poll_park_pass.cc'
       - 'tools/vulkan_diagnostics.py'
       - 'tools/test-vulkan-diagnostics.py'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/cpu/ppc/ppc_emit_alu.cc'
@@ -31,6 +39,14 @@ on:
       - 'tools/scheduler-diagnostics.py'
       - 'tools/test-scheduler-diagnostics.py'
       - 'tools/test-native-ppc-edgecases.py'
+      - 'tools/test-army-tdc-native-hotpath.py'
+      - 'tools/analyze-army-tdc-boot.py'
+      - 'tools/test-analyze-army-tdc-boot.py'
+      - 'tools/verify-army-tdc-aot-inputs.py'
+      - 'tools/test-verify-army-tdc-aot-inputs.py'
+      - 'emulator-core/src/main/cpp/xenia/src/xenia/kernel/xam/xam_content.cc'
+      - 'emulator-core/src/main/cpp/xenia/src/xenia/kernel/xevent.cc'
+      - 'emulator-core/src/main/cpp/xenia/src/xenia/cpu/compiler/passes/memory_poll_park_pass.cc'
       - 'tools/vulkan_diagnostics.py'
       - 'tools/test-vulkan-diagnostics.py'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/cpu/ppc/ppc_emit_alu.cc'
@@ -58,6 +74,12 @@ jobs:
         run: python3 tools/test-zephyr-graphics-ab.py
       - name: Execute real PPC emitter semantics under UBSan
         run: python3 tools/test-native-ppc-edgecases.py
+      - name: Verify Army TDC missing ordinal and hot-path trace guards
+        run: python3 tools/test-army-tdc-native-hotpath.py
+      - name: Test TDC XEX and scheduler log classification
+        run: python3 tools/test-analyze-army-tdc-boot.py
+      - name: Verify synthetic AOT input hashes and safe preflight
+        run: python3 tools/test-verify-army-tdc-aot-inputs.py
       - name: Test Vulkan frame and pipeline diagnostics
         run: python3 tools/test-vulkan-diagnostics.py
       - name: Test Edge30 CPU0 phase log analysis

@@ -29,7 +29,7 @@ DEFINE_bool(
 DEFINE_bool(log_memory_poll_park, false,
             "Log every candidate memory-poll self-loop this pass rejects, "
             "with the guest address and the failing condition. Accepted "
-            "loops are always logged.",
+            "loops are logged only when explicitly enabled.",
             "CPU");
 
 namespace xe {
@@ -98,11 +98,15 @@ bool MemoryPollParkPass::TryInstrumentLoop(HIRBuilder* builder, Block* block) {
     return false;
   }
 
+  // The guest PC exists only for diagnostic messages. Do not rescan the
+  // instructions of every eligible self-loop when tracing is disabled.
   uint64_t guest_address = 0;
-  for (Instr* instr = block->instr_head; instr; instr = instr->next) {
-    if (instr->opcode == &OPCODE_SOURCE_OFFSET_info) {
-      guest_address = instr->src1.offset;
-      break;
+  if (cvars::log_memory_poll_park) {
+    for (Instr* instr = block->instr_head; instr; instr = instr->next) {
+      if (instr->opcode == &OPCODE_SOURCE_OFFSET_info) {
+        guest_address = instr->src1.offset;
+        break;
+      }
     }
   }
   auto reject = [&](const char* reason, const char* detail) {
@@ -216,7 +220,9 @@ bool MemoryPollParkPass::TryInstrumentLoop(HIRBuilder* builder, Block* block) {
   Instr* backoff = builder->SpinBackoff(1);
   backoff->MoveBefore(loop_branch);
 
-  XELOGI("MemoryPollPark: parked poll loop at guest {:08X}", guest_address);
+  if (cvars::log_memory_poll_park) {
+    XELOGI("MemoryPollPark: parked poll loop at guest {:08X}", guest_address);
+  }
   return true;
 }
 
