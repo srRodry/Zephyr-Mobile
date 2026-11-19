@@ -15,9 +15,9 @@ void GuestScheduler::RunLoop(int cpu_index) {
     // Re-poll blocked waiters on a timer even while other fibers run, or a
     // busy fiber that rarely waits would starve them. The timer runs at what
     // the parked waiters actually need, a wake skips it entirely.
-    uint64_t now = Clock::QueryHostUptimeMillis();
     bool poked = cpu.repoll_now.exchange(false, std::memory_order_relaxed);
-    if (poked || now >= cpu.next_timed_repoll_ms) {
+    if (poked || (cpu.next_timed_repoll_ms != kNoRepoll &&
+                  Clock::QueryHostUptimeMillis() >= cpu.next_timed_repoll_ms)) {
       RereadyBlocked(cpu_index, poked);
     }
 
@@ -97,7 +97,7 @@ void GuestScheduler::RunLoop(int cpu_index) {
       }
       continue;
     }
-    now = Clock::QueryHostUptimeMillis();
+    uint64_t now = Clock::QueryHostUptimeMillis();
     uint64_t due = cpu.next_timed_repoll_ms;
     uint64_t sleep_ms = due > now ? due - now : 0;
     xe::threading::Wait(cpu.ready_event.get(), false,

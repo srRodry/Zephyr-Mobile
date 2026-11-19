@@ -162,6 +162,7 @@ jobs:
         python3 tools/test-memexport-page-bitmap.py
         python3 tools/test-army-quirk.py
         python3 tools/test-edge30-policy.py
+        python3 tools/test-scheduler-phase-stats.py
         python3 tools/test-round3-a64.py
         python3 tools/test-a64-vector-select.py
         python3 tools/test-round3-cache.py
