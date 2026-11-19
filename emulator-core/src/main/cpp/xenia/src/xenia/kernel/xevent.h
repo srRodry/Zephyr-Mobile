@@ -34,18 +34,6 @@ class XEvent : public XObject {
   void InitializeNative(void* native_ptr, const X_DISPATCH_HEADER* header);
 
   int32_t Set(uint32_t priority_increment, bool wait);
-  // Diagnostics: who last signaled this event (guest thread handle + lr,
-  // guest uptime ms). Read by the long-wait reporter in XObject::Wait.
-  uint32_t last_set_thread() const { return last_set_thread_; }
-  uint32_t last_set_lr() const { return last_set_lr_; }
-  uint32_t last_set_uptime_ms() const { return last_set_uptime_ms_; }
-  // Diagnostics: who created this event (guest thread handle + lr). A
-  // never-signaled event's creator names the subsystem that owns it.
-  uint32_t creator_thread() const { return creator_thread_; }
-  uint32_t creator_lr() const { return creator_lr_; }
-  // Public so XObject::SignalAndWait (which signals the host handle directly,
-  // bypassing Set()) can keep the setter bookkeeping accurate.
-  void RecordSetter();
   int32_t Pulse(uint32_t priority_increment, bool wait);
   int32_t Reset();
   void Query(uint32_t* out_type, uint32_t* out_state);
@@ -69,11 +57,9 @@ class XEvent : public XObject {
 
  private:
   void RecordCreator();
+  void TraceSetter();
 
   bool manual_reset_ = false;
-  uint32_t last_set_thread_ = 0;
-  uint32_t last_set_lr_ = 0;
-  uint32_t last_set_uptime_ms_ = 0;
   uint32_t creator_thread_ = 0;
   uint32_t creator_lr_ = 0;
   std::unique_ptr<xe::threading::Event> event_;

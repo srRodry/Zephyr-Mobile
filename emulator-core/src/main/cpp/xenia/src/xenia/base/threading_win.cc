@@ -315,6 +315,11 @@ class Win32Event : public Win32Handle<Event> {
  public:
   explicit Win32Event(HANDLE handle) : Win32Handle(handle) {}
   ~Win32Event() override = default;
+  bool SetAndGetPreviousState() override {
+    LONG previous_state = 0;
+    NtSetEventPointer.invoke(handle_, &previous_state);
+    return previous_state != 0;
+  }
 #if XE_USE_NTDLL_FUNCTIONS == 1
   void Set() override { NtSetEventPointer.invoke(handle_, nullptr); }
   void Reset() override { NtClearEventPointer.invoke(handle_); }

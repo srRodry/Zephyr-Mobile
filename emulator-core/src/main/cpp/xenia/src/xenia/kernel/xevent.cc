@@ -13,7 +13,6 @@
 
 #include "xenia/base/byte_stream.h"
 #include "xenia/base/cvar.h"
-#include "xenia/base/clock.h"
 #include "xenia/base/logging.h"
 #include "xenia/kernel/guest_scheduler.h"
 #include "xenia/kernel/kernel_state.h"
@@ -93,50 +92,46 @@ void XEvent::RecordCreator() {
   }
 }
 
-void XEvent::RecordSetter() {
-  auto* thread = XThread::GetCurrentThread();
-  if (thread && thread->thread_state()) {
-    last_set_thread_ = thread->handle();
-    last_set_lr_ = uint32_t(thread->thread_state()->context()->lr);
-  } else {
-    last_set_thread_ = 0xFFFFFFFF;  // host-side setter
-    last_set_lr_ = 0;
+void XEvent::TraceSetter() {
+  static std::atomic<int> trace_budget{6000};
+  int remaining = trace_budget.load(std::memory_order_relaxed);
+  while (remaining > 0 &&
+         !trace_budget.compare_exchange_weak(remaining, remaining - 1,
+                                             std::memory_order_relaxed)) {
   }
-  last_set_uptime_ms_ = Clock::QueryGuestUptimeMillis();
+  if (remaining <= 0) {
+    return;
+  }
 
-  // Event-set is a heavily contended guest synchronization hot path. Keep
-  // the setter metadata for deadlock analysis but make the expensive string
-  // formatting and logging explicitly opt-in. A saturating counter avoids an
-  // atomic write on every subsequent signal after the diagnostic budget ends.
-  if (cvars::zephyr_event_signal_trace) {
-    static std::atomic<int> trace_budget{6000};
-    int remaining = trace_budget.load(std::memory_order_relaxed);
-    while (remaining > 0 &&
-           !trace_budget.compare_exchange_weak(remaining, remaining - 1,
-                                               std::memory_order_relaxed)) {
-    }
-    if (remaining > 0) {
-      XELOGI("XEvent signal: handle={:08X} by={:08X} lr={:08X} (creator={:08X} "
-             "lr={:08X})",
-             handle(), last_set_thread_, last_set_lr_, creator_thread_,
-             creator_lr_);
-    }
-  }
+  auto* thread = XThread::GetCurrentThread();
+  const uint32_t setter = thread ? thread->handle() : 0xFFFFFFFF;
+  const uint32_t lr = thread && thread->thread_state()
+                          ? uint32_t(thread->thread_state()->context()->lr)
+                          : 0;
+  XELOGI("XEvent signal: handle={:08X} by={:08X} lr={:08X} (creator={:08X} "
+         "lr={:08X})",
+         handle(), setter, lr, creator_thread_, creator_lr_);
 }
 
 int32_t XEvent::Set(uint32_t priority_increment, bool wait) {
   set_priority_increment(priority_increment);
-  RecordSetter();
-  event_->Set();
-  memory()->TranslateVirtual<X_KEVENT*>(guest_object())->header.signal_state =
-      1;
-  WakeCooperativeWaiters();
-  return 1;
+  if (cvars::zephyr_event_signal_trace) {
+    TraceSetter();
+  }
+  const bool previously_signaled = event_->SetAndGetPreviousState();
+  if (!previously_signaled) {
+    memory()->TranslateVirtual<X_KEVENT*>(guest_object())->header.signal_state =
+        1;
+    WakeCooperativeWaiters();
+  }
+  return previously_signaled ? 1 : 0;
 }
 
 int32_t XEvent::Pulse(uint32_t priority_increment, bool wait) {
   set_priority_increment(priority_increment);
-  RecordSetter();
+  if (cvars::zephyr_event_signal_trace) {
+    TraceSetter();
+  }
   auto* kevent = memory()->TranslateVirtual<X_KEVENT*>(guest_object());
   // KePulseEvent returns the pre-pulse signal state.
   int32_t old_signal_state = kevent->header.signal_state;
@@ -176,7 +171,13 @@ void XEvent::WaitCallback() {
 
 void XEvent::CooperativeWaitBegin(XThread* thread) { waiters_.Add(thread); }
 
-void XEvent::CooperativeWaitEnd(XThread* thread) { waiters_.Remove(thread); }
+void XEvent::CooperativeWaitEnd(XThread* thread) {
+  // A timed-out or terminated front waiter may leave a Set unconsumed.
+  // Advancing the FIFO can make that token available to a parked successor.
+  if (waiters_.Remove(thread) && !manual_reset_ && event_->Query().state) {
+    WakeCooperativeWaiters();
+  }
+}
 
 // An auto-reset set with a parked waiter belongs to the front of the queue.
 // NT wakes the first waiter directly, so a later poller must not steal it.

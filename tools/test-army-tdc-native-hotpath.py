@@ -47,16 +47,18 @@ class ArmyTdcNativeTests(unittest.TestCase):
     def test_xevent_trace_is_opt_in_and_saturates_after_budget(self):
         event = source("kernel/xevent.cc")
         self.assertRegex(event, r"DEFINE_bool\(zephyr_event_signal_trace,\s*false,")
-        body = cpp_body(event, "void XEvent::RecordSetter()")
-        self.assertIn("if (cvars::zephyr_event_signal_trace)", body)
-        guard = body.index("if (cvars::zephyr_event_signal_trace)")
-        self.assertGreater(body.index('XELOGI("XEvent signal:'), guard)
-        self.assertGreater(body.index("compare_exchange_weak"), guard)
-        self.assertIn("remaining > 0", body)
-        self.assertNotIn("fetch_sub(1)", body)
-        # Retain last setter for the explicit no-progress report even when quiet.
-        for name in ("last_set_thread_", "last_set_lr_", "last_set_uptime_ms_"):
-            self.assertIn(name, body)
+        for method in ("int32_t XEvent::Set(", "int32_t XEvent::Pulse("):
+            body = cpp_body(event, method)
+            self.assertRegex(body, r"if \(cvars::zephyr_event_signal_trace\) \{\s*TraceSetter\(\);")
+        trace = cpp_body(event, "void XEvent::TraceSetter()")
+        self.assertIn("compare_exchange_weak", trace)
+        self.assertIn("remaining > 0", trace)
+        self.assertIn("remaining <= 0", trace)
+        self.assertNotIn("fetch_sub(1)", trace)
+        self.assertIn('XELOGI("XEvent signal:', trace)
+        wake = cpp_body(source("kernel/xobject.cc"), "void XObject::WakeCooperativeWaiters()")
+        self.assertLess(wake.index("fetch_add(1)"), wake.index("RecordCooperativeSignal(this)"))
+        self.assertRegex(wake, r"if \(epoch <= 16 \|\| \(epoch & 4095u\) == 0\)")
 
     def test_accepted_poll_loops_are_still_optimized_without_logging(self):
         jit = source("cpu/compiler/passes/memory_poll_park_pass.cc")

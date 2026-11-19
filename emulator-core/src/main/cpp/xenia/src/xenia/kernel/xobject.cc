@@ -349,8 +349,8 @@ XThread* CooperativeWaiterFifo::Front() {
 }
 
 namespace {
-// Signal ring. Small, lock-guarded and write-mostly: it is touched once per
-// cooperative wake, which is rare next to the poll traffic it helps explain.
+// Signal ring. Sampling is per object so a busy worker event cannot crowd
+// unrelated signals out of the watchdog history on every transition.
 constexpr size_t kSignalRingSize = 256;
 std::mutex g_signal_ring_lock;
 XObject::SignalRecord g_signal_ring[kSignalRingSize];
@@ -390,8 +390,10 @@ std::vector<XObject::SignalRecord> XObject::RecentCooperativeSignals(
 }
 
 void XObject::WakeCooperativeWaiters() {
-  cooperative_signal_epoch_.fetch_add(1);
-  RecordCooperativeSignal(this);
+  const uint32_t epoch = cooperative_signal_epoch_.fetch_add(1) + 1;
+  if (epoch <= 16 || (epoch & 4095u) == 0) {
+    RecordCooperativeSignal(this);
+  }
   // Wake only the CPUs that can act on this signal instead of every CPU with
   // any blocked thread - broadcast wakes on every semaphore release were most
   // of some titles' kernel time (Eternal Sonata: 69% of CPU in futex wakes
@@ -947,6 +949,7 @@ object_ref<XObject> XObject::GetNativeObject(KernelState* kernel_state,
   }
 
   const bool tdc = kernel_state->title_id() == 0x454109AB;
+  const bool is_thread = type == X_DISPATCHER_FLAGS::DISPATCHER_THREAD;
   if (header->wait_list.flink_ptr == kXObjSignature) {
     // Already initialized.
     // TODO: assert if the type of the object != as_type
@@ -957,18 +960,19 @@ object_ref<XObject> XObject::GetNativeObject(KernelState* kernel_state,
     // Handles are recycled across types, so a dead object's header can name a
     // handle that now belongs to something else.
     uint32_t guest_ptr = kernel_state->memory()->HostToGuestVirtual(native_ptr);
+    const Type expected_type = MapGuestTypeToHost(type);
     if (result &&
         (static_cast<const XObject*>(result)->guest_object() != guest_ptr ||
-         (tdc && MapGuestTypeToHost(type) != Type::Undefined &&
-          result->type() != MapGuestTypeToHost(type)))) {
+         ((tdc || is_thread) && expected_type != Type::Undefined &&
+          result->type() != expected_type))) {
       result->Release();
       result = nullptr;
     }
   }
-  if (header->wait_list.flink_ptr != kXObjSignature || (tdc && !result)) {
-    // TDC reuses dispatch memory; a dead or mismatched cached handle must
-    // be rebuilt instead of returning null to KeSetEvent/Wait.
-    // First use, create new.
+  if (header->wait_list.flink_ptr != kXObjSignature ||
+      (!result && (tdc || is_thread))) {
+    // TDC reuses dispatch memory; rebuild an inline dispatcher object on
+    // first use or if its cached handle is dead or mismatched.
     // https://www.nirsoft.net/kernel_struct/vista/KOBJECTS.html
     switch (type) {
       case X_DISPATCHER_FLAGS::DISPATCHER_MANUAL_RESET_EVENT:
@@ -989,9 +993,25 @@ object_ref<XObject> XObject::GetNativeObject(KernelState* kernel_state,
         assert_true(success);
         result = sem;
       } break;
+      case X_DISPATCHER_FLAGS::DISPATCHER_THREAD: {
+        // The guest may replace the wait-list fields of a KTHREAD. Recover
+        // only a registered thread with this exact address, never construct
+        // a thread or use a possibly recycled handle from the guest header.
+        const uint32_t guest_ptr =
+            kernel_state->memory()->HostToGuestVirtual(native_ptr);
+        for (auto& thread : kernel_state->object_table()
+                                ->GetObjectsByType<XObject>(Type::Thread)) {
+          if (thread->guest_object() == guest_ptr) {
+            result = thread.release();
+            break;
+          }
+        }
+        if (!result) {
+          XELOGW("GetNativeObject: no registered thread at {:08X}", guest_ptr);
+        }
+      } break;
       case 3:   // ProcessObject
       case 4:   // QueueObject
-      case 6:   // ThreadObject
       case 7:   // GateObject
       case 8:   // TimerNotificationObject
       case 9:   // TimerSynchronizationObject

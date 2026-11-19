@@ -41,6 +41,18 @@ static const Quirk kQuirks[] = {
      "preserve Army TDC draws while shader translation is pending"},
     {0x454109AB, "vulkan_async_skip_draws", false,
      "preserve Army TDC draws while Vulkan pipelines compile"},
+    // The first 3D scene resolves RGBA16 with unsigned integer packing and
+    // exponent bias +11. Keep the resolve and texture fetch formats paired.
+    {0x454109AB, "accurate_resolve_number_formats", true,
+     "use resolve shaders that pack Army TDC integer destinations"},
+    {0x454109AB, "resolve_copy_dest_number_packing", true,
+     "preserve Army TDC integer resolve destinations"},
+    {0x454109AB, "texture_integer_num_format", true,
+     "sample Army TDC integer textures in guest units"},
+    {0x454109AB, "log_gpu_frame_time_breakdown", true,
+     "report Army TDC GPU work and fence waits once per second"},
+    {0x454109AB, "log_gpu_frame_time_breakdown_passes", false,
+     "avoid per-pass timing overhead while testing Army TDC"},
     // Ninja Gaiden 2: the opening FMV renders as three time-skewed vertical
     // slices when the restore half of the saverest inline is active. Every
     // emitted expansion verifies correct, so the current reading is a latent

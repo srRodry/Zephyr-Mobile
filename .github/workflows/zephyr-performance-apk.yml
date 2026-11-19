@@ -365,6 +365,11 @@ jobs:
                     'GPU|memexport_await_fences': True,
                     'GPU|async_shader_skip_draws': False,
                     'Vulkan|vulkan_async_skip_draws': False,
+                    'GPU|accurate_resolve_number_formats': True,
+                    'GPU|resolve_copy_dest_number_packing': True,
+                    'GPU|texture_integer_num_format': True,
+                    'GPU|log_gpu_frame_time_breakdown': True,
+                    'GPU|log_gpu_frame_time_breakdown_passes': False,
                 },
             },
         }

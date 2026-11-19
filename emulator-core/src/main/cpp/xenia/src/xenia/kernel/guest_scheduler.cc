@@ -1774,8 +1774,8 @@ std::string FormatWaitShape(const XThread::SchedulerLinks& links) {
 void GuestScheduler::ReportNoProgress() {
   XELOGW(
       "GuestScheduler: no guest frame presented in {} watchdog ticks while the "
-      "dispatch threads keep switching. Every fiber below is waiting on "
-      "something none of them is producing:",
+      "dispatch threads may still be active. Snapshot of running, ready and "
+      "blocked guest threads:",
       no_progress_ticks_);
   uint64_t now_ms = Clock::QueryHostUptimeMillis();
   std::lock_guard<std::mutex> lock(lock_);
@@ -1810,12 +1810,15 @@ void GuestScheduler::ReportNoProgress() {
               : -1;
       XELOGW(
           "    blocked tid={:08X} '{}' last_safepoint={:08X} lr={:08X} on {} "
-          "obj={} wait={} gated={} alertable={} epoch={} deadline_in_ms={}",
+          "obj={} wait={} gated={} alertable={} epoch={} live_epoch={} "
+          "deadline_in_ms={}",
           t->thread_id(), t->thread_name(),
           uint32_t(context->last_safepoint_pc), uint32_t(context->lr),
           WaitObjectKind(obj), static_cast<const void*>(obj),
           FormatWaitShape(links), links.wait_gated ? 1 : 0,
-          links.wait_alertable ? 1 : 0, links.wait_epoch, due_in);
+          links.wait_alertable ? 1 : 0, links.wait_epoch,
+          obj ? obj->cooperative_signal_epoch() : t->cooperative_wait_set_epoch(),
+          due_in);
     }
     // Ready-but-not-running fibers matter too: a queue that never drains
     // means the CPU is rotating between the same few spinners.
@@ -1831,16 +1834,13 @@ void GuestScheduler::ReportNoProgress() {
       }
     }
   }
-  // The other half of the picture: what was actually signalled recently. A
-  // handle the fibers above wait on that never appears here names the producer
-  // that stopped; one that appears repeatedly while a waiter stays parked
-  // points at the wake being lost instead of never sent.
+  // Samples of recent signal transitions, with the producer's guest LR.
   auto signals = XObject::RecentCooperativeSignals(64);
   if (signals.empty()) {
     XELOGW("  recent cooperative signals: none recorded");
     return;
   }
-  XELOGW("  last {} cooperative signals (oldest first):", signals.size());
+  XELOGW("  last {} sampled cooperative signals (oldest first):", signals.size());
   for (const auto& rec : signals) {
     XELOGW(
         "    #{} handle={:08X} type={} by_tid={:08X} lr={:08X} uptime_ms={}",

@@ -731,19 +731,22 @@ class PosixCondition<Event> : public PosixConditionBase {
 
   // SetEvent.
   bool Signal() override {
+    SetAndGetPreviousState();
+    return true;
+  }
+
+  bool SetAndGetPreviousState() {
     auto lock = GuardedLock();
-    if (manual_reset_ || !AutoResetEventHandoff()) {
-      signal_ = true;
-      NotifyAll();
+    if (signal_) {
       return true;
     }
-    if (ReleaseOneWaiterLocked()) {
-      return true;
+    // An auto-reset event can hand the signal directly to a parked waiter.
+    if (!manual_reset_ && AutoResetEventHandoff() && ReleaseOneWaiterLocked()) {
+      return false;
     }
-    // No waiter: latch one idempotent token.
     signal_ = true;
     NotifyAll();
-    return true;
+    return false;
   }
 
   // ResetEvent.
@@ -1859,6 +1862,9 @@ class PosixEvent final : public PosixConditionHandle<Event> {
       : PosixConditionHandle(manual_reset, initial_state) {}
   ~PosixEvent() override = default;
   void Set() override { handle_.Signal(); }
+  bool SetAndGetPreviousState() override {
+    return handle_.SetAndGetPreviousState();
+  }
   void Reset() override { handle_.Reset(); }
   EventInfo Query() override { return handle_.Query(); }
   void Pulse() override {

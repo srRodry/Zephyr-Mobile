@@ -329,6 +329,9 @@ class Event : public WaitHandle {
   // called. If this is an auto reset event until exactly one wait is satisfied.
   virtual void Set() = 0;
 
+  // Sets the event and returns its previous signal state atomically.
+  virtual bool SetAndGetPreviousState() = 0;
+
   // Sets the specified event object to the nonsignaled state.
   // Resetting an event that is already reset has no effect.
   virtual void Reset() = 0;

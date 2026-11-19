@@ -158,14 +158,27 @@ int main() {
   PosixCondition<Event> manual(true, false), automatic(false, false);
   assert(manual.Query().type == 0 && manual.Query().state == 0);
   assert(automatic.Query().type == 1 && automatic.Query().state == 0);
-  manual.Signal();
-  automatic.Signal();
+  assert(!manual.SetAndGetPreviousState());
+  assert(manual.SetAndGetPreviousState());
+  assert(!automatic.SetAndGetPreviousState());
+  assert(automatic.SetAndGetPreviousState());
   assert(manual.Query().state == 1 && automatic.Query().state == 1);
   assert(manual.Wait(0ms) == WaitResult::kSuccess);
   assert(automatic.Wait(0ms) == WaitResult::kSuccess);
   assert(manual.Query().state == 1 && automatic.Query().state == 0);
+  assert(automatic.Wait(0ms) == WaitResult::kTimeout);
+  assert(!automatic.SetAndGetPreviousState());
+  assert(automatic.Wait(0ms) == WaitResult::kSuccess);
   manual.Reset();
   assert(manual.Query().state == 0);
+  std::atomic<int> transitions{0};
+  auto set_manual = [&] {
+    if (!manual.SetAndGetPreviousState()) ++transitions;
+  };
+  std::thread setter1(set_manual), setter2(set_manual);
+  setter1.join();
+  setter2.join();
+  assert(transitions == 1 && manual.Query().state == 1);
 }
 """
         with tempfile.TemporaryDirectory(prefix="zephyr-posix-wait-") as directory:
