@@ -29,7 +29,7 @@ DEFINE_bool(
 DEFINE_bool(log_memory_poll_park, false,
             "Log every candidate memory-poll self-loop this pass rejects, "
             "with the guest address and the failing condition. Accepted "
-            "loops are always logged.",
+            "loops are logged only when explicitly enabled.",
             "CPU");
 
 namespace xe {
@@ -216,7 +216,9 @@ bool MemoryPollParkPass::TryInstrumentLoop(HIRBuilder* builder, Block* block) {
   Instr* backoff = builder->SpinBackoff(1);
   backoff->MoveBefore(loop_branch);
 
-  XELOGI("MemoryPollPark: parked poll loop at guest {:08X}", guest_address);
+  if (cvars::log_memory_poll_park) {
+    XELOGI("MemoryPollPark: parked poll loop at guest {:08X}", guest_address);
+  }
   return true;
 }
 
