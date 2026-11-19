@@ -5,7 +5,7 @@ name: Zephyr performance beta APK
 
 on:
   push:
-    branches: [perf/edge30-beta1, integration/zephyr-beta2, research/optimization-round3, research/edge30-diagnostics-audit-20261117]
+    branches: [perf/edge30-beta1, integration/zephyr-beta2, research/optimization-round3, research/edge30-diagnostics-audit-20261117, research/native-recomp-semantics-20261118]
     paths-ignore:
       - '**.md'
       - 'docs/**'
@@ -64,7 +64,7 @@ jobs:
     - name: Build settings
       id: cfg
       env:
-        RESEARCH_ARM: ${{ github.ref_name == 'research/edge30-diagnostics-audit-20261117' && 'beta16-edge30' || github.ref_name == 'research/optimization-round3' && 'beta15-chrome' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
+        RESEARCH_ARM: ${{ github.ref_name == 'research/native-recomp-semantics-20261118' && 'beta17-ppc-native' || github.ref_name == 'research/edge30-diagnostics-audit-20261117' && 'beta16-edge30' || github.ref_name == 'research/optimization-round3' && 'beta15-chrome' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
         sha=$(git rev-parse --short=8 HEAD)
@@ -156,6 +156,8 @@ jobs:
         python3 tools/test-round3-a64.py
         python3 tools/test-a64-vector-select.py
         python3 tools/test-round3-cache.py
+        python3 tools/test-native-ppc-edgecases.py
+        python3 tools/test-vulkan-diagnostics.py
         python3 tools/test-vulkan-cache-work.py
         python3 tools/test-xex-launch-module.py
         python3 tools/test-dll-notifications.py
@@ -174,6 +176,7 @@ jobs:
           --tests 'xendroid.compose.core.PresenterPerformanceHintsTest' \
           --tests 'xendroid.compose.screens.ControlsHubTest' \
           --tests 'xendroid.compose.screens.SettingsHubTest' \
+          --tests 'xendroid.compose.screens.FirstRunReturnTest' \
           --tests 'xendroid.compose.ui.library.*' \
           --tests 'xendroid.compose.ui.design.ZephyrPaletteTest' \
           --tests 'xendroid.compose.ui.design.EmeraldNavigationTest' \
@@ -378,6 +381,7 @@ jobs:
           const versionCode = 100000 + Number(context.runNumber);
           const tag = 'Zephyr-Research-v' + versionCode + '-' + process.env.SHA;
           const edge30Audit = context.ref === 'refs/heads/research/edge30-diagnostics-audit-20261117';
+          const nativeRecomp = context.ref === 'refs/heads/research/native-recomp-semantics-20261118';
           const apk = process.env.APK;
           const bytes = fs.readFileSync(apk);
           const digest = crypto.createHash('sha256').update(bytes).digest('hex');
@@ -385,7 +389,13 @@ jobs:
           fs.writeFileSync(checksums, digest + '  ' + apk + '\n');
           const body = [
             '<!-- update-summary:pt-BR',
-            ...(edge30Audit ? [
+            ...(nativeRecomp ? [
+              '- Beta 17 (Research): corrigidos XER.CA para sradx/srawx e NaN/CR6 em vcmpbfp no tradutor PowerPC.',
+              '- Diagnóstico Vulkan: logs de frame/fence/pipeline isolados por sessão, evitando misturar jogos ou lançamentos anteriores.',
+              '- Testes: oráculos de emissores PPC com UBSan, testes do parser Vulkan e regressões Android ARM64/Kotlin aprovadas.',
+              '- Interface: verificação do retorno do assistente após navegador de pastas, sem regressão de etapa.',
+              '- Sem ganhos de FPS declarados; exige A/B real no Edge 30 Ultra. Main, pacote e assinatura Research preservados.'
+            ] : edge30Audit ? [
               '- Beta 16 (Edge30): telemetria do escalonador disponível apenas por opt-in explícito na variante dedicada.',
               '- Diagnóstico: CVARs gráficas A/B corrigidas, com categorias [GPU] e [Vulkan] verificadas.',
               '- Pesquisa: analisadores de GPU/CPU0 e comparador A/B mais rigorosos para testes reproduzíveis.',
@@ -417,7 +427,7 @@ jobs:
             if (error.status !== 404) throw error;
             release = (await github.rest.repos.createRelease({
               ...context.repo, tag_name: tag, target_commitish: context.sha,
-              name: 'Zephyr-Mobile ' + (edge30Audit ? 'beta 16 — Edge30 diagnostics' : 'beta 15') + ' — build ' + context.runNumber,
+              name: 'Zephyr-Mobile ' + (nativeRecomp ? 'beta 17 — PPC native semantics' : edge30Audit ? 'beta 16 — Edge30 diagnostics' : 'beta 15') + ' — build ' + context.runNumber,
               body, draft: true, prerelease: true
             })).data;
           }
