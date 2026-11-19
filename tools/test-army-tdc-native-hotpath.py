@@ -63,6 +63,10 @@ class ArmyTdcNativeTests(unittest.TestCase):
         self.assertRegex(jit, r"DEFINE_bool\(log_memory_poll_park,\s*false,")
         body = cpp_body(jit, "bool MemoryPollParkPass::TryInstrumentLoop(")
         self.assertIn("builder->SpinBackoff(1)", body)
+        self.assertRegex(
+            body,
+            r"if\s*\(cvars::log_memory_poll_park\)\s*\{\s*for\s*\(Instr\* instr = block->instr_head;")
+
         self.assertIn("backoff->MoveBefore(loop_branch)", body)
         self.assertRegex(
             body, r"if\s*\(cvars::log_memory_poll_park\)\s*\{\s*XELOGI\(\"MemoryPollPark: parked")
