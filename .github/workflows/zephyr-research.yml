@@ -13,6 +13,8 @@ on:
       - 'tools/test-army-tdc-native-hotpath.py'
       - 'tools/analyze-army-tdc-boot.py'
       - 'tools/test-analyze-army-tdc-boot.py'
+      - 'tools/verify-army-tdc-aot-inputs.py'
+      - 'tools/test-verify-army-tdc-aot-inputs.py'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/kernel/xam/xam_content.cc'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/kernel/xevent.cc'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/cpu/compiler/passes/memory_poll_park_pass.cc'
@@ -40,6 +42,8 @@ on:
       - 'tools/test-army-tdc-native-hotpath.py'
       - 'tools/analyze-army-tdc-boot.py'
       - 'tools/test-analyze-army-tdc-boot.py'
+      - 'tools/verify-army-tdc-aot-inputs.py'
+      - 'tools/test-verify-army-tdc-aot-inputs.py'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/kernel/xam/xam_content.cc'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/kernel/xevent.cc'
       - 'emulator-core/src/main/cpp/xenia/src/xenia/cpu/compiler/passes/memory_poll_park_pass.cc'
@@ -74,6 +78,8 @@ jobs:
         run: python3 tools/test-army-tdc-native-hotpath.py
       - name: Test TDC XEX and scheduler log classification
         run: python3 tools/test-analyze-army-tdc-boot.py
+      - name: Verify synthetic AOT input hashes and safe preflight
+        run: python3 tools/test-verify-army-tdc-aot-inputs.py
       - name: Test Vulkan frame and pipeline diagnostics
         run: python3 tools/test-vulkan-diagnostics.py
       - name: Test Edge30 CPU0 phase log analysis
