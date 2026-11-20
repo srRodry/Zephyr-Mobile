@@ -1,0 +1,7 @@
+#pragma once
+
+#ifndef ADRENOTOOLS_HOOK_PREFIX
+#define ADRENOTOOLS_HOOK_PREFIX ""
+#endif
+
+#define ADRENOTOOLS_HOOK_LIBRARY(name) "lib" ADRENOTOOLS_HOOK_PREFIX name ".so"

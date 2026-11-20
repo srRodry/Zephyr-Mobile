@@ -1,6 +1,8 @@
 // SPDX-License-Identifier: BSD-2-Clause
 // Copyright © 2021 Billy Laws
 
+#include "hook/library_name.h"
+
 #include <cerrno>
 #include <string>
 #include <string_view>
@@ -64,7 +66,7 @@ void *adrenotools_open_libvulkan(int dlopenFlags, int featureFlags, const char *
         return nullptr;
 
     // Preload the hook implementation, otherwise we get a weird issue where despite being in NEEDED of the hook lib the hook's symbols will overwrite ours and cause an infinite loop
-    auto hookImpl{linkernsbypass_namespace_dlopen("libhook_impl.so", RTLD_NOW, hookNs)};
+    auto hookImpl{linkernsbypass_namespace_dlopen(ADRENOTOOLS_HOOK_LIBRARY("hook_impl"), RTLD_NOW, hookNs)};
     if (!hookImpl)
         return nullptr;
 
@@ -88,7 +90,7 @@ void *adrenotools_open_libvulkan(int dlopenFlags, int featureFlags, const char *
     initHookParam(new HookImplParams(featureFlags, tmpLibDir, hookLibDir, customDriverDir, customDriverName, fileRedirectDir, importMapping));
 
     // Load the libvulkan hook into the isolated namespace
-    if (!linkernsbypass_namespace_dlopen("libmain_hook.so", RTLD_GLOBAL, hookNs))
+    if (!linkernsbypass_namespace_dlopen(ADRENOTOOLS_HOOK_LIBRARY("main_hook"), RTLD_GLOBAL, hookNs))
         return nullptr;
 
     return linkernsbypass_namespace_dlopen_unique("/system/lib64/libvulkan.so", tmpLibDir, dlopenFlags, hookNs);

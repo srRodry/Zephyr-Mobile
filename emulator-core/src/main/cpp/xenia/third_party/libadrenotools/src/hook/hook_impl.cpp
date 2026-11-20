@@ -1,3 +1,5 @@
+#include "library_name.h"
+
 #include <initializer_list>
 #include <string>
 #include <cstdio>
@@ -66,7 +68,7 @@ __attribute__((visibility("default"))) void *hook_android_dlopen_ext(const char 
 
     // Preload ourself, a new instance will be created since we have different linker ancestory
     // If we don't preload we get a weird issue where despite being in NEEDED of the hook lib the hook's symbols will overwrite ours and cause an infinite loop
-    auto hookImpl{linkernsbypass_namespace_dlopen("libhook_impl.so", RTLD_NOW, driverNs)};
+    auto hookImpl{linkernsbypass_namespace_dlopen(ADRENOTOOLS_HOOK_LIBRARY("hook_impl"), RTLD_NOW, driverNs)};
     if (!hookImpl)
         return nullptr;
 
@@ -78,7 +80,7 @@ __attribute__((visibility("default"))) void *hook_android_dlopen_ext(const char 
     initHookParam(hook_params);
 
     if (hook_params->featureFlags & ADRENOTOOLS_DRIVER_FILE_REDIRECT) {
-        if (!linkernsbypass_namespace_dlopen("libfile_redirect_hook.so", RTLD_GLOBAL, driverNs)) {
+        if (!linkernsbypass_namespace_dlopen(ADRENOTOOLS_HOOK_LIBRARY("file_redirect_hook"), RTLD_GLOBAL, driverNs)) {
             LOGI("hook_android_dlopen_ext: hook failed: failed to apply libfopen_redirect_hook!");
             return fallback();
         }
@@ -91,7 +93,7 @@ __attribute__((visibility("default"))) void *hook_android_dlopen_ext(const char 
     newExtinfo.library_namespace = driverNs;
 
     if (hook_params->featureFlags & ADRENOTOOLS_DRIVER_GPU_MAPPING_IMPORT) {
-        if (!linkernsbypass_namespace_dlopen("libgsl_alloc_hook.so", RTLD_GLOBAL, driverNs)) {
+        if (!linkernsbypass_namespace_dlopen(ADRENOTOOLS_HOOK_LIBRARY("gsl_alloc_hook"), RTLD_GLOBAL, driverNs)) {
             LOGI("hook_android_dlopen_ext: hook failed: failed to apply libgsl_alloc_hook!");
             return fallback();
         }
