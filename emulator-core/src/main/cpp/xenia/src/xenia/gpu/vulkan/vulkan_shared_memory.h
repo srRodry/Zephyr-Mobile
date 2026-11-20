@@ -35,6 +35,8 @@ class VulkanSharedMemory : public SharedMemory {
                      VkPipelineStageFlags guest_shader_pipeline_stages);
   ~VulkanSharedMemory() override;
 
+  using SharedMemory::page_size_log2;
+
   bool Initialize();
   void Shutdown(bool from_destructor = false);
   void ClearCache() override;
