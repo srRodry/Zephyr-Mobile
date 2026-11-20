@@ -93,7 +93,6 @@ import xendroid.compose.ui.design.XdStatusPill
 import xendroid.compose.ui.design.XdText
 import xendroid.compose.ui.design.ZephyrActionShape
 import xendroid.compose.ui.design.padButtonOf
-import xendroid.compose.ui.design.zephyrBackdrop
 import xendroid.compose.ui.design.part
 
 /** One library card's art: the cover file (or icon) and whether only the 64 px icon exists. */
@@ -126,6 +125,7 @@ fun LibraryTouch(
     notices: @Composable () -> Unit,
     detail: @Composable (Game) -> Unit,
     area: XdArea = XdArea.GAMES,
+    onOpenSettings: ((Game) -> Unit)? = null,
 ) {
     var optionsExpanded by rememberSaveable { mutableStateOf(false) }
     val frameColors = Xd.colors
@@ -181,13 +181,15 @@ fun LibraryTouch(
             }
         }
         .focusable() else Modifier
-    BoxWithConstraints(Modifier.fillMaxSize().zephyrBackdrop().then(controllerKeys)) {
+    BoxWithConstraints(Modifier.fillMaxSize().then(controllerKeys)) {
         val viewportWidth = maxWidth
         val portrait = maxHeight > viewportWidth || viewportWidth < 600.dp
         if (!optionsExpanded && query.isBlank() && filter == LibraryFilter.All && featured != null) {
             LibraryConsole(portrait, area, shown, featured, data, artOf, onSelect, preparing,
                 onPlay = { onSelect(featured); onPlay(featured) },
-                onOpen = { openSelected(featured) }, onFavorite = { onFavorite(featured) },
+                onOpen = { openSelected(featured) },
+                onOpenSettings = onOpenSettings?.let { open -> { open(featured) } },
+                onFavorite = { onFavorite(featured) },
                 onBrowse = { optionsExpanded = true }, onMenu = onMenu, notices = notices)
             return@BoxWithConstraints
         }

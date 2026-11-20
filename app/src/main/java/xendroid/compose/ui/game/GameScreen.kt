@@ -38,19 +38,14 @@ import xendroid.compose.settings.SettingValue
 import xendroid.compose.settings.SettingsSchema
 import xendroid.compose.settings.SettingsViewModel
 import xendroid.compose.ui.compress.GameCompressViewModel
-import xendroid.compose.ui.design.GameCover
 import xendroid.compose.ui.design.LocalSwapConfirm
 import xendroid.compose.ui.design.LocalXdToast
 import xendroid.compose.ui.design.PadButton
-import xendroid.compose.ui.design.WithCoverColors
-import xendroid.compose.ui.design.Xd
 import xendroid.compose.ui.design.XdArea
 import xendroid.compose.ui.design.XdButton
 import xendroid.compose.ui.design.XdButtonKind
-import xendroid.compose.ui.design.XdButtonSize
 import xendroid.compose.ui.design.XdEmpty
 import xendroid.compose.ui.design.XdHint
-import xendroid.compose.ui.design.XdIconButton
 import xendroid.compose.ui.design.XdIcons
 import xendroid.compose.ui.design.XdMenuItem
 import xendroid.compose.ui.design.XdSection
@@ -59,14 +54,12 @@ import xendroid.compose.ui.design.XdSegmented
 import xendroid.compose.ui.design.XdSheet
 import xendroid.compose.ui.design.XdSheetOption
 import xendroid.compose.ui.design.XdToml
-import xendroid.compose.ui.design.rememberCoverColors
 import xendroid.compose.ui.library.CoverArt
 import xendroid.compose.ui.library.GameActionDialogs
 import xendroid.compose.ui.library.GameActions
 import xendroid.compose.ui.library.GameLibraryViewModel
 import xendroid.compose.ui.library.LibraryData
 import xendroid.compose.ui.library.LibrarySort
-import xendroid.compose.ui.library.formatLabel
 import xendroid.compose.ui.library.rememberGameActions
 import xendroid.compose.ui.settings.CommunityConfigsCard
 import xendroid.compose.ui.settings.CommunityShareDialog
@@ -96,37 +89,25 @@ class GameScreenLinks(
     val onInstallFromDisc: (String) -> Unit = {},
 )
 
-/** Touch section ids of the sheet; the controller menu has its own (see [controllerSection]). */
+/** Section IDs are shared by deep links, touch and gamepad navigation. */
 object GameSections {
     const val OVERVIEW = "ov"
     const val SETTINGS = "settings"
     const val PERF = "perf"
     const val CONTENT = "cont"
     const val DATA = "data"
+    val tabs = listOf(OVERVIEW, SETTINGS, CONTENT, DATA)
+
     fun group(g: xendroid.compose.settings.SettingGroup) = "set:${g.name}"
+
+    fun tab(id: String?): String = when {
+        id == SETTINGS || id?.startsWith("set:") == true -> SETTINGS
+        id == CONTENT -> CONTENT
+        id == PERF || id == DATA -> DATA
+        else -> OVERVIEW
+    }
 }
 
-private fun controllerSection(id: String): String = when {
-    id == GameSections.OVERVIEW -> "play"
-    id == GameSections.SETTINGS || id.startsWith("set:") -> "set"
-    else -> id
-}
-
-private fun touchSection(id: String): String = when (id) {
-    "play", "launch", "quick", "compat" -> GameSections.OVERVIEW
-    "set" -> GameSections.SETTINGS
-    else -> id
-}
-
-/**
- * The game sheet as a screen (docs/ui-redesign/bc, Base): Play and "Start with…" always at hand,
- * and sections for the overview, each group of this game's settings (with the scope switch to the
- * global values), performance, patches and content, saves and data. In controller mode the big
- * menu: Play, Start with…, Quick settings, All settings, Performance, Patches and content, Saves
- * and data, Compatibility.
- *
- * [settings] and [patches] are null when the game has no readable Title ID (they are keyed by it).
- */
 @Composable
 fun GameScreen(
     game: Game,
@@ -194,9 +175,12 @@ fun GameScreen(
     }
     LaunchedEffect(game.identityKey) { library.loadDetails(game) }
 
-    var section by rememberSaveable { mutableStateOf(initialSection ?: GameSections.OVERVIEW) }
-    val controller = Xd.controller
-    val shown = if (controller) controllerSection(section) else touchSection(section)
+    var savedSection by rememberSaveable(game.identityKey) { mutableStateOf(initialSection ?: GameSections.OVERVIEW) }
+    val section = when (savedSection) {
+        "set" -> GameSections.SETTINGS
+        "play", "launch", "quick", "compat" -> GameSections.OVERVIEW
+        else -> savedSection
+    }
     val launchState = remember(game.identityKey) { LaunchFormState() }
     var launchOpen by remember { mutableStateOf(false) }
     var moreOpen by remember { mutableStateOf(false) }
@@ -206,9 +190,6 @@ fun GameScreen(
         s.files.sumOf { f -> f.entries.count { it.isEnabled } } to s.files.sumOf { it.entries.size }
     } ?: info?.patchesTotal?.let { (info.patchesEnabled ?: 0) to it }
     val play: () -> Unit = { actions.play(game) }
-    val playWith: () -> Unit = {
-        actions.play(game, launchState.options(overrides) { key -> SettingsSchema.byKey[key]?.let { settings?.inheritedRaw(it) } })
-    }
     val resetAll: () -> Unit = {
         val vm = settings
         if (vm != null) {
@@ -234,7 +215,7 @@ fun GameScreen(
             e, panel, pinned, onPinned, group = group, gameName = game.name,
             onPresets = if (!panel.editGlobal) ({ presetsOpen = true }) else null,
             onToml = { tomlOpen = true }, onResetAll = resetAll, onOpenDrivers = links.onDrivers,
-            scopeSwitch = scopeSwitch, onJump = if (controller) null else ({ g -> section = GameSections.group(g) }),
+            scopeSwitch = scopeSwitch, onJump = { g -> savedSection = GameSections.group(g) },
         )
     }
     val quick: @Composable () -> Unit = {
@@ -242,94 +223,53 @@ fun GameScreen(
         if (e == null) NoSettings(settings == null) else XdQuickSettings(e, pinned, onOpenDrivers = links.onDrivers)
     }
     val cards = GameCards(game, data, info, art, actions, library, patches, patchState, links, activeProfile,
-        onSection = { section = it }, quick = quick, changedCount = overrides.size)
+        onSection = { savedSection = it }, quick = quick, changedCount = overrides.size)
 
-    val subtitle = listOfNotNull(game.titleId, game.mediaId?.let { stringResource(R.string.xd_game_media, it) }, formatLabel(game.format))
-        .joinToString(" · ")
     val favorite = data.favorite(game)
-    val cover: @Composable () -> Unit = { GameCover(art.model, game.name, art.smart, radius = 6.dp) }
-    val colors = rememberCoverColors(art.model)
-
-    val sections: List<XdSection> = if (controller) {
-        listOf(
-            XdSection("play", stringResource(R.string.lib_play), XdIcons.play, heading = null, play = true) {
-                cards.Hero(onPlay = play)
-            },
-            XdSection("launch", stringResource(R.string.xd_game_sec_launch), XdIcons.sliders,
-                lead = stringResource(R.string.xd_launch_sub, game.name)) {
-                LaunchForm(game, launchState, library, settings, overrides, patchCounts?.first)
-                XdButton(stringResource(R.string.xd_launch_play_with), playWith, kind = XdButtonKind.PRIMARY, size = XdButtonSize.LG,
-                    icon = XdIcons.play, enabled = !actions.preparing, modifier = Modifier.padding(top = 12.dp))
-            },
-            XdSection("quick", stringResource(R.string.xd_game_sec_quick), XdIcons.pin, lead = stringResource(R.string.xd_game_quick_lead)) { quick() },
-            XdSection("set", stringResource(R.string.xd_game_sec_all), XdIcons.gear, badge = overrides.size.takeIf { it > 0 }?.toString()) {
-                settingsPanel(null)
-            },
-            XdSection("perf", stringResource(R.string.xd_game_sec_perf), XdIcons.chart) { cards.Performance() },
-            XdSection("cont", stringResource(R.string.xd_game_sec_content), XdIcons.patch,
-                badge = patchCounts?.let { (on, total) -> "$on/$total" }) { cards.Content() },
-            XdSection("data", stringResource(R.string.xd_game_sec_data), XdIcons.save) { cards.Data() },
-            XdSection("compat", stringResource(R.string.xd_game_sec_compat), XdIcons.shield) { cards.Compatibility() },
-        )
-    } else {
+    val sections = buildList {
         val groupGame = stringResource(R.string.xd_game_group_game)
         val groupSettings = stringResource(R.string.xd_game_group_settings)
         val groupMore = stringResource(R.string.xd_game_group_more)
-        buildList {
-            add(XdSection(GameSections.OVERVIEW, stringResource(R.string.xd_game_sec_overview), XdIcons.home, group = groupGame, heading = null) {
-                cards.Overview()
-            })
-            // Round 2: "All settings" (the overview's link) lists every group, each a tap from its tab.
-            add(XdSection(GameSections.SETTINGS, stringResource(R.string.xd_game_sec_all), XdIcons.gear, group = groupSettings,
-                badge = overrides.size.takeIf { it > 0 }?.toString()) { settingsPanel(null) })
-            for (g in SettingCatalog.groups) {
-                val own = overrides.keys.count { key -> SettingsSchema.byKey[key]?.let { SettingCatalog.meta(it).group == g } == true }
-                add(XdSection(GameSections.group(g), groupTitle(g), groupIcon(g), group = groupSettings,
-                    badge = own.takeIf { it > 0 }?.toString()) { settingsPanel(g) })
-            }
-            add(XdSection(GameSections.PERF, stringResource(R.string.xd_game_sec_perf), XdIcons.chart, group = groupMore) { cards.Performance() })
-            add(XdSection(GameSections.CONTENT, stringResource(R.string.xd_game_sec_content), XdIcons.patch, group = groupMore) { cards.Content() })
-            add(XdSection(GameSections.DATA, stringResource(R.string.xd_game_sec_data), XdIcons.save, group = groupMore) { cards.Data() })
+        add(XdSection(GameSections.OVERVIEW, stringResource(R.string.xd_game_sec_overview), XdIcons.home, group = groupGame, heading = null) {
+            cards.Overview()
+        })
+        // Round 2: "All settings" (the overview's link) lists every group, each a tap from its tab.
+        add(XdSection(GameSections.SETTINGS, stringResource(R.string.xd_game_sec_all), XdIcons.gear, group = groupSettings,
+            badge = overrides.size.takeIf { it > 0 }?.toString()) { settingsPanel(null) })
+        for (g in SettingCatalog.groups) {
+            val own = overrides.keys.count { key -> SettingsSchema.byKey[key]?.let { SettingCatalog.meta(it).group == g } == true }
+            add(XdSection(GameSections.group(g), groupTitle(g), groupIcon(g), group = groupSettings,
+                badge = own.takeIf { it > 0 }?.toString()) { settingsPanel(g) })
         }
+        add(XdSection(GameSections.PERF, stringResource(R.string.xd_game_sec_perf), XdIcons.chart, group = groupMore) { cards.Performance() })
+        add(XdSection(GameSections.CONTENT, stringResource(R.string.xd_game_sec_content), XdIcons.patch, group = groupMore) { cards.Content() })
+        add(XdSection(GameSections.DATA, stringResource(R.string.xd_game_sec_data), XdIcons.save, group = groupMore) { cards.Data() })
     }
 
     val swap = LocalSwapConfirm.current
-    WithCoverColors(colors?.dyn, colors?.accent) {
-        XdSectionedScreen(
-            title = if (!controller && shown == GameSections.OVERVIEW) stringResource(R.string.xd_lib_sheet) else game.name,
-            sections = sections,
-            selected = shown,
-            onSelect = { id -> if (controller && id == "play" && shown == "play") play() else section = id },
-            area = XdArea.GAMES,
-            subtitle = subtitle,
-            subtitleMono = true,
-            onBack = links.onBack,
-            lead = if ((controller && shown == "play") || (!controller && shown == GameSections.OVERVIEW)) null else cover,
-            art = if (!controller && shown == GameSections.OVERVIEW) null else art.model,
-            actions = if (controller) null else ({
-                XdIconButton(if (favorite) XdIcons.starFilled else XdIcons.star, stringResource(R.string.lib_favorites),
-                    { actions.toggleFavorite(game) }, on = favorite)
-                XdIconButton(XdIcons.more, stringResource(R.string.lib_more), { moreOpen = true })
-                if (shown != GameSections.OVERVIEW) {
-                    XdButton(stringResource(R.string.xd_game_sec_launch), { launchOpen = true }, enabled = !actions.preparing)
-                    XdButton(stringResource(R.string.lib_play), play, kind = XdButtonKind.PRIMARY, icon = XdIcons.play, enabled = !actions.preparing)
-                }
-            }),
-            hints = if (!controller) null else listOf(
-                XdHint(if (swap) "B" else "A", stringResource(R.string.xd_hint_select)),
-                XdHint(if (swap) "A" else "B", stringResource(R.string.xd_hint_back), links.onBack),
-                XdHint("Y", stringResource(if (favorite) R.string.xd_lib_unfavorite else R.string.xd_lib_favorite)) { actions.toggleFavorite(game) },
-                XdHint("LB/RB", stringResource(R.string.xd_hint_sections)),
-                XdHint("≡", stringResource(R.string.xd_hint_menu)),
-            ),
-            onPad = { b -> if (b == PadButton.Y) { actions.toggleFavorite(game); true } else false },
-            touchFrame = { current, history ->
-                GameTouchSheet(game, art, data, sections, current, history, actions.preparing,
-                    onBack = links.onBack, onPlay = play, onLaunch = { launchOpen = true },
-                    onFavorite = { actions.toggleFavorite(game) }, onMore = { moreOpen = true })
-            },
-        )
-    }
+    XdSectionedScreen(
+        title = game.name,
+        sections = sections,
+        selected = section,
+        onSelect = { savedSection = it },
+        area = XdArea.GAMES,
+        onBack = links.onBack,
+        shoulderSections = GameSections.tabs,
+        shoulderSelection = GameSections.tab(section),
+        onPad = { b -> if (b == PadButton.Y) { actions.toggleFavorite(game); true } else false },
+        touchFrame = { current, history ->
+            GameTouchSheet(game, art, data, sections, current, history, actions.preparing,
+                onBack = links.onBack, onPlay = play, onLaunch = { launchOpen = true },
+                onFavorite = { actions.toggleFavorite(game) }, onMore = { moreOpen = true },
+                hints = listOf(
+                    XdHint(if (swap) "B" else "A", stringResource(R.string.xd_hint_select)),
+                    XdHint(if (swap) "A" else "B", stringResource(R.string.xd_hint_back), links.onBack),
+                    XdHint("Y", stringResource(if (favorite) R.string.xd_lib_unfavorite else R.string.xd_lib_favorite)),
+                    XdHint("LB/RB", stringResource(R.string.xd_hint_sections)),
+                    XdHint("≡", stringResource(R.string.xd_hint_menu)),
+                ))
+        },
+    )
 
     if (launchOpen) LaunchSheet(game, launchState, library, settings, overrides, patchCounts?.first,
         onPlay = { options -> launchOpen = false; actions.play(game, options) }, onDismiss = { launchOpen = false })

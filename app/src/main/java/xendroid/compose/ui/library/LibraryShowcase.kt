@@ -51,7 +51,7 @@ import xendroid.compose.ui.design.*
 internal fun LibraryPlane(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val colors = Xd.colors
     CompositionLocalProvider(LocalXd provides colors, LocalXdButtonShape provides ZephyrActionShape) {
-        Box(modifier.zephyrBackdrop()) { content() }
+        Box(modifier.zephyrBackdrop(animated = false)) { content() }
     }
 }
 

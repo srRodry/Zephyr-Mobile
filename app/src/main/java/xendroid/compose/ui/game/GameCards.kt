@@ -311,6 +311,9 @@ class GameCards(
         else stringResource(R.string.xd_lib_never_played)
         XdCard(title = stringResource(R.string.xd_lib_last_session), icon = XdIcons.chart, trailing = trailing) {
             PerfBody(full, run)
+            if (!full) run?.driver?.let { driver ->
+                XdKv(listOf(stringResource(R.string.xd_set_driver_last) to driver.label))
+            }
             if (!full && perf != null) XdLink(stringResource(R.string.xd_game_ov_perf_link), { onSection(GameSections.PERF) })
         }
     }

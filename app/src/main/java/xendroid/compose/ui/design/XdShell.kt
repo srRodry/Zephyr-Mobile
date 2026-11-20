@@ -275,6 +275,8 @@ fun XdSectionedScreen(
     touchFrame: (@Composable (XdSection?, XdSectionHistory) -> Unit)? = null,
     /** Controller mode: pad buttons the screen handles itself (Y favourites…); true = handled. */
     onPad: ((PadButton) -> Boolean)? = null,
+    shoulderSections: List<String>? = null,
+    shoulderSelection: String? = null,
 ) {
     val real = sections.filter { it.goTo == null && it.content != null }
     val current = real.firstOrNull { it.id == selected } ?: real.firstOrNull()
@@ -293,10 +295,11 @@ fun XdSectionedScreen(
             when (pad) {
                 PadButton.START -> { guideVisible = true; true }
                 PadButton.LB, PadButton.RB -> {
-                    if (real.isNotEmpty()) {
-                        val i = real.indexOfFirst { it.id == current?.id }.coerceAtLeast(0)
-                        val d = if (pad == PadButton.LB) -1 else 1
-                        history.pick(real[Math.floorMod(i + d, real.size)].id)
+                    val ids = shoulderSections ?: real.map { it.id }
+                    if (ids.isNotEmpty()) {
+                        val i = ids.indexOf(shoulderSelection ?: current?.id).coerceAtLeast(0)
+                        val direction = if (pad == PadButton.LB) -1 else 1
+                        history.pick(ids[Math.floorMod(i + direction, ids.size)])
                     }
                     true
                 }
@@ -306,7 +309,7 @@ fun XdSectionedScreen(
             }
         }
         .focusable() else modifier
-    LaunchedEffect(controller, current?.id, guideVisible) {
+    LaunchedEffect(controller, current?.id.takeIf { shoulderSections == null }, guideVisible) {
         if (controller && !guideVisible) runCatching { rootFocus.requestFocus() }
     }
     if (touchFrame != null) {

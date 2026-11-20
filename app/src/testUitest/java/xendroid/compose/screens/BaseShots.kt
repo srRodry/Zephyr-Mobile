@@ -134,10 +134,10 @@ class BaseShots {
     @Config(qualifiers = Phone.PORT) @Test fun sheetPort() { game(InputMode.TOUCH); compose.shot("base/depois-ficha-retrato") }
     @Config(qualifiers = Phone.LAND) @Test fun sheetSettings() { game(InputMode.TOUCH, section = "set:IMAGE"); compose.onNodeWithTag("game-sheet-tab:settings").assertIsSelected(); compose.onNodeWithTag("game-sheet-content:set:IMAGE").assertExists(); compose.shot("base/depois-ficha-ajustes") }
     @Config(qualifiers = Phone.LAND) @Test fun sheetPerformance() { game(InputMode.TOUCH, section = "perf"); compose.onNodeWithTag("game-sheet-tab:data").assertIsSelected(); compose.onNodeWithTag("game-sheet-content:perf").assertExists(); compose.shot("base/depois-ficha-desempenho") }
-    @Config(qualifiers = Phone.LAND) @Test fun sheetContent() { game(InputMode.TOUCH, section = "cont"); compose.onNodeWithTag("game-sheet-tab:data").assertIsSelected(); compose.onNodeWithTag("game-sheet-content:cont").assertExists(); compose.shot("base/depois-ficha-conteudo") }
+    @Config(qualifiers = Phone.LAND) @Test fun sheetContent() { game(InputMode.TOUCH, section = "cont"); compose.onNodeWithTag("game-sheet-tab:cont").assertIsSelected(); compose.onNodeWithTag("game-sheet-content:cont").assertExists(); compose.shot("base/depois-ficha-conteudo") }
     @Config(qualifiers = Phone.LAND) @Test fun sheetData() { game(InputMode.TOUCH, section = "data"); compose.onNodeWithTag("game-sheet-tab:data").assertIsSelected(); compose.onNodeWithTag("game-sheet-content:data").assertExists(); compose.shot("base/depois-ficha-dados") }
     @Config(qualifiers = Phone.LAND) @Test fun sheetController() { game(InputMode.CONTROLLER); compose.shot("base/depois-ficha-controle") }
-    @Config(qualifiers = Phone.LAND) @Test fun sheetControllerSettings() { game(InputMode.CONTROLLER, section = "set"); compose.shot("base/depois-ficha-controle-ajustes") }
+    @Config(qualifiers = Phone.LAND) @Test fun sheetControllerSettings() { game(InputMode.CONTROLLER, section = "set:IMAGE"); compose.onNodeWithTag("game-sheet-tab:settings").assertIsSelected(); compose.onNodeWithTag("game-sheet-content:set:IMAGE").assertExists(); compose.shot("base/depois-ficha-controle-ajustes") }
     @Config(qualifiers = Phone.LAND) @Test fun launchWith() {
         game(InputMode.TOUCH)
         compose.onNodeWithTag("game-sheet-launch").performScrollTo().performClick()
@@ -163,10 +163,13 @@ class BaseShots {
         compose.onNodeWithTag("game-sheet-tab:data").assertIsSelected()
         compose.onNodeWithTag("game-sheet-content:data").assertExists()
         compose.onNodeWithTag("game-sheet-return").assertDoesNotExist()
-        compose.onNodeWithTag("game-sheet-section:cont").performScrollTo().performClick()
+        compose.onNodeWithTag("game-sheet-tab:cont").performScrollTo().performClick()
         compose.waitForIdle()
+        compose.onNodeWithTag("game-sheet-tab:cont").assertIsSelected()
         compose.onNodeWithTag("game-sheet-content:cont").assertExists()
-        compose.onNodeWithTag("game-sheet-section:perf").performScrollTo().performClick()
+        compose.onNodeWithTag("game-sheet-tab:data").performScrollTo().performClick()
+        compose.waitForIdle()
+        compose.onNodeWithTag("game-sheet-section:perf").performClick()
         compose.waitForIdle()
         compose.onNodeWithTag("game-sheet-content:perf").assertExists()
         compose.onNodeWithTag("game-sheet-tab:data").assertIsSelected()
@@ -239,15 +242,14 @@ class BaseShots {
         compose.shot("base/console-fonte-ampliada")
     }
 
-    @Config(qualifiers = Phone.PORT) @Test fun sheetCoverOnlyLeadsOverview() {
+    @Config(qualifiers = Phone.PORT) @Test fun sheetPortraitKeepsIdentityCompactAcrossTabs() {
         game(InputMode.TOUCH)
-        compose.onNodeWithTag("game-feature-cover").assertExists()
+        compose.onNodeWithTag("game-sheet-identity").assertExists()
+        compose.onNodeWithTag("game-feature-cover").assertDoesNotExist()
         compose.onNodeWithTag("game-sheet-tab:settings").performScrollTo().performClick()
         compose.waitForIdle()
+        compose.onNodeWithTag("game-sheet-identity").assertExists()
         compose.onNodeWithTag("game-feature-cover").assertDoesNotExist()
-        compose.onNodeWithTag("game-sheet-tab:ov").performScrollTo().performClick()
-        compose.waitForIdle()
-        compose.onNodeWithTag("game-feature-cover").assertExists()
     }
 
     @Config(qualifiers = Phone.PORT) @Test fun sheetHeroKeepsPrimaryLaunchActionsVisible() {

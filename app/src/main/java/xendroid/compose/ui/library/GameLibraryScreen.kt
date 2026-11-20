@@ -325,6 +325,7 @@ fun GameLibraryScreen(
                     { density = it; CoverDensityStore.write(context, it) }, viewModel::setSort,
                     selected, { selectedId = it.stableId }, art, onOpen = { onOpenGame(it, null) }, onFavorite = actions::toggleFavorite,
                     onPlay = { actions.play(it) }, preparing = actions.preparing,
+                    onOpenSettings = { onOpenGame(it, xendroid.compose.ui.game.GameSections.SETTINGS) },
                     onMenu = { menuOpen = true }, gridState = gridState,
                     notices = { LibraryNotices(loaded, missing, viewModel, openFolders) { missingOpen = true } },
                     detail = { game ->
