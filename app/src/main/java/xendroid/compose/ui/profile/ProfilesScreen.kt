@@ -84,6 +84,7 @@ import xendroid.compose.ui.design.XdIconButton
 import xendroid.compose.ui.design.XdIcons
 import xendroid.compose.ui.design.XdKv
 import xendroid.compose.ui.design.XdListRow
+import xendroid.compose.ui.design.XdMenuItem
 import xendroid.compose.ui.design.XdNote
 import xendroid.compose.ui.design.XdSection
 import xendroid.compose.ui.design.XdSectionedScreen
