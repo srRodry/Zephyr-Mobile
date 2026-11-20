@@ -370,6 +370,7 @@ jobs:
                     'GPU|texture_integer_num_format': True,
                     'GPU|spirv_texture_unorm8_precision': True,
                     'Vulkan|vulkan_army_tdc_selective_resolve_readback': True,
+                    'Vulkan|vulkan_army_tdc_sync_exposure_readback': True,
                     'GPU|log_gpu_frame_time_breakdown': True,
                     'GPU|log_gpu_frame_time_breakdown_passes': False,
                 },

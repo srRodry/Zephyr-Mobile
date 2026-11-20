@@ -830,6 +830,7 @@ class VulkanCommandProcessor final : public CommandProcessor {
     // (readback_resolve_uma_read_watch).
     uint64_t rb_uma_unread = 0;
     uint64_t rb_uma_filtered = 0;
+    uint64_t rb_uma_exposure_waits = 0;
     // Bytes the direct readbacks copied into guest RAM.
     uint64_t rb_uma_bytes = 0;
     // Command processor thread time spent replaying the deferred command

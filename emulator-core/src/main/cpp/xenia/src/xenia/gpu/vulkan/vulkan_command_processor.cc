@@ -257,6 +257,13 @@ DEFINE_bool(
     "Vulkan");
 
 DEFINE_bool(
+    vulkan_army_tdc_sync_exposure_readback, false,
+    "Army TDC: wait for the current GPU write before copying small float "
+    "exposure targets to guest RAM in UMA mode. Larger surfaces keep the "
+    "existing delayed readback policy.",
+    "Vulkan");
+
+DEFINE_bool(
     memexport_readback_deferred, true,
     "With memexport_enable on a host-mapped buffer (readback_resolve=uma), "
     "read memory export output back into guest memory once the submissions "
@@ -3873,7 +3880,7 @@ void VulkanCommandProcessor::IssueSwap(uint32_t frontbuffer_ptr,
           "dropped={} | draws={:.0f} rp_begins={:.0f} splits={:.1f} "
           "replay={:.1f}ms | resolve_clears={:.1f} in_guest_pass={:.1f} | "
           "uma readbacks={:.1f} first={:.1f} unread={:.1f} kb={:.0f} "
-          "filtered={:.1f}",
+          "filtered={:.1f} exposure_waits={:.1f}",
           s.frames, s.awaits / f, s.await_ns / f / 1e6, s.submissions / f,
           s.resolves / f, s.memexport_awaits / f, s.readback_awaits / f,
           s.sub_completions
@@ -3900,7 +3907,8 @@ void VulkanCommandProcessor::IssueSwap(uint32_t frontbuffer_ptr,
           s.replay_ns / f / 1e6, s.resolve_clears / f,
           s.resolve_clears_in_guest_pass / f, s.rb_uma_direct / f,
           s.rb_uma_first_use / f, s.rb_uma_unread / f,
-          s.rb_uma_bytes / f / 1024.0, s.rb_uma_filtered / f);
+          s.rb_uma_bytes / f / 1024.0, s.rb_uma_filtered / f,
+          s.rb_uma_exposure_waits / f);
       if (cvars::vulkan_disjoint_memexport_barriers) {
         XELOGI("ZephyrMemexport: disjoint Use calls skipped per frame={:.1f}",
                shared_memory_->TakeDisjointUseCallsSkipped() / f);
@@ -7728,6 +7736,27 @@ bool VulkanCommandProcessor::RewriteMsaa4xSurfaceInfoForDraw(
   return true;
 }
 
+static bool IsSmallFloatExposureResolve(xenos::TextureFormat format,
+                                        uint64_t surface_bits,
+                                        uint32_t written_length) {
+  constexpr uint32_t kMaxBytes = 16 * 1024;
+  if (!surface_bits || surface_bits > kMaxBytes * 8 || !written_length ||
+      written_length > kMaxBytes) {
+    return false;
+  }
+  switch (format) {
+    case xenos::TextureFormat::k_16_FLOAT:
+    case xenos::TextureFormat::k_16_16_FLOAT:
+    case xenos::TextureFormat::k_16_16_16_16_FLOAT:
+    case xenos::TextureFormat::k_32_FLOAT:
+    case xenos::TextureFormat::k_32_32_FLOAT:
+    case xenos::TextureFormat::k_32_32_32_32_FLOAT:
+      return true;
+    default:
+      return false;
+  }
+}
+
 bool VulkanCommandProcessor::IssueCopy() {
 #if XE_GPU_FINE_GRAINED_DRAW_SCOPES
   SCOPE_profile_cpu_f("gpu");
@@ -7814,8 +7843,10 @@ bool VulkanCommandProcessor::IssueCopy() {
   ClearMemexportPages(written_address, written_length);
 
   ReadbackResolveMode readback_mode = GetReadbackResolveMode();
+  bool sync_exposure_readback = false;
   if (readback_mode == ReadbackResolveMode::kUma && written_length &&
-      cvars::vulkan_army_tdc_selective_resolve_readback) {
+      (cvars::vulkan_army_tdc_selective_resolve_readback ||
+       cvars::vulkan_army_tdc_sync_exposure_readback)) {
     const auto format = xenos::TextureFormat(copy_dest_info.copy_dest_format);
     const auto pitch = register_file_->Get<reg::RB_COPY_DEST_PITCH>();
     const uint32_t bits_per_pixel = FormatInfo::Get(format)->bits_per_pixel;
@@ -7823,12 +7854,17 @@ bool VulkanCommandProcessor::IssueCopy() {
     // Large targets can be resolved in strips; a strip isn't a small surface.
     const uint64_t surface_bits = uint64_t(pitch.copy_dest_pitch) *
                                   pitch.copy_dest_height * bits_per_pixel;
-    if (format != xenos::TextureFormat::k_32_32_32_32_FLOAT &&
+    if (cvars::vulkan_army_tdc_selective_resolve_readback &&
+        format != xenos::TextureFormat::k_32_32_32_32_FLOAT &&
         surface_bits > 16 * 1024 * 8) {
       ++vk_frame_sync_stats_.rb_uma_filtered;
       PopDebugMarker();
       return true;
     }
+    sync_exposure_readback =
+        cvars::vulkan_army_tdc_sync_exposure_readback &&
+        !render_target_cache_->last_resolve_info().IsCopyingDepth() &&
+        IsSmallFloatExposureResolve(format, surface_bits, written_length);
   }
   const bool zero_copy = shared_memory_->is_zero_copy();
   // Readback lands in guest RAM: the host buffer in two-buffer mode, or buffer_
@@ -7875,7 +7911,7 @@ bool VulkanCommandProcessor::IssueCopy() {
       auto& last_write = uma_readback_last_write_[resolve_key];
       // readback_resolve_uma_read_watch: a range seeded before is copied
       // again only once the CPU has read it.
-      if (cvars::readback_resolve_uma_read_watch &&
+      if (!sync_exposure_readback && cvars::readback_resolve_uma_read_watch &&
           written_length >=
               uint32_t(std::max(
                   cvars::readback_resolve_uma_read_watch_min_kb, 0)) *
@@ -7891,10 +7927,12 @@ bool VulkanCommandProcessor::IssueCopy() {
         }
       }
       bool do_read;
-      if (!last_write) {
-        ++vk_frame_sync_stats_.rb_uma_first_use;
-        // First resolve of this destination: guest RAM holds nothing yet, so
-        // make the just-recorded write host-visible and drain to read it now.
+      if (!last_write || sync_exposure_readback) {
+        vk_frame_sync_stats_.rb_uma_first_use += !last_write;
+        vk_frame_sync_stats_.rb_uma_exposure_waits += sync_exposure_readback;
+        ++vk_frame_sync_stats_.readback_awaits;
+        // Seed a new range, or publish the current exposure instead of
+        // waiting for this range's next resolve to notice the completed write.
         // In-pass resolves write from the fragment stage.
         PushBufferMemoryBarrier(
             shared_memory_->buffer(), written_address, written_length,
