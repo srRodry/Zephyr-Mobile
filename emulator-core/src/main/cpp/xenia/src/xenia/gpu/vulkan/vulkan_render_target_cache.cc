@@ -2593,6 +2593,12 @@ bool VulkanRenderTargetCache::TryInPassResolveCopy(
           xenos::ColorFormat::k_2_10_10_10 &&
       resolve_info.color_edram_info.msaa_samples == xenos::MsaaSamples::k1X &&
       is_single_sample;
+  // The regular in-pass shaders pack the EDRAM format. Only the 7e3
+  // conversion variant consumes copy_dest_number to repack the result.
+  if (!full_7e3 && resolve_info.copy_dest_info.copy_dest_number !=
+                       xenos::SurfaceNumberFormat::kUnsignedRepeatingFraction) {
+    return reject("destination number format requires repacking");
+  }
   if (resolve_color_format == xenos::ColorRenderTargetFormat::k_8_8_8_8_GAMMA ||
       (!full_7e3 &&
        !xenos::IsColorResolveFormatBitwiseEquivalent(
@@ -3524,6 +3530,10 @@ bool VulkanRenderTargetCache::TryDirectHostResolveCopy(
     }
   }
 
+  if (IsDrawResolutionScaled() && !scaled_buffer_ready) {
+    // A scaled shader can't write into the unscaled shared memory fallback.
+    return false;
+  }
   if (!scaled_buffer_ready) {
     if (!shared_memory.RequestRange(resolve_info.copy_dest_extent_start,
                                     resolve_info.copy_dest_extent_length)) {
@@ -4038,6 +4048,7 @@ bool VulkanRenderTargetCache::Resolve(
         }
       }
       if (!copied && cvars::vulkan_direct_host_resolve &&
+          !(draw_resolution_scaled && copy_native) &&
           copy_shader != draw_util::ResolveCopyShaderIndex::kUnknown) {
         copied = TryDirectHostResolveCopy(
             resolve_info, copy_shader_constants, copy_shader, dump_base,
@@ -4316,11 +4327,6 @@ bool VulkanRenderTargetCache::Resolve(
               resolve_info.copy_dest_extent_length, scaled_buffer_ready);
           written_address_out = resolve_info.copy_dest_extent_start;
           written_length_out = resolve_info.copy_dest_extent_length;
-          if (copy_dest_info_out) {
-            // Normalized copy format (depth format for depth resolves) - the
-            // texel size the readback downscale expects for the extent.
-            *copy_dest_info_out = resolve_info.copy_dest_info;
-          }
           if (written_scaled_out) {
             *written_scaled_out = scaled_buffer_ready;
           }
@@ -4333,8 +4339,14 @@ bool VulkanRenderTargetCache::Resolve(
     copied = true;
   }
 
+  if (written_length_out && copy_dest_info_out) {
+    *copy_dest_info_out = resolve_info.copy_dest_info;
+  }
   if (direct_host_used) {
     last_resolve_key_ |= 1u << 28;
+    if (written_scaled_out) {
+      *written_scaled_out = !copied_in_pass && draw_resolution_scaled;
+    }
   }
 
   // Splits the resolve's GPU time into the copy and the clear (VkResolveTime).

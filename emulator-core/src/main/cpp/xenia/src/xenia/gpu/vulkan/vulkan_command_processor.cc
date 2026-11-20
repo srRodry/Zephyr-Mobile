@@ -250,6 +250,13 @@ DEFINE_int32(
     "GPU");
 
 DEFINE_bool(
+    vulkan_army_tdc_selective_resolve_readback, false,
+    "Army TDC: copy the RGBA32F lighting input and small resolve surfaces "
+    "(up to 16 KiB) to guest RAM. Large GPU-only resolves stay resident on "
+    "the GPU. This does not change shader memory exports.",
+    "Vulkan");
+
+DEFINE_bool(
     memexport_readback_deferred, true,
     "With memexport_enable on a host-mapped buffer (readback_resolve=uma), "
     "read memory export output back into guest memory once the submissions "
@@ -3865,7 +3872,8 @@ void VulkanCommandProcessor::IssueSwap(uint32_t frontbuffer_ptr,
           "gap avg={:.1f}ms | resolve_ms={:.2f} avg={:.3f} max={:.2f} "
           "dropped={} | draws={:.0f} rp_begins={:.0f} splits={:.1f} "
           "replay={:.1f}ms | resolve_clears={:.1f} in_guest_pass={:.1f} | "
-          "uma readbacks={:.1f} first={:.1f} unread={:.1f} kb={:.0f}",
+          "uma readbacks={:.1f} first={:.1f} unread={:.1f} kb={:.0f} "
+          "filtered={:.1f}",
           s.frames, s.awaits / f, s.await_ns / f / 1e6, s.submissions / f,
           s.resolves / f, s.memexport_awaits / f, s.readback_awaits / f,
           s.sub_completions
@@ -3892,7 +3900,7 @@ void VulkanCommandProcessor::IssueSwap(uint32_t frontbuffer_ptr,
           s.replay_ns / f / 1e6, s.resolve_clears / f,
           s.resolve_clears_in_guest_pass / f, s.rb_uma_direct / f,
           s.rb_uma_first_use / f, s.rb_uma_unread / f,
-          s.rb_uma_bytes / f / 1024.0);
+          s.rb_uma_bytes / f / 1024.0, s.rb_uma_filtered / f);
       if (cvars::vulkan_disjoint_memexport_barriers) {
         XELOGI("ZephyrMemexport: disjoint Use calls skipped per frame={:.1f}",
                shared_memory_->TakeDisjointUseCallsSkipped() / f);
@@ -7806,6 +7814,22 @@ bool VulkanCommandProcessor::IssueCopy() {
   ClearMemexportPages(written_address, written_length);
 
   ReadbackResolveMode readback_mode = GetReadbackResolveMode();
+  if (readback_mode == ReadbackResolveMode::kUma && written_length &&
+      cvars::vulkan_army_tdc_selective_resolve_readback) {
+    const auto format = xenos::TextureFormat(copy_dest_info.copy_dest_format);
+    const auto pitch = register_file_->Get<reg::RB_COPY_DEST_PITCH>();
+    const uint32_t bits_per_pixel = FormatInfo::Get(format)->bits_per_pixel;
+    // Evaluate the destination surface, not the bounding span of this copy.
+    // Large targets can be resolved in strips; a strip isn't a small surface.
+    const uint64_t surface_bits = uint64_t(pitch.copy_dest_pitch) *
+                                  pitch.copy_dest_height * bits_per_pixel;
+    if (format != xenos::TextureFormat::k_32_32_32_32_FLOAT &&
+        surface_bits > 16 * 1024 * 8) {
+      ++vk_frame_sync_stats_.rb_uma_filtered;
+      PopDebugMarker();
+      return true;
+    }
+  }
   const bool zero_copy = shared_memory_->is_zero_copy();
   // Readback lands in guest RAM: the host buffer in two-buffer mode, or buffer_
   // itself in zero-copy mode, since it already aliases guest RAM.
@@ -7816,8 +7840,7 @@ bool VulkanCommandProcessor::IssueCopy() {
   // block on it disabled readback outright wherever guest RAM cannot be
   // imported (no VK_EXT_external_memory_host, i.e. every Adreno).
   const bool uma_direct = readback_mode == ReadbackResolveMode::kUma &&
-                          !texture_cache_->IsDrawResolutionScaled() &&
-                          shared_memory_->IsHostMapped();
+                          !is_scaled && shared_memory_->IsHostMapped();
   if (readback_mode != ReadbackResolveMode::kDisabled && written_length > 0 &&
       resolve_host_buffer == VK_NULL_HANDLE && !uma_direct) {
     static bool readback_unavailable_logged = false;
@@ -7872,10 +7895,9 @@ bool VulkanCommandProcessor::IssueCopy() {
         ++vk_frame_sync_stats_.rb_uma_first_use;
         // First resolve of this destination: guest RAM holds nothing yet, so
         // make the just-recorded write host-visible and drain to read it now.
-        // Guest shader stages included: in-pass resolves write shared memory
-        // from the fragment stage, not just compute/transfer.
+        // In-pass resolves write from the fragment stage.
         PushBufferMemoryBarrier(
-            shared_memory_->buffer(), 0, VK_WHOLE_SIZE,
+            shared_memory_->buffer(), written_address, written_length,
             guest_shader_pipeline_stages_ |
                 VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT |
                 VK_PIPELINE_STAGE_TRANSFER_BIT,
@@ -7917,19 +7939,20 @@ bool VulkanCommandProcessor::IssueCopy() {
         InsertDebugMarker("Resolve Readback (uma): 0x%08X, %u bytes",
                           written_address, written_length);
         vk_frame_sync_stats_.rb_uma_bytes += written_length;
-        shared_memory_->ReadHostMapped(
-            written_address, written_length,
-            memory_->TranslatePhysical(written_address));
-        shared_memory_->NoteGuestCopy(
-            written_address, written_length,
-            SharedMemory::GuestCopySource::kResolveReadback);
+        if (shared_memory_->ReadHostMapped(
+                written_address, written_length,
+                memory_->TranslatePhysical(written_address))) {
+          shared_memory_->NoteGuestCopy(
+              written_address, written_length,
+              SharedMemory::GuestCopySource::kResolveReadback);
+        }
       }
       last_write = resolve_submission;
       PopDebugMarker();
       return true;
     }
 
-    if (!texture_cache_->IsDrawResolutionScaled()) {
+    if (!is_scaled) {
       if (zero_copy) {
         // The non-scaled resolve already wrote buffer_ (guest RAM) in place, so
         // it is coherent with the CPU - nothing to read back.

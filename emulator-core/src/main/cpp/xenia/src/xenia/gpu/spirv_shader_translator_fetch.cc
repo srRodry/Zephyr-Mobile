@@ -20,6 +20,11 @@
 #include "xenia/gpu/render_target_cache.h"
 #include "xenia/gpu/spirv_compatibility.h"
 
+DEFINE_bool(spirv_texture_unorm8_precision, false,
+            "Match the Xenos mantissa precision when sampling 8-bit textures "
+            "in pixel shaders that compare tile masks.",
+            "GPU");
+
 DECLARE_bool(texture_integer_num_format);
 DECLARE_bool(spirv_texture_sign_branch);
 DECLARE_bool(spirv_texture_sign_specialization);
@@ -2357,6 +2362,62 @@ void SpirvShaderTranslator::ProcessTextureFetchInstruction(
             // Select between the constants and the fetched components.
             result[result_component_index] = if_swizzle_constant.createMergePhi(
                 swizzle_result_constant, swizzle_result_component);
+          }
+        }
+
+        // The particle compositor compares 8-bit texture samples with a
+        // Xenos-rounded constant. For example, 51/255 has bits 0x3E4CCC00
+        // on Xenos, while the host sampler provides 0x3E4CCCCD.
+        if (is_pixel_shader() && cvars::spirv_texture_unorm8_precision) {
+          const uint32_t format_word_index = fetch_constant_word_0_index + 1;
+          id_vector_temp_.clear();
+          id_vector_temp_.push_back(const_int_0_);
+          id_vector_temp_.push_back(
+              builder_->makeIntConstant(int(format_word_index >> 2)));
+          id_vector_temp_.push_back(
+              builder_->makeIntConstant(int(format_word_index & 3)));
+          const spv::Id word = builder_->createLoad(
+              builder_->createAccessChain(spv::StorageClassUniform,
+                                          uniform_fetch_constants_,
+                                          id_vector_temp_),
+              spv::NoPrecision);
+          const spv::Id format = builder_->createBinOp(
+              spv::OpBitwiseAnd, type_uint_, word,
+              builder_->makeUintConstant(63));
+          constexpr uint32_t kUnorm8Formats =
+              (1u << uint32_t(xenos::TextureFormat::k_8)) |
+              (1u << uint32_t(xenos::TextureFormat::k_8_8_8_8)) |
+              (1u << uint32_t(xenos::TextureFormat::k_8_A)) |
+              (1u << uint32_t(xenos::TextureFormat::k_8_B)) |
+              (1u << uint32_t(xenos::TextureFormat::k_8_8)) |
+              (1u << uint32_t(xenos::TextureFormat::k_8_8_8_8_A));
+          const spv::Id format_bit = builder_->createBinOp(
+              spv::OpShiftLeftLogical, type_uint_, builder_->makeUintConstant(1),
+              builder_->createBinOp(spv::OpBitwiseAnd, type_uint_, format,
+                                    builder_->makeUintConstant(31)));
+          const spv::Id lower_format = builder_->createBinOp(
+              spv::OpULessThan, type_bool_, format,
+              builder_->makeUintConstant(32));
+          const spv::Id listed = builder_->createBinOp(
+              spv::OpINotEqual, type_bool_,
+              builder_->createBinOp(spv::OpBitwiseAnd, type_uint_, format_bit,
+                                    builder_->makeUintConstant(kUnorm8Formats)),
+              const_uint_0_);
+          const spv::Id mask = builder_->createTriOp(
+              spv::OpSelect, type_uint_,
+              builder_->createBinOp(spv::OpLogicalAnd, type_bool_, lower_format,
+                                    listed),
+              builder_->makeUintConstant(0xFFFFFF00u),
+              builder_->makeUintConstant(0xFFFFFFFFu));
+          uint32_t remaining = used_result_nonzero_components;
+          uint32_t component;
+          while (xe::bit_scan_forward(remaining, &component)) {
+            remaining &= ~(1u << component);
+            const spv::Id bits = builder_->createUnaryOp(
+                spv::OpBitcast, type_uint_, result[component]);
+            result[component] = builder_->createUnaryOp(
+                spv::OpBitcast, type_float_,
+                builder_->createBinOp(spv::OpBitwiseAnd, type_uint_, bits, mask));
           }
         }
 

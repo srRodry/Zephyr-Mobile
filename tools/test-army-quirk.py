@@ -46,6 +46,7 @@ template<class T> struct Var : cvar::IConfigVar {
 int main() {
  Var<bool> refresh, exports, fences, skip_shader, skip_pipeline;
  Var<bool> accurate_resolve, destination_packing, integer_fetch, frame_timing, pass_timing;
+ Var<bool> selective_readback, unorm8_precision;
  Var<std::string> resolve;
  std::unordered_map<std::string, cvar::IConfigVar*> variables{{"clear_memory_page_state", &refresh}};
  cvar::ConfigVars = &variables;
@@ -61,16 +62,20 @@ int main() {
                    {"accurate_resolve_number_formats", &accurate_resolve},
                    {"resolve_copy_dest_number_packing", &destination_packing},
                    {"texture_integer_num_format", &integer_fetch},
+                   {"vulkan_army_tdc_selective_resolve_readback", &selective_readback},
+                   {"spirv_texture_unorm8_precision", &unorm8_precision},
                    {"log_gpu_frame_time_breakdown", &frame_timing},
                    {"log_gpu_frame_time_breakdown_passes", &pass_timing}});
  for (uint32_t title : {0x454107F8u, 0x454108D8u, 0x41560815u, 0x4D5309C9u}) {
    xe::game_quirks::Apply(title);
    assert(exports.writes == 0 && fences.writes == 0 && skip_shader.writes == 0 &&
           skip_pipeline.writes == 0 && resolve.writes == 0);
+   assert(selective_readback.writes == 0 && unorm8_precision.writes == 0);
    assert(accurate_resolve.writes == 0 && destination_packing.writes == 0 &&
           integer_fetch.writes == 0 && frame_timing.writes == 0 && pass_timing.writes == 0);
  }
- assert(xe::game_quirks::Apply(0x454109AB) == 10);
+ assert(xe::game_quirks::Apply(0x454109AB) == 12);
+ assert(selective_readback.current && unorm8_precision.current);
  assert(accurate_resolve.current && destination_packing.current && integer_fetch.current);
  assert(frame_timing.current && pass_timing.writes == 1 && !pass_timing.current);
  assert(exports.current && fences.current && resolve.current == "uma");
