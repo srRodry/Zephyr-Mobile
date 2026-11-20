@@ -1,6 +1,8 @@
 package xendroid.compose.screens
 
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.State
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Density
@@ -46,6 +48,7 @@ import xendroid.compose.ui.game.GameScreen
 import xendroid.compose.ui.game.GameScreenLinks
 import xendroid.compose.ui.library.GameLibraryScreen
 import xendroid.compose.ui.library.LibraryUiState
+import xendroid.compose.ui.theme.xendroidTheme
 
 /** Base batch "depois": the library (grid and panel, carousel) and the game sheet, as the app draws them. */
 @RunWith(AndroidJUnit4::class)
@@ -102,7 +105,7 @@ class BaseShots {
         }
     }
 
-    private fun game(mode: InputMode, section: String? = null, titleId: String = "4D5307E6") {
+    private fun game(mode: InputMode, section: String? = null, titleId: String = "4D5307E6", input: State<InputMode>? = null) {
         val container = AppContainer(Fixture.context)
         ConfigStore(Fixture.context).editGameConfig(titleId) { h ->
             h.putInt("GPU", "framerate_limit", 30)
@@ -118,7 +121,9 @@ class BaseShots {
         vm.loadDetails(game)
         Fixture.settle()
         compose.app(mode) {
-            GameScreen(game, vm, compress, settings, global, patches, GameScreenLinks(onBack = {}), initialSection = section)
+            xendroidTheme(mode = input?.value ?: mode) {
+                GameScreen(game, vm, compress, settings, global, patches, GameScreenLinks(onBack = {}), initialSection = section)
+            }
         }
         Fixture.settle(30)
         compose.waitForIdle()
@@ -138,6 +143,17 @@ class BaseShots {
     @Config(qualifiers = Phone.LAND) @Test fun sheetData() { game(InputMode.TOUCH, section = "data"); compose.onNodeWithTag("game-sheet-tab:data").assertIsSelected(); compose.onNodeWithTag("game-sheet-content:data").assertExists(); compose.shot("base/depois-ficha-dados") }
     @Config(qualifiers = Phone.LAND) @Test fun sheetController() { game(InputMode.CONTROLLER); compose.shot("base/depois-ficha-controle") }
     @Config(qualifiers = Phone.LAND) @Test fun sheetControllerSettings() { game(InputMode.CONTROLLER, section = "set:IMAGE"); compose.onNodeWithTag("game-sheet-tab:settings").assertIsSelected(); compose.onNodeWithTag("game-sheet-content:set:IMAGE").assertExists(); compose.shot("base/depois-ficha-controle-ajustes") }
+    @Config(qualifiers = Phone.LAND) @Test fun sheetKeepsOpenSettingsGroupAcrossInputChanges() {
+        val input = mutableStateOf(InputMode.TOUCH)
+        game(InputMode.TOUCH, section = "set:IMAGE", input = input)
+        compose.runOnIdle { input.value = InputMode.CONTROLLER }
+        compose.onNodeWithTag("game-sheet-tab:settings").assertIsSelected()
+        compose.onNodeWithTag("game-sheet-content:set:IMAGE").assertExists()
+        compose.runOnIdle { input.value = InputMode.TOUCH }
+        compose.onNodeWithTag("game-sheet-tab:settings").assertIsSelected()
+        compose.onNodeWithTag("game-sheet-content:set:IMAGE").assertExists()
+    }
+
     @Config(qualifiers = Phone.LAND) @Test fun launchWith() {
         game(InputMode.TOUCH)
         compose.onNodeWithTag("game-sheet-launch").performScrollTo().performClick()

@@ -82,6 +82,7 @@ internal fun GameTouchSheet(
     }
     BoxWithConstraints(Modifier.fillMaxSize().zephyrBackdrop(animated = false)) {
         val compact = maxHeight >= maxWidth || maxWidth < 680.dp
+        val identityWidth = (maxWidth * .28f).coerceIn(185.dp, 260.dp)
         val body: @Composable (Modifier) -> Unit = { modifier ->
             Column(modifier.fillMaxHeight().windowInsetsPadding(WindowInsets.safeDrawing.part(
                 top = !compact, bottom = true, start = compact, end = true))) {
@@ -110,8 +111,7 @@ internal fun GameTouchSheet(
                 } else {
                     Row(Modifier.weight(1f).padding(horizontal = 14.dp, vertical = 10.dp),
                         horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-                        Column(Modifier.widthIn(min = 185.dp, max = 260.dp).fillMaxWidth(.30f)
-                            .verticalScroll(rememberScrollState())) { identity() }
+                        Column(Modifier.width(identityWidth).verticalScroll(rememberScrollState())) { identity() }
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             MainTabs(active, history::pick)
                             subNavigation()
