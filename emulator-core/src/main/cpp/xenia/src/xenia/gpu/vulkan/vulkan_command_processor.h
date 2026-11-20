@@ -651,6 +651,7 @@ class VulkanCommandProcessor final : public CommandProcessor {
   // delay than it would reduce - such as when there are unfinished graphics
   // pipeline creation requests.
   bool CanEndSubmissionImmediately() const;
+  void MaybeSubmitAfterDraw(uint32_t submission_draws);
   // Always inlined: VkAwaitSites attributes its waits to the callers.
   XE_FORCEINLINE bool AwaitAllQueueOperationsCompletion() {
     CheckSubmissionCompletionAndDeviceLoss(GetCurrentSubmission());
@@ -802,6 +803,7 @@ class VulkanCommandProcessor final : public CommandProcessor {
     uint64_t memexport_range_skips = 0;
     uint64_t memexport_range_waits = 0;
     uint64_t memexport_range_fallbacks = 0;
+    uint64_t memexport_early_submissions = 0;
     uint64_t readback_awaits = 0;
     // Host-side latency from vkQueueSubmit to the fence being observed
     // completed - includes GPU queue wait, render time and detection delay.
@@ -1645,6 +1647,7 @@ class VulkanCommandProcessor final : public CommandProcessor {
   // The open submission has such exports: it ends with a barrier making the
   // shader writes visible to the host.
   bool memexport_readbacks_in_submission_ = false;
+  uint32_t memexport_early_submissions_in_frame_ = 0;
   bool uma_resolve_host_barrier_pending_ = false;
   // Stores the changes of the pending exports in guest memory once the
   // submissions of all of them have completed - as submissions complete, and

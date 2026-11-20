@@ -374,6 +374,7 @@ jobs:
                     'Vulkan|vulkan_army_tdc_neutralize_ssao': True,
                     'Vulkan|vulkan_sanitize_host_7e3_exports': True,
                     'Vulkan|vulkan_memexport_range_coherency': True,
+                    'Vulkan|vulkan_memexport_early_submit': True,
                     'GPU|log_gpu_frame_time_breakdown': True,
                     'GPU|log_gpu_frame_time_breakdown_passes': False,
                 },
@@ -406,7 +407,7 @@ jobs:
         retention-days: 90
 
     - name: Publish verified Research update
-      if: ${{ github.ref_name != 'research/edge30-performance-swarm-20261119' }}
+      if: ${{ github.ref_name != 'research/edge30-performance-swarm-20261119' || (github.event_name == 'push' && contains(github.event.head_commit.message, '[zephyr-research-feed]')) }}
       uses: actions/github-script@v7
       env:
         APK: ${{ steps.sign_candidate.outputs.apk }}
@@ -421,6 +422,7 @@ jobs:
           const edge30Audit = context.ref === 'refs/heads/research/edge30-diagnostics-audit-20261117';
           const nativeRecomp = context.ref === 'refs/heads/research/native-recomp-semantics-20261118';
           const armyTdc = context.ref === 'refs/heads/research/army-tdc-native-hotpath-20261118';
+          const edge30Swarm = context.ref === 'refs/heads/research/edge30-performance-swarm-20261119';
           const apk = process.env.APK;
           const bytes = fs.readFileSync(apk);
           const digest = crypto.createHash('sha256').update(bytes).digest('hex');
@@ -428,7 +430,11 @@ jobs:
           fs.writeFileSync(checksums, digest + '  ' + apk + '\n');
           const body = [
             '<!-- update-summary:pt-BR',
-            ...(armyTdc ? [
+            ...(edge30Swarm ? [
+              '- Army of Two: The Devil’s Cartel: envio antecipado de lotes Vulkan com exportações de memória pendentes.',
+              '- A telemetria registra envios antecipados e esperas de coerência por quadro.',
+              '- Ganhos de desempenho e estabilidade visual aguardam teste no Edge 30 Ultra.'
+            ] : armyTdc ? [
               '- Beta 18 (Research): função XAM 0x9C4 (BackgroundDownloadSetMode) implementada conforme Xenia Edge; antes aparecia como import indefinido no Army TDC.',
               '- Inicialização: rastreamento de sinais de XEvent e logs de loops MemoryPollPark opt-in, eliminando milhares de mensagens por boot.',
               '- JIT: varredura do endereço de origem apenas quando log de MemoryPollPark está ativo; código de jogo preservado.',
@@ -473,7 +479,7 @@ jobs:
             if (error.status !== 404) throw error;
             release = (await github.rest.repos.createRelease({
               ...context.repo, tag_name: tag, target_commitish: context.sha,
-              name: 'Zephyr-Mobile ' + (armyTdc ? 'beta 18 — Army TDC native diagnostics' : nativeRecomp ? 'beta 17 — PPC native semantics' : edge30Audit ? 'beta 16 — Edge30 diagnostics' : 'beta 15') + ' — build ' + context.runNumber,
+              name: 'Zephyr-Mobile ' + (edge30Swarm ? 'Research — Army TDC Vulkan' : armyTdc ? 'beta 18 — Army TDC native diagnostics' : nativeRecomp ? 'beta 17 — PPC native semantics' : edge30Audit ? 'beta 16 — Edge30 diagnostics' : 'beta 15') + ' — build ' + context.runNumber,
               body, draft: true, prerelease: true
             })).data;
           }

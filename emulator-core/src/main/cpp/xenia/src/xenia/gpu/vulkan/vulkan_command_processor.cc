@@ -282,6 +282,12 @@ DEFINE_bool(
     "Vulkan");
 
 DEFINE_bool(
+    vulkan_memexport_early_submit, false,
+    "Submit deferred host-mapped memory exports ahead of guest coherency "
+    "requests, with a per-frame limit on extra submissions.",
+    "Vulkan");
+
+DEFINE_bool(
     memexport_readback_deferred, true,
     "With memexport_enable on a host-mapped buffer (readback_resolve=uma), "
     "read memory export output back into guest memory once the submissions "
@@ -3931,12 +3937,12 @@ void VulkanCommandProcessor::IssueSwap(uint32_t frontbuffer_ptr,
           s.rb_uma_bytes / f / 1024.0, s.rb_uma_filtered / f,
           s.rb_uma_exposure_waits / f);
       if (s.memexport_range_skips || s.memexport_range_waits ||
-          s.memexport_range_fallbacks) {
+          s.memexport_range_fallbacks || s.memexport_early_submissions) {
         XELOGI(
             "VkMemexportCoherency: per frame: disjoint={:.2f} "
-            "targeted={:.2f} full={:.2f}",
+            "targeted={:.2f} full={:.2f} early={:.2f}",
             s.memexport_range_skips / f, s.memexport_range_waits / f,
-            s.memexport_range_fallbacks / f);
+            s.memexport_range_fallbacks / f, s.memexport_early_submissions / f);
       }
       if (cvars::vulkan_disjoint_memexport_barriers) {
         XELOGI("ZephyrMemexport: disjoint Use calls skipped per frame={:.1f}",
@@ -7593,9 +7599,8 @@ bool VulkanCommandProcessor::IssueDraw(xenos::PrimitiveType prim_type,
   // of receiving the whole frame at swap time and idling until then. Counted
   // here, at the tail of IssueDraw, so only genuine rasterizing draws are
   // counted (kCopy/empty/no-VS paths return earlier). EndSubmission(false)
-  // closes the render pass and submits without closing the frame; the next
-  // IssueDraw's BeginSubmission(true) reopens the submission, and the same call
-  // resets draws_since_submission_ to 0. Guard mirrors OnPrimaryBufferEnd().
+  // closes the render pass and resets the draw count without closing the
+  // frame. The next guest draw opens a new submission.
   ++draws_since_submission_;
   ++vk_frame_sync_stats_.draws;
   if (pass_ts_open_pair_ != UINT32_MAX) {
@@ -7627,13 +7632,30 @@ bool VulkanCommandProcessor::IssueDraw(xenos::PrimitiveType prim_type,
                            ? std::min(submission_draws, drained_draws)
                            : drained_draws;
   }
-  if (submission_draws && draws_since_submission_ >= submission_draws &&
-      submission_open_ && !scratch_buffer_used_ &&
-      CanEndSubmissionImmediately()) {
-    EndSubmission(false);
-  }
+  MaybeSubmitAfterDraw(submission_draws);
 
   return true;
+}
+
+void VulkanCommandProcessor::MaybeSubmitAfterDraw(uint32_t submission_draws) {
+  const bool draw_limit_reached =
+      submission_draws && draws_since_submission_ >= submission_draws;
+  // Bound the cost of replaying state and restarting render passes. Submit
+  // through the normal path so the host barrier and guest waits stay intact.
+  constexpr uint32_t kMinDrawsBeforeEarlySubmit = 32;
+  constexpr uint32_t kMaxEarlySubmissionsPerFrame = 4;
+  const bool early_memexport_submission =
+      !draw_limit_reached && cvars::vulkan_memexport_early_submit &&
+      memexport_readbacks_in_submission_ &&
+      draws_since_submission_ >= kMinDrawsBeforeEarlySubmit &&
+      memexport_early_submissions_in_frame_ < kMaxEarlySubmissionsPerFrame;
+  if ((draw_limit_reached || early_memexport_submission) && submission_open_ &&
+      !scratch_buffer_used_ && CanEndSubmissionImmediately()) {
+    if (EndSubmission(false) && early_memexport_submission) {
+      ++memexport_early_submissions_in_frame_;
+      ++vk_frame_sync_stats_.memexport_early_submissions;
+    }
+  }
 }
 
 bool VulkanCommandProcessor::EnsureMemexportRangeInDeviceBuffer(
@@ -9453,6 +9475,7 @@ bool VulkanCommandProcessor::BeginSubmission(bool is_guest_command) {
 
   if (is_opening_frame) {
     frame_open_ = true;
+    memexport_early_submissions_in_frame_ = 0;
 
     // Conservatively re-derive all cached sampler parameters in the new
     // frame (cheap - one derivation pass per stage; the handles still go

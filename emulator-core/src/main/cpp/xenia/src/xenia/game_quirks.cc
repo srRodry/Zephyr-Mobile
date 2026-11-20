@@ -37,6 +37,8 @@ static const Quirk kQuirks[] = {
      "provide the host-mapped fallback for Army TDC shader exports"},
     {0x454109AB, "vulkan_memexport_range_coherency", true,
      "avoid draining unrelated GPU work for Army TDC coherency requests"},
+    {0x454109AB, "vulkan_memexport_early_submit", true,
+     "start Army TDC deferred shader exports before guest coherency waits"},
     {0x454109AB, "memexport_await_fences", true,
      "publish Army TDC shader exports before guest-visible fences"},
     {0x454109AB, "async_shader_skip_draws", false,

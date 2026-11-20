@@ -59,6 +59,7 @@ uint32_t clear_lowest_bit(uint32_t value) { return value & (value - 1); }
 
 namespace cvars {
 bool vulkan_memexport_range_coherency = true;
+bool vulkan_memexport_early_submit = false;
 }
 constexpr int VK_NULL_HANDLE = 0;
 
@@ -75,9 +76,29 @@ struct Tracker {
     uint64_t memexport_range_fallbacks = 0;
     uint64_t memexport_range_skips = 0;
     uint64_t memexport_range_waits = 0;
+    uint64_t memexport_early_submissions = 0;
   } vk_frame_sync_stats_;
   int shared_memory_host_and_edram_descriptor_set_ = VK_NULL_HANDLE;
   bool submission_open_ = true;
+  bool scratch_buffer_used_ = false;
+  bool memexport_readbacks_in_submission_ = false;
+  uint32_t draws_since_submission_ = 0;
+  uint32_t memexport_early_submissions_in_frame_ = 0;
+  bool pipelines_ready = true;
+  bool submit_succeeds = true;
+  uint32_t submit_attempts = 0;
+  bool CanEndSubmissionImmediately() const { return pipelines_ready; }
+  bool EndSubmission(bool is_swap) {
+    assert(!is_swap);
+    ++submit_attempts;
+    if (!submit_succeeds) {
+      return false;
+    }
+    submission_open_ = false;
+    memexport_readbacks_in_submission_ = false;
+    return true;
+  }
+  void MaybeSubmitAfterDraw(uint32_t submission_draws);
   uint64_t current_submission = 8;
   uint64_t waited_submission = 0;
   uint32_t full_waits = 0;
@@ -99,6 +120,7 @@ struct Tracker {
 };
 #define VulkanCommandProcessor Tracker
 // VULKAN_COHERENCY_IMPLEMENTATION
+// VULKAN_EARLY_SUBMIT_IMPLEMENTATION
 #undef VulkanCommandProcessor
 
 constexpr uint32_t kBufferSize = SharedMemory::kBufferSize;
@@ -209,8 +231,63 @@ void CheckCoherency() {
   }
 }
 
+void CheckEarlySubmission() {
+  Tracker tracker;
+  tracker.draws_since_submission_ = 32;
+  tracker.memexport_readbacks_in_submission_ = true;
+  tracker.MaybeSubmitAfterDraw(0);
+  assert(tracker.submit_attempts == 0);
+  cvars::vulkan_memexport_early_submit = true;
+  tracker.memexport_readbacks_in_submission_ = false;
+  tracker.MaybeSubmitAfterDraw(0);
+  tracker.memexport_readbacks_in_submission_ = true;
+  tracker.draws_since_submission_ = 31;
+  tracker.MaybeSubmitAfterDraw(0);
+  tracker.draws_since_submission_ = 32;
+  tracker.scratch_buffer_used_ = true;
+  tracker.MaybeSubmitAfterDraw(0);
+  tracker.scratch_buffer_used_ = false;
+  tracker.pipelines_ready = false;
+  tracker.MaybeSubmitAfterDraw(0);
+  tracker.pipelines_ready = true;
+  tracker.submission_open_ = false;
+  tracker.MaybeSubmitAfterDraw(0);
+  assert(tracker.submit_attempts == 0);
+
+  tracker.submission_open_ = true;
+  tracker.submit_succeeds = false;
+  tracker.MaybeSubmitAfterDraw(0);
+  assert(tracker.submit_attempts == 1);
+  assert(tracker.memexport_early_submissions_in_frame_ == 0);
+  tracker.submit_succeeds = true;
+  for (uint32_t i = 0; i < 4; ++i) {
+    tracker.submission_open_ = true;
+    tracker.memexport_readbacks_in_submission_ = true;
+    tracker.MaybeSubmitAfterDraw(64);
+    assert(!tracker.submission_open_);
+  }
+  assert(tracker.vk_frame_sync_stats_.memexport_early_submissions == 4);
+  tracker.submission_open_ = true;
+  tracker.memexport_readbacks_in_submission_ = true;
+  tracker.MaybeSubmitAfterDraw(64);
+  assert(tracker.submission_open_ && tracker.submit_attempts == 5);
+  // A normal draw-limit split still runs after the early budget is spent.
+  tracker.MaybeSubmitAfterDraw(32);
+  assert(tracker.submit_attempts == 6);
+  // A normal split also takes precedence while the early budget is unused.
+  tracker.memexport_early_submissions_in_frame_ = 0;
+  tracker.submission_open_ = true;
+  tracker.memexport_readbacks_in_submission_ = true;
+  tracker.MaybeSubmitAfterDraw(32);
+  assert(tracker.submit_attempts == 7);
+  assert(tracker.memexport_early_submissions_in_frame_ == 0);
+  assert(tracker.vk_frame_sync_stats_.memexport_early_submissions == 4);
+  assert(tracker.full_waits == 0 && tracker.waited_submission == 0);
+}
+
 int main() {
   CheckCoherency();
+  CheckEarlySubmission();
   constexpr std::array<uint32_t, 16> boundaries = {
       0, 1, kPageSize - 1, kPageSize, kPageSize + 1,
       kWordBytes - kPageSize, kWordBytes - 1, kWordBytes,
@@ -287,7 +364,14 @@ def main():
         vulkan = (GPU / "vulkan/vulkan_command_processor.cc").read_text()
         start = vulkan.index("bool VulkanCommandProcessor::TryAwaitMemexportReadbacksForRange(")
         end = vulkan.index("\nvoid VulkanCommandProcessor::ApplyCompletedMemexportReadbacks(", start)
-        source.write_text(SOURCE.replace("// VULKAN_COHERENCY_IMPLEMENTATION", vulkan[start:end]))
+        early_start = vulkan.index("void VulkanCommandProcessor::MaybeSubmitAfterDraw(")
+        early_end = vulkan.index(
+            "\nbool VulkanCommandProcessor::EnsureMemexportRangeInDeviceBuffer(", early_start
+        )
+        source.write_text(
+            SOURCE.replace("// VULKAN_COHERENCY_IMPLEMENTATION", vulkan[start:end])
+            .replace("// VULKAN_EARLY_SUBMIT_IMPLEMENTATION", vulkan[early_start:early_end])
+        )
         subprocess.run(
             [
                 os.environ.get("CXX", "c++"),
@@ -307,7 +391,7 @@ def main():
             check=True,
         )
         subprocess.run([executable], check=True)
-    print("Memexport bitmap and coherency: boundary cases, submission policy and 120,000 mixed operations passed.")
+    print("Memexport: boundary cases, coherency, early submission and 120,000 mixed bitmap operations passed.")
 
 
 if __name__ == "__main__":
