@@ -479,6 +479,7 @@ class VulkanCommandProcessor final : public CommandProcessor {
   // its pipeline (it was already numbered and dumped the first time).
   bool issue_draw_memexport_retry_ = false;
   bool IssueCopy() override;
+  void NeutralizeArmyTdcSsao(uint32_t address, uint32_t length);
   // vulkan_depth_4x_as_1x: the guest's 4x MSAA surface info rewritten for the
   // current draw (IssueDraw restores it) to the 1x surface of the samples, for
   // depth-only draws (and with vulkan_samples_as_pixels_simple_ps, draws with
@@ -1626,6 +1627,9 @@ class VulkanCommandProcessor final : public CommandProcessor {
   // memexport_readback_deferred: the exports not read back yet, in draw order,
   // with their submission and where their snapshot is in the snapshot buffer
   // (filled from 0 by the exports since it was last empty).
+  uint32_t army_tdc_ssao_address_ = UINT32_MAX;
+  bool army_tdc_ssao_logged_ = false;
+
   struct PendingMemexportReadback {
     uint64_t submission;
     uint32_t address;

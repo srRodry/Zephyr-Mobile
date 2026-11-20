@@ -257,6 +257,12 @@ DEFINE_bool(
     "Vulkan");
 
 DEFINE_bool(
+    vulkan_army_tdc_neutralize_ssao, false,
+    "Replace Army TDC's aliased 640x352 SSAO mask with neutral occlusion. "
+    "The rest of the lighting pipeline stays enabled.",
+    "Vulkan");
+
+DEFINE_bool(
     vulkan_army_tdc_sync_exposure_readback, false,
     "Army TDC: wait for the current GPU write before copying small float "
     "exposure targets to guest RAM in UMA mode. Larger surfaces keep the "
@@ -2277,6 +2283,8 @@ bool VulkanCommandProcessor::SetupContext() {
 }
 
 void VulkanCommandProcessor::ShutdownContext() {
+  army_tdc_ssao_address_ = UINT32_MAX;
+  army_tdc_ssao_logged_ = false;
   AwaitAllQueueOperationsCompletion();
 
   ResetResolveReadWatch();
@@ -7757,6 +7765,49 @@ static bool IsSmallFloatExposureResolve(xenos::TextureFormat format,
   }
 }
 
+void VulkanCommandProcessor::NeutralizeArmyTdcSsao(uint32_t address,
+                                                    uint32_t length) {
+  const auto& resolve = render_target_cache_->last_resolve_info();
+  const auto pitch = register_file_->Get<reg::RB_COPY_DEST_PITCH>();
+  const auto format = xenos::TextureFormat(resolve.copy_dest_info.copy_dest_format);
+  constexpr uint32_t kWidth = 640;
+  constexpr uint32_t kHeight = 352;
+  constexpr uint32_t kBytes = kWidth * kHeight;
+  if (resolve.IsCopyingDepth() || resolve.copy_dest_info.copy_dest_array ||
+      resolve.copy_dest_x0 || resolve.copy_dest_y0 ||
+      pitch.copy_dest_height != kHeight ||
+      resolve.height_div_8 * 8 != kHeight ||
+      resolve.copy_dest_base_unadjusted != address ||
+      (address & 3)) {
+    return;
+  }
+  const uint32_t width = resolve.coordinate_info.width_div_8 * 8;
+  if (format == xenos::TextureFormat::k_8 && width == kWidth &&
+      pitch.copy_dest_pitch == kWidth) {
+    army_tdc_ssao_address_ = address;
+    return;
+  }
+  if (format != xenos::TextureFormat::k_8_8_8_8 || width != kWidth / 4 ||
+      pitch.copy_dest_pitch != kWidth / 4 || length != kBytes ||
+      address != army_tdc_ssao_address_) {
+    return;
+  }
+  EndRenderPass();
+  shared_memory_->Use(VulkanSharedMemory::Usage::kTransferDestination,
+                      std::make_pair(address, length));
+  SubmitBarriers(true);
+  deferred_command_buffer_.CmdVkFillBuffer(shared_memory_->buffer(), address,
+                                           length, UINT32_MAX);
+  // A promoted image might already contain the unmodified resolve. Invalidate
+  // it so the next texture fetch reads the replacement from shared memory.
+  texture_cache_->MarkRangeAsResolved(address, length, false);
+  if (!army_tdc_ssao_logged_) {
+    army_tdc_ssao_logged_ = true;
+    XELOGI("Army TDC: neutral SSAO applied at 0x{:08X} ({} bytes)",
+           address, length);
+  }
+}
+
 bool VulkanCommandProcessor::IssueCopy() {
 #if XE_GPU_FINE_GRAINED_DRAW_SCOPES
   SCOPE_profile_cpu_f("gpu");
@@ -7827,6 +7878,10 @@ bool VulkanCommandProcessor::IssueCopy() {
       PopDebugMarker();
     }
     return false;
+  }
+  if (cvars::vulkan_army_tdc_neutralize_ssao && written_length &&
+      !is_scaled) {
+    NeutralizeArmyTdcSsao(written_address, written_length);
   }
   ++submission_in_progress_.resolve_count;
   ++vk_frame_sync_stats_.resolves;
