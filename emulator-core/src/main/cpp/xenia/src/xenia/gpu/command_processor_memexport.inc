@@ -91,6 +91,10 @@ void AwaitMemexportForCoherency(uint32_t base_bytes, uint32_t size_bytes) {
        !IsMemexportRange(base_bytes, size_bytes))) {
     return;
   }
+  if (memexport_readbacks_pending_ &&
+      TryAwaitMemexportReadbacksForRange(base_bytes, size_bytes)) {
+    return;
+  }
   memexport_await_pending_ = false;
   // With the range for the memexport log (debug.xendroid.memexport_log).
   static thread_local char coherency_reason[] = "coherency 00000000+00000000";

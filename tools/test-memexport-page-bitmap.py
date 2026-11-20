@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Compare the production memexport bitmap with page-by-page tracking."""
+"""Check the production memexport bitmap and Vulkan coherency policy."""
 
 import os
 from pathlib import Path
@@ -18,11 +18,14 @@ SOURCE = r"""
 #include <bit>
 #include <cassert>
 #include <cstdint>
+#include <deque>
 #include <iterator>
 #include <random>
 
 struct SharedMemory {
   static constexpr uint32_t kBufferSize = 512u * 1024 * 1024;
+  uint32_t page_size_log2() const { return shift; }
+  uint32_t shift = 12;
 };
 
 // Unused renderer types required by the production class-body include.
@@ -54,10 +57,49 @@ bool bit_scan_forward(uint32_t value, uint32_t* bit) {
 uint32_t clear_lowest_bit(uint32_t value) { return value & (value - 1); }
 }
 
+namespace cvars {
+bool vulkan_memexport_range_coherency = true;
+}
+constexpr int VK_NULL_HANDLE = 0;
+
 struct Tracker {
-  bool AwaitAllQueueOperationsCompletion() { return true; }
+  SharedMemory memory;
+  SharedMemory* shared_memory_ = &memory;
+  struct PendingMemexportReadback {
+    uint64_t submission;
+    uint32_t address;
+    uint32_t size;
+  };
+  std::deque<PendingMemexportReadback> pending_memexport_readbacks_;
+  struct {
+    uint64_t memexport_range_fallbacks = 0;
+    uint64_t memexport_range_skips = 0;
+    uint64_t memexport_range_waits = 0;
+  } vk_frame_sync_stats_;
+  int shared_memory_host_and_edram_descriptor_set_ = VK_NULL_HANDLE;
+  bool submission_open_ = true;
+  uint64_t current_submission = 8;
+  uint64_t waited_submission = 0;
+  uint32_t full_waits = 0;
+  bool wait_succeeds = true;
+  uint64_t GetCurrentSubmission() const { return current_submission; }
+  void CheckSubmissionCompletionAndDeviceLoss(uint64_t target) {
+    waited_submission = target;
+    if (wait_succeeds) {
+      pending_memexport_readbacks_.clear();
+      memexport_readbacks_pending_ = false;
+    }
+  }
+  bool AwaitAllQueueOperationsCompletion() {
+    ++full_waits;
+    return true;
+  }
+  bool TryAwaitMemexportReadbacksForRange(uint32_t base, uint32_t size);
 #include "command_processor_memexport.inc"
 };
+#define VulkanCommandProcessor Tracker
+// VULKAN_COHERENCY_IMPLEMENTATION
+#undef VulkanCommandProcessor
 
 constexpr uint32_t kBufferSize = SharedMemory::kBufferSize;
 constexpr uint32_t kPageSize = 4096;
@@ -108,7 +150,67 @@ void CheckState(const Tracker& tracker, const Reference& reference) {
   assert(!tracker.memexport_readbacks_pending_);
 }
 
+void CheckCoherency() {
+  for (uint32_t shift : {12u, 14u, 16u}) {
+    Tracker tracker;
+    tracker.memory.shift = shift;
+    const uint32_t page = 1u << shift;
+    auto prepare = [&](uint64_t submission) {
+      tracker.pending_memexport_readbacks_ = {{submission, page - 4, 8}};
+      tracker.memexport_readbacks_pending_ = true;
+      tracker.memexport_await_pending_ = true;
+    };
+    prepare(7);
+    tracker.AwaitMemexportForCoherency(page * 2, 1);
+    assert(tracker.memexport_readbacks_pending_ && tracker.memexport_await_pending_);
+    assert(tracker.waited_submission == 0 && tracker.full_waits == 0);
+    // The four-byte tail of the export shares this page with the CPU.
+    tracker.AwaitMemexportForCoherency(page * 2 - 1, 1);
+    assert(tracker.waited_submission == 7 && tracker.full_waits == 0);
+    assert(tracker.submission_open_ && !tracker.memexport_readbacks_pending_);
+    assert(!tracker.memexport_await_pending_);
+    assert(tracker.vk_frame_sync_stats_.memexport_range_skips == 1);
+    assert(tracker.vk_frame_sync_stats_.memexport_range_waits == 1);
+
+    prepare(7);
+    tracker.pending_memexport_readbacks_.push_back({8, 3 * page, 4});
+    tracker.AwaitMemexportForCoherency(page, 4);
+    // The live GPU buffer requires the entire pending batch to retire.
+    assert(tracker.full_waits == 1 && tracker.memexport_readbacks_pending_);
+    tracker.full_waits = 0;
+    tracker.vk_frame_sync_stats_.memexport_range_fallbacks = 0;
+
+    prepare(8);
+    tracker.AwaitMemexportForCoherency(page, 4);
+    assert(tracker.full_waits == 1);
+    prepare(6);
+    tracker.AwaitMemexportForCoherency(page, 4);
+    assert(tracker.full_waits == 2);
+    prepare(7);
+    tracker.AwaitMemexportForCoherency(kBufferSize - 1, 2);
+    tracker.AwaitMemexportForCoherency(0, 0);
+    assert(tracker.full_waits == 4);
+    prepare(7);
+    tracker.shared_memory_host_and_edram_descriptor_set_ = 1;
+    tracker.AwaitMemexportForCoherency(page * 2, 1);
+    assert(tracker.full_waits == 5);
+    tracker.shared_memory_host_and_edram_descriptor_set_ = VK_NULL_HANDLE;
+
+    prepare(7);
+    tracker.wait_succeeds = false;
+    tracker.AwaitMemexportForCoherency(page, 1);
+    assert(tracker.full_waits == 6 && tracker.memexport_readbacks_pending_);
+    assert(tracker.vk_frame_sync_stats_.memexport_range_fallbacks == 6);
+    prepare(7);
+    cvars::vulkan_memexport_range_coherency = false;
+    tracker.AwaitMemexportForCoherency(page * 2, 1);
+    assert(tracker.full_waits == 7);
+    cvars::vulkan_memexport_range_coherency = true;
+  }
+}
+
 int main() {
+  CheckCoherency();
   constexpr std::array<uint32_t, 16> boundaries = {
       0, 1, kPageSize - 1, kPageSize, kPageSize + 1,
       kWordBytes - kPageSize, kWordBytes - 1, kWordBytes,
@@ -182,7 +284,10 @@ def main():
         directory = Path(temporary_directory)
         source = directory / "memexport_page_bitmap.cc"
         executable = directory / "memexport_page_bitmap"
-        source.write_text(SOURCE)
+        vulkan = (GPU / "vulkan/vulkan_command_processor.cc").read_text()
+        start = vulkan.index("bool VulkanCommandProcessor::TryAwaitMemexportReadbacksForRange(")
+        end = vulkan.index("\nvoid VulkanCommandProcessor::ApplyCompletedMemexportReadbacks(", start)
+        source.write_text(SOURCE.replace("// VULKAN_COHERENCY_IMPLEMENTATION", vulkan[start:end]))
         subprocess.run(
             [
                 os.environ.get("CXX", "c++"),
@@ -202,7 +307,7 @@ def main():
             check=True,
         )
         subprocess.run([executable], check=True)
-    print("Memexport bitmap: boundary cases and 120,000 mixed operations passed.")
+    print("Memexport bitmap and coherency: boundary cases, submission policy and 120,000 mixed operations passed.")
 
 
 if __name__ == "__main__":

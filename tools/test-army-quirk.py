@@ -46,7 +46,7 @@ template<class T> struct Var : cvar::IConfigVar {
 int main() {
  Var<bool> refresh, exports, fences, skip_shader, skip_pipeline;
  Var<bool> accurate_resolve, destination_packing, integer_fetch, frame_timing, pass_timing;
- Var<bool> selective_readback, neutralize_ssao, unorm8_precision, sanitize_hdr;
+ Var<bool> selective_readback, neutralize_ssao, unorm8_precision, sanitize_hdr, range_coherency;
  Var<std::string> resolve;
  std::unordered_map<std::string, cvar::IConfigVar*> variables{{"clear_memory_page_state", &refresh}};
  cvar::ConfigVars = &variables;
@@ -57,6 +57,7 @@ int main() {
    xe::game_quirks::Apply(title); assert(refresh.writes == 1);
  }
  variables.insert({{"memexport_enable", &exports}, {"memexport_await_fences", &fences},
+                   {"vulkan_memexport_range_coherency", &range_coherency},
                    {"readback_resolve", &resolve}, {"async_shader_skip_draws", &skip_shader},
                    {"vulkan_async_skip_draws", &skip_pipeline},
                    {"accurate_resolve_number_formats", &accurate_resolve},
@@ -73,12 +74,14 @@ int main() {
    assert(exports.writes == 0 && fences.writes == 0 && skip_shader.writes == 0 &&
           skip_pipeline.writes == 0 && resolve.writes == 0);
    assert(selective_readback.writes == 0 && neutralize_ssao.writes == 0 &&
-          unorm8_precision.writes == 0 && sanitize_hdr.writes == 0);
+          unorm8_precision.writes == 0 && sanitize_hdr.writes == 0 &&
+          range_coherency.writes == 0);
    assert(accurate_resolve.writes == 0 && destination_packing.writes == 0 &&
           integer_fetch.writes == 0 && frame_timing.writes == 0 && pass_timing.writes == 0);
  }
- assert(xe::game_quirks::Apply(0x454109AB) == 14);
+ assert(xe::game_quirks::Apply(0x454109AB) == 15);
  assert(sanitize_hdr.writes == 1 && sanitize_hdr.current);
+ assert(range_coherency.writes == 1 && range_coherency.current);
  assert(selective_readback.current && neutralize_ssao.current && unorm8_precision.current);
  assert(accurate_resolve.current && destination_packing.current && integer_fetch.current);
  assert(frame_timing.current && pass_timing.writes == 1 && !pass_timing.current);

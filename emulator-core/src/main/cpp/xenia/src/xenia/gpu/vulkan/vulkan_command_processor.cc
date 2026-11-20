@@ -275,6 +275,13 @@ DEFINE_bool(
     "Vulkan");
 
 DEFINE_bool(
+    vulkan_memexport_range_coherency, false,
+    "Skip Vulkan readback waits for disjoint guest coherency ranges and avoid "
+    "submitting unrelated open command buffers when the exports are already "
+    "submitted.",
+    "Vulkan");
+
+DEFINE_bool(
     memexport_readback_deferred, true,
     "With memexport_enable on a host-mapped buffer (readback_resolve=uma), "
     "read memory export output back into guest memory once the submissions "
@@ -3923,6 +3930,14 @@ void VulkanCommandProcessor::IssueSwap(uint32_t frontbuffer_ptr,
           s.rb_uma_first_use / f, s.rb_uma_unread / f,
           s.rb_uma_bytes / f / 1024.0, s.rb_uma_filtered / f,
           s.rb_uma_exposure_waits / f);
+      if (s.memexport_range_skips || s.memexport_range_waits ||
+          s.memexport_range_fallbacks) {
+        XELOGI(
+            "VkMemexportCoherency: per frame: disjoint={:.2f} "
+            "targeted={:.2f} full={:.2f}",
+            s.memexport_range_skips / f, s.memexport_range_waits / f,
+            s.memexport_range_fallbacks / f);
+      }
       if (cvars::vulkan_disjoint_memexport_barriers) {
         XELOGI("ZephyrMemexport: disjoint Use calls skipped per frame={:.1f}",
                shared_memory_->TakeDisjointUseCallsSkipped() / f);
@@ -5848,6 +5863,55 @@ bool VulkanCommandProcessor::StoreMemexportChanges(uint32_t address,
            changed);
   }
   return true;
+}
+
+bool VulkanCommandProcessor::TryAwaitMemexportReadbacksForRange(
+    uint32_t base, uint32_t size) {
+  if (!cvars::vulkan_memexport_range_coherency ||
+      pending_memexport_readbacks_.empty()) {
+    return false;
+  }
+  if (!size || base >= SharedMemory::kBufferSize ||
+      size > SharedMemory::kBufferSize - base ||
+      shared_memory_host_and_edram_descriptor_set_ != VK_NULL_HANDLE) {
+    ++vk_frame_sync_stats_.memexport_range_fallbacks;
+    return false;
+  }
+
+  // Guest RAM and shared-memory invalidation work at page granularity.
+  const uint32_t shift = shared_memory_->page_size_log2();
+  const uint32_t first_page = base >> shift;
+  const uint32_t last_page = (base + size - 1) >> shift;
+  const bool touches_export = std::any_of(
+      pending_memexport_readbacks_.begin(), pending_memexport_readbacks_.end(),
+      [=](const PendingMemexportReadback& pending) {
+        const uint64_t export_last_byte =
+            uint64_t(pending.address) + pending.size - 1;
+        return (pending.address >> shift) <= last_page &&
+               (export_last_byte >> shift) >= first_page;
+      });
+  if (!touches_export) {
+    ++vk_frame_sync_stats_.memexport_range_skips;
+    return true;
+  }
+
+  // All pending exports must retire together because their post-draw bytes
+  // are read from live shared memory. Only leave the open submission unqueued
+  // if no later submitted GPU work can overwrite those bytes.
+  const uint64_t last_export_submission =
+      pending_memexport_readbacks_.back().submission;
+  if (submission_open_ &&
+      last_export_submission == GetCurrentSubmission() - 1) {
+    CheckSubmissionCompletionAndDeviceLoss(last_export_submission);
+    if (!memexport_readbacks_pending_) {
+      memexport_await_pending_ = false;
+      ++vk_frame_sync_stats_.memexport_range_waits;
+      return true;
+    }
+  }
+
+  ++vk_frame_sync_stats_.memexport_range_fallbacks;
+  return false;
 }
 
 void VulkanCommandProcessor::ApplyCompletedMemexportReadbacks(

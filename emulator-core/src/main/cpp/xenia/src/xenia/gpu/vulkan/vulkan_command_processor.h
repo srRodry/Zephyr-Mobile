@@ -799,6 +799,9 @@ class VulkanCommandProcessor final : public CommandProcessor {
     uint64_t submissions = 0;
     uint64_t resolves = 0;  // EDRAM resolves issued (churn magnitude)
     uint64_t memexport_awaits = 0;
+    uint64_t memexport_range_skips = 0;
+    uint64_t memexport_range_waits = 0;
+    uint64_t memexport_range_fallbacks = 0;
     uint64_t readback_awaits = 0;
     // Host-side latency from vkQueueSubmit to the fence being observed
     // completed - includes GPU queue wait, render time and detection delay.
@@ -1213,6 +1216,7 @@ class VulkanCommandProcessor final : public CommandProcessor {
   // Two-buffer memexport page tracking (data + methods), shared with the D3D12
   // backend as a class-body fragment so each backend gets its own non-virtual,
   // inlinable copy. Requires <array> and SharedMemory, both included above.
+  bool TryAwaitMemexportReadbacksForRange(uint32_t base, uint32_t size);
 #include "../command_processor_memexport.inc"
 
   // Bytes 0x0...0x3FF - 256-entry gamma ramp table with B10G10R10X2 data (read

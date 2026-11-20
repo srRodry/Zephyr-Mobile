@@ -810,6 +810,7 @@ class D3D12CommandProcessor final : public CommandProcessor {
   // Two-buffer memexport page tracking (data + methods), shared with the Vulkan
   // backend as a class-body fragment so each backend gets its own non-virtual,
   // inlinable copy. Requires <array> and SharedMemory, both included above.
+  bool TryAwaitMemexportReadbacksForRange(uint32_t, uint32_t) { return false; }
 #include "../command_processor_memexport.inc"
 
   // Backend-agnostic resolve read-watch consumption tracking, shared with the

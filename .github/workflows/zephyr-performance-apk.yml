@@ -373,6 +373,7 @@ jobs:
                     'Vulkan|vulkan_army_tdc_selective_resolve_readback': True,
                     'Vulkan|vulkan_army_tdc_neutralize_ssao': True,
                     'Vulkan|vulkan_sanitize_host_7e3_exports': True,
+                    'Vulkan|vulkan_memexport_range_coherency': True,
                     'GPU|log_gpu_frame_time_breakdown': True,
                     'GPU|log_gpu_frame_time_breakdown_passes': False,
                 },
