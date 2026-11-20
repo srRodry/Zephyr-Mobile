@@ -200,6 +200,7 @@ jobs:
           --tests 'xendroid.compose.ui.design.EmeraldNavigationTest' \
           --tests 'xendroid.compose.ui.design.TextInputKeyboardTest' \
           --tests 'xendroid.compose.core.AsyncPauseControllerTest' \
+          --tests 'xendroid.compose.core.ThermalWatchTest' \
           --tests 'xendroid.compose.core.LaunchExecutablesTest' \
           --tests 'xendroid.compose.core.LaunchOptionsTest' \
           --tests 'xendroid.compose.compatibility.SettingsProfilesTest' \
@@ -375,6 +376,7 @@ jobs:
                     'Vulkan|vulkan_sanitize_host_7e3_exports': True,
                     'Vulkan|vulkan_memexport_range_coherency': True,
                     'Vulkan|vulkan_memexport_early_submit': True,
+                    'Vulkan|vulkan_log_slow_submission_ms': 0,
                     'GPU|log_gpu_frame_time_breakdown': True,
                     'GPU|log_gpu_frame_time_breakdown_passes': False,
                 },

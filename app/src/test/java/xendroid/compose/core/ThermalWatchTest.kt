@@ -1,7 +1,9 @@
 package xendroid.compose.core
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 import xendroid.compose.core.ThermalWatch.Level
 
@@ -31,5 +33,14 @@ class ThermalWatchTest {
         assertEquals(Level.THROTTLING, watch.sample(Float.NaN, 3))
         assertEquals(Level.OK, watch.sample(null, 0))
         assertNull(watch.sample(-1f, -1))
+    }
+
+    @Test fun pausesAtCriticalAndRequiresRecoveryBelowSevere() {
+        assertFalse(ThermalWatch.needsCoolingPause(3))
+        assertTrue(ThermalWatch.needsCoolingPause(4))
+        assertTrue(ThermalWatch.needsCoolingPause(6))
+        assertFalse(ThermalWatch.mayResumeAfterCooling(-1))
+        assertFalse(ThermalWatch.mayResumeAfterCooling(3))
+        assertTrue(ThermalWatch.mayResumeAfterCooling(2))
     }
 }

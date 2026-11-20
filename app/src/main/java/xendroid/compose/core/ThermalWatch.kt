@@ -31,6 +31,11 @@ class ThermalWatch(private val enterAt: Float = 0.85f, private val leaveBelow: F
     companion object {
         private const val MODERATE = 2   // PowerManager.THERMAL_STATUS_MODERATE
         private const val SEVERE = 3     // PowerManager.THERMAL_STATUS_SEVERE
+        private const val CRITICAL = 4   // PowerManager.THERMAL_STATUS_CRITICAL
+        // Some devices return NaN when headroom is polled faster than this.
+        const val HEADROOM_INTERVAL_MS = 10_000L
+        fun needsCoolingPause(status: Int) = status >= CRITICAL
+        fun mayResumeAfterCooling(status: Int) = status in 0 until SEVERE
         /** One notice per this long at most, even when the level rises again. */
         const val NOTICE_EVERY_MS = 5 * 60_000L
     }

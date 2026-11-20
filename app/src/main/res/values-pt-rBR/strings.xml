@@ -1277,6 +1277,9 @@
     <string name="tu_kept">Também mantidas como estão: %1$s</string>
     <string name="host_thermal_near">O telefone está perto do limite de calor e vai reduzir o desempenho em breve. Resolução ou limite de FPS menores, ou desligar o clock máximo forçado da GPU ou a geração de quadros, o mantêm mais frio.</string>
     <string name="host_thermal_throttling">O telefone chegou ao limite de calor e está reduzindo o desempenho. Resolução ou limite de FPS menores, ou desligar o clock máximo forçado da GPU ou a geração de quadros, o mantêm mais frio.</string>
+    <string name="host_cooling_pause_title">Pausa para resfriamento</string>
+    <string name="host_cooling_pause_message">O Android indicou um estado térmico crítico. Você poderá retomar o jogo quando o sistema indicar que o celular esfriou.</string>
+    <string name="host_cooling_pause_resume">Retomar jogo</string>
     <string name="ui_size">Tamanho da interface: %1$s</string>
     <string name="ui_size_note">Aumenta ou diminui as telas do app e o menu em jogo. Os controles de toque, o HUD e o editor de toque mantêm o tamanho próprio.</string>
     <string name="ui_size_limited">Nesta tela vai até %1$s, para os layouts ainda caberem.</string>

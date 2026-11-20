@@ -39,6 +39,7 @@ import xendroid.compose.core.selectRefresh
 import xendroid.compose.core.sustainedPerformance
 import xendroid.compose.core.ExternalGameDisplay
 import xendroid.compose.core.PresenterPerformanceHints
+import xendroid.compose.core.ThermalWatch
 import kotlin.math.abs
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -203,11 +204,15 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
     private var lastPresentationLabel: String? = null
     private var lastPresentCount = -1L
     private var stalledSeconds = 0
-    private var lastThermalStatus = -1
+    private var lastThermalStatus by mutableIntStateOf(-1)
     /** 15j: warns before the phone throttles for heat (advisory: it never changes a setting). */
-    private val thermalWatch = xendroid.compose.core.ThermalWatch()
+    private val thermalWatch = ThermalWatch()
     private var thermalNoticeAt = Long.MIN_VALUE
-    private var thermalTick = 0
+    private var thermalSampleAt = -ThermalWatch.HEADROOM_INTERVAL_MS
+    private var batterySampleAt = -30_000L
+    private var batteryTemperatureTenths: Int? = null
+    private var batteryPlugged: Boolean? = null
+    private var coolingPause by mutableStateOf(false)
     /** 15n: the last thermal headroom read (null where the device has none). */
     private var lastHeadroom: Float? = null
     private var driverRecorded = false
@@ -901,22 +906,43 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
         runCatching { getSystemService(android.hardware.input.InputManager::class.java)?.unregisterInputDeviceListener(inputDeviceListener) }
     }
 
-    /** 15j: every other second, Android's thermal headroom (10 s ahead) against the device's own
-     *  limit; the timeline gets each change and the player one notice per rise, five minutes apart. */
-    private fun watchThermalHeadroom() {
-        if (thermalTick++ % 2 != 0) return
+    /** Thermal status and headroom describe Android's throttling policy. Battery temperature
+     * is a separate measurement and is labeled accordingly in the exported logcat. */
+    private fun watchThermalHeadroom(guestFps: Double) {
+        enforceCoolingPause()
+        val now = android.os.SystemClock.elapsedRealtime()
+        if (now - thermalSampleAt < ThermalWatch.HEADROOM_INTERVAL_MS) return
+        thermalSampleAt = now
         val headroom = if (Build.VERSION.SDK_INT >= 30) {
             runCatching { getSystemService(android.os.PowerManager::class.java)?.getThermalHeadroom(10) }.getOrNull()
         } else null
         lastHeadroom = headroom?.takeIf { it.isFinite() && it >= 0f }
-        val level = thermalWatch.sample(headroom, lastThermalStatus) ?: return
+        if (now - batterySampleAt >= 30_000L) {
+            batterySampleAt = now
+            val battery = runCatching {
+                registerReceiver(null, android.content.IntentFilter(Intent.ACTION_BATTERY_CHANGED))
+            }.getOrNull()
+            batteryTemperatureTenths = battery?.getIntExtra(android.os.BatteryManager.EXTRA_TEMPERATURE, Int.MIN_VALUE)
+                ?.takeUnless { it == Int.MIN_VALUE }
+            batteryPlugged = battery?.getIntExtra(android.os.BatteryManager.EXTRA_PLUGGED, -1)
+                ?.takeIf { it >= 0 }?.let { it != 0 }
+        }
+        Log.i(TAG, "ZephyrThermal elapsed_ms=${now - createdAtMs} status=$lastThermalStatus " +
+            "headroom_10s=${lastHeadroom ?: "unavailable"} battery_deci_c=${batteryTemperatureTenths ?: "unavailable"} " +
+            "plugged=${batteryPlugged ?: "unavailable"} guest_fps=${if (coolingPause) 0.0 else guestFps} " +
+            "cooling_pause=$coolingPause")
+        updateThermalWarning()
+    }
+
+    private fun updateThermalWarning() {
+        val level = thermalWatch.sample(lastHeadroom, lastThermalStatus) ?: return
         recordEvent("thermal watch", level.name.lowercase().replace('_', ' ') +
-            (headroom?.takeIf { it.isFinite() }?.let { " (headroom %.2f)".format(java.util.Locale.ROOT, it) } ?: ""))
+            (lastHeadroom?.let { " (headroom %.2f)".format(java.util.Locale.ROOT, it) } ?: ""))
         val now = android.os.SystemClock.elapsedRealtime()
-        if (level != xendroid.compose.core.ThermalWatch.Level.OK && foregroundState.value &&
-            (thermalNoticeAt == Long.MIN_VALUE || now - thermalNoticeAt >= xendroid.compose.core.ThermalWatch.NOTICE_EVERY_MS)) {
+        if (level != ThermalWatch.Level.OK && foregroundState.value &&
+            (thermalNoticeAt == Long.MIN_VALUE || now - thermalNoticeAt >= ThermalWatch.NOTICE_EVERY_MS)) {
             thermalNoticeAt = now
-            Toast.makeText(this, getString(if (level == xendroid.compose.core.ThermalWatch.Level.THROTTLING)
+            Toast.makeText(this, getString(if (level == ThermalWatch.Level.THROTTLING)
                 R.string.host_thermal_throttling else R.string.host_thermal_near), Toast.LENGTH_LONG).show()
         }
     }
@@ -971,6 +997,23 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
         lastThermalStatus = status
         recordEvent("thermal", xendroid.compose.sessions.thermalStatusName(status),
             flush = status >= android.os.PowerManager.THERMAL_STATUS_SEVERE)
+        Log.i(TAG, "ZephyrThermal elapsed_ms=${android.os.SystemClock.elapsedRealtime() - createdAtMs} status=$status")
+        enforceCoolingPause()
+        updateThermalWarning()
+    }
+
+    private fun enforceCoolingPause() {
+        if (coolingPause || !foregroundState.value || !session.booted ||
+            !ThermalWatch.needsCoolingPause(lastThermalStatus)) return
+        coolingPause = true
+        performanceHints.close()
+        gyroCamera.stop()
+        releaseGuestInput()
+        if (!session.isPaused()) {
+            session.pause()
+            pausedByLifecycle = true
+        }
+        recordEvent("pause", "Android reported critical thermal status; cooling pause", flush = true)
     }
 
     private fun noteController(deviceId: Int, what: String) {
@@ -1615,7 +1658,8 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
                                     }
                                     val activeTitle = session.activeTitleId()
                                     performanceHints.update(presenterWorkReader, presenterTargetReader,
-                                        foregroundState.value && !menuState.value.open)
+                                        foregroundState.value && !menuState.value.open && !coolingPause &&
+                                            thermalWatch.level != ThermalWatch.Level.THROTTLING)
                                     performanceHintsLabel.value = performanceHints.status
                                     val activeRun = runId
                                     if (activeTitle != controlsTitleId) {
@@ -1725,7 +1769,9 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
                                         it.verdict != xendroid.compose.core.FrameGenerationGovernor.Verdict.OFF
                                     }?.let { "Budget (advisory, never acts): ${it.text}" }
                                     notePresentation(fgNow, runningNow, guestFrames ?: session.hostPresentSubmissionCount())
-                                    if (runningNow) watchThermalHeadroom()
+                                    if (runningNow || (coolingPause && foregroundState.value)) {
+                                        watchThermalHeadroom(averageGuestFps)
+                                    }
                                     val compileStats = session.shaderCompileStats()
                                     if (bootStatus.value != null) {
                                         val elapsed = (android.os.SystemClock.elapsedRealtime() - createdAtMs) / 1000
@@ -2063,6 +2109,34 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
                             }
                     }
 
+                    if (coolingPause) {
+                        xendroidTheme(scale = uiScale, mode = hostMode) {
+                            androidx.compose.material3.AlertDialog(
+                                onDismissRequest = {},
+                                title = { androidx.compose.material3.Text(getString(R.string.host_cooling_pause_title)) },
+                                text = { androidx.compose.material3.Text(getString(R.string.host_cooling_pause_message)) },
+                                dismissButton = {
+                                    androidx.compose.material3.TextButton(onClick = ::leave) {
+                                        androidx.compose.material3.Text(getString(R.string.menu_exit_game))
+                                    }
+                                },
+                                confirmButton = {
+                                    androidx.compose.material3.TextButton(
+                                        enabled = ThermalWatch.mayResumeAfterCooling(lastThermalStatus),
+                                        onClick = {
+                                            if (ThermalWatch.mayResumeAfterCooling(lastThermalStatus)) {
+                                                coolingPause = false
+                                                resumeForLifecycle()
+                                            }
+                                        },
+                                    ) {
+                                        androidx.compose.material3.Text(getString(R.string.host_cooling_pause_resume))
+                                    }
+                                },
+                            )
+                        }
+                    }
+
                     val menuOpen = menuState.value.open
 
                     val keyboardOpen =
@@ -2312,6 +2386,8 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
     }
 
     private fun resumeForLifecycle() {
+        enforceCoolingPause()
+        if (coolingPause) return
         if (pausedByLifecycle && session.booted && surfaceAvailable && hasWindowFocus() &&
             !menuState.value.pausedByMenu &&
             lifecycle.currentState.isAtLeast(androidx.lifecycle.Lifecycle.State.STARTED)) {

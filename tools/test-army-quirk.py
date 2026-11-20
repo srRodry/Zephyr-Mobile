@@ -48,6 +48,7 @@ int main() {
  Var<bool> accurate_resolve, destination_packing, integer_fetch, frame_timing, pass_timing;
  Var<bool> selective_readback, neutralize_ssao, unorm8_precision, sanitize_hdr, range_coherency;
  Var<bool> early_submit;
+ Var<int64_t> slow_submission;
  Var<std::string> resolve;
  std::unordered_map<std::string, cvar::IConfigVar*> variables{{"clear_memory_page_state", &refresh}};
  cvar::ConfigVars = &variables;
@@ -70,7 +71,8 @@ int main() {
                    {"vulkan_sanitize_host_7e3_exports", &sanitize_hdr},
                    {"spirv_texture_unorm8_precision", &unorm8_precision},
                    {"log_gpu_frame_time_breakdown", &frame_timing},
-                   {"log_gpu_frame_time_breakdown_passes", &pass_timing}});
+                   {"log_gpu_frame_time_breakdown_passes", &pass_timing},
+                   {"vulkan_log_slow_submission_ms", &slow_submission}});
  for (uint32_t title : {0x454107F8u, 0x454108D8u, 0x41560815u, 0x4D5309C9u}) {
    xe::game_quirks::Apply(title);
    assert(exports.writes == 0 && fences.writes == 0 && skip_shader.writes == 0 &&
@@ -79,12 +81,14 @@ int main() {
           unorm8_precision.writes == 0 && sanitize_hdr.writes == 0 &&
           range_coherency.writes == 0 && early_submit.writes == 0);
    assert(accurate_resolve.writes == 0 && destination_packing.writes == 0 &&
-          integer_fetch.writes == 0 && frame_timing.writes == 0 && pass_timing.writes == 0);
+          integer_fetch.writes == 0 && frame_timing.writes == 0 && pass_timing.writes == 0 &&
+          slow_submission.writes == 0);
  }
- assert(xe::game_quirks::Apply(0x454109AB) == 16);
+ assert(xe::game_quirks::Apply(0x454109AB) == 17);
  assert(sanitize_hdr.writes == 1 && sanitize_hdr.current);
  assert(range_coherency.writes == 1 && range_coherency.current);
  assert(early_submit.writes == 1 && early_submit.current);
+ assert(slow_submission.writes == 1 && slow_submission.current == 0);
  assert(selective_readback.current && neutralize_ssao.current && unorm8_precision.current);
  assert(accurate_resolve.current && destination_packing.current && integer_fetch.current);
  assert(frame_timing.current && pass_timing.writes == 1 && !pass_timing.current);

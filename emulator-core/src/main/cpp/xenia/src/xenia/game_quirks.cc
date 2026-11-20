@@ -65,6 +65,8 @@ static const Quirk kQuirks[] = {
      "report Army TDC GPU work and fence waits once per second"},
     {0x454109AB, "log_gpu_frame_time_breakdown_passes", false,
      "avoid per-pass timing overhead while testing Army TDC"},
+    {0x454109AB, "vulkan_log_slow_submission_ms", int64_t(0),
+     "keep frame summaries without logging every slow Army TDC submission"},
     // Ninja Gaiden 2: the opening FMV renders as three time-skewed vertical
     // slices when the restore half of the saverest inline is active. Every
     // emitted expansion verifies correct, so the current reading is a latent

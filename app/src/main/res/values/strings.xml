@@ -1238,6 +1238,9 @@
     <string name="tu_kept">Also kept, as they are: %1$s</string>
     <string name="host_thermal_near">The phone is close to its heat limit and will slow down soon. A lower resolution or FPS limit, or turning off forced GPU clocks or frame generation, keeps it cooler.</string>
     <string name="host_thermal_throttling">The phone has reached its heat limit and is slowing down. A lower resolution or FPS limit, or turning off forced GPU clocks or frame generation, keeps it cooler.</string>
+    <string name="host_cooling_pause_title">Cooling pause</string>
+    <string name="host_cooling_pause_message">Android reported a critical thermal state. You can resume the game once the system reports that the phone has cooled.</string>
+    <string name="host_cooling_pause_resume">Resume game</string>
     <string name="ui_size">Interface size: %1$s</string>
     <string name="ui_size_note">Makes the app\'s screens and the in-game menu larger or smaller. Touch controls, the HUD and the touch editor keep their own size.</string>
     <string name="ui_size_limited">On this screen it can go up to %1$s, so the layouts still fit.</string>
