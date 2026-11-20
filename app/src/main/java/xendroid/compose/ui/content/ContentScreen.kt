@@ -42,6 +42,8 @@ import coil.compose.AsyncImage
 import java.text.DateFormat
 import java.util.Date
 import xendroid.compose.R
+import xendroid.compose.ui.design.XdSearchField
+import xendroid.compose.ui.design.XdSegmented
 import xendroid.compose.core.ContentPaths
 import xendroid.compose.saves.TrashedContent
 import xendroid.compose.ui.content.ContentManagerViewModel.ContentEntry
@@ -242,6 +244,8 @@ private fun Listed(state: ListState, content: @Composable (ListState.Loaded) -> 
     }
 }
 
+private enum class InstalledContentFilter { ALL, UPDATES, DLC }
+
 /** Every game's content, a card per game. */
 @Composable
 private fun InstalledAll(
@@ -262,17 +266,40 @@ private fun InstalledAll(
         return
     }
     val packages = s.dlc.size + s.updates.size
+    var query by rememberSaveable { mutableStateOf("") }
+    var filter by rememberSaveable { mutableStateOf(InstalledContentFilter.ALL) }
+    val matching = remember(s.games, query, filter, name) {
+        val needle = query.trim()
+        s.games.sortedBy { name(it.titleId).lowercase() }.mapNotNull { game ->
+            val candidates = when (filter) {
+                InstalledContentFilter.ALL -> game.updates + game.dlc
+                InstalledContentFilter.UPDATES -> game.updates
+                InstalledContentFilter.DLC -> game.dlc
+            }
+            val matchesTitle = needle.isBlank() || name(game.titleId).contains(needle, ignoreCase = true) ||
+                game.titleId.contains(needle, ignoreCase = true)
+            val items = if (matchesTitle) candidates else candidates.filter { it.displayName.contains(needle, ignoreCase = true) }
+            if (items.isEmpty()) null else game to items
+        }
+    }
     BoxWithConstraints {
         val narrow = maxWidth < 480.dp
         Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             XdNote(stringResource(R.string.xd_cm_all_note, pluralStringResource(R.plurals.xd_cm_packages, packages, packages),
                 size(s.games.sumOf { it.bytes }), pluralStringResource(R.plurals.xd_cm_games, s.games.size, s.games.size)))
-            s.games.sortedBy { name(it.titleId).lowercase() }.forEach { g ->
+            XdSearchField(query, { query = it }, stringResource(R.string.zephyr_content_search), Modifier.fillMaxWidth())
+            XdSegmented(listOf(
+                InstalledContentFilter.ALL to stringResource(R.string.zephyr_content_all),
+                InstalledContentFilter.UPDATES to stringResource(R.string.cm_tab_updates),
+                InstalledContentFilter.DLC to "DLC",
+            ), filter, { filter = it }, Modifier.fillMaxWidth())
+            if (matching.isEmpty()) XdEmpty(stringResource(R.string.zephyr_content_no_results))
+            matching.forEach { (g, items) ->
                 XdCard(Modifier.fillMaxWidth()) {
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
                         Cover(art(g.titleId), 40.dp)
                         Column(Modifier.weight(1f)) {
-                            Text(name(g.titleId), style = XdText.label, color = c.fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
+                            Text(name(g.titleId), style = XdText.label, color = c.fg)
                             Text(stringResource(R.string.xd_cm_game_line, g.dlc.size,
                                 g.updates.firstOrNull()?.displayName ?: stringResource(R.string.xd_cm_no_tu), size(g.bytes)),
                                 style = XdText.small, color = c.fg3, maxLines = 2, overflow = TextOverflow.Ellipsis)
@@ -280,7 +307,6 @@ private fun InstalledAll(
                         XdButton(stringResource(R.string.xd_open), { onOpen(g) }, kind = XdButtonKind.GHOST, size = XdButtonSize.SM)
                     }
                     Column {
-                        val items = g.updates + g.dlc
                         items.forEachIndexed { i, e -> PackageRow(e, divider = i < items.lastIndex, narrow, size, busy, onRemove) }
                     }
                 }

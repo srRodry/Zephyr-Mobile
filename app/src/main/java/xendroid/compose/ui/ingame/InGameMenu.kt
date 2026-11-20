@@ -85,6 +85,8 @@ import xendroid.compose.ui.design.XdIconButton
 import xendroid.compose.ui.design.XdIcons
 import xendroid.compose.ui.design.XdStepper
 import xendroid.compose.ui.design.XdSwitch
+import xendroid.compose.ui.design.ZephyrOrbitMark
+import xendroid.compose.ui.design.zephyrSurface
 import xendroid.compose.ui.design.ZephyrPanelShape
 import xendroid.compose.ui.design.XdText
 import xendroid.compose.ui.design.part
@@ -225,7 +227,7 @@ fun InGameMenu(
         val panel = if (portrait) Modifier.align(Alignment.BottomCenter).fillMaxWidth().fillMaxHeight(0.86f)
         else Modifier.align(Alignment.CenterStart).width(minOf(maxWidth * (if (controller) 0.74f else 0.78f), if (controller) 660.dp else 720.dp)).fillMaxHeight()
         Column(
-            panel.testTag("game-guide-tools").clip(shape).background(c.solid(c.sheet))
+            panel.testTag("game-guide-tools").zephyrSurface(shape)
                 .windowInsetsPadding(WindowInsets.safeDrawing.part(top = !portrait, bottom = true, start = true))
                 .padding(horizontal = if (short) 12.dp else 16.dp, vertical = if (short) 10.dp else 14.dp),
             verticalArrangement = Arrangement.spacedBy(if (short) 8.dp else 10.dp),
@@ -252,6 +254,8 @@ fun InGameMenu(
                     onResume = { onAction(InGameAction.RESUME) },
                     onControls = { toolsOpen = true; onPage(InGamePage.CONTROLS) },
                     onSettings = { toolsOpen = true; onPage(InGamePage.GRAPHICS) },
+                    onHud = { toolsOpen = true; onPage(InGamePage.HUD) },
+                    onDiagnostics = { toolsOpen = true; onPage(InGamePage.SESSION) },
                     onQuit = { onAction(InGameAction.QUIT) },
                 )
                 portrait -> Column(body, verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -301,7 +305,7 @@ private fun TouchHead(model: InGameMenuModel, short: Boolean, onClose: () -> Uni
             verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
             if (onGuide != null) XdIconButton(XdIcons.back, stringResource(R.string.zephyr_game_guide), onGuide,
                 modifier = Modifier.testTag("game-guide-back"), size = 48.dp)
-            else Box(Modifier.width(4.dp).height(if (short) 38.dp else 48.dp).background(c.acc))
+            else ZephyrOrbitMark(if (short) 32.dp else 40.dp)
             Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                 Text(model.gameName ?: stringResource(R.string.app_name), color = c.fg,
                     style = XdText.body.copy(fontSize = if (short) 21.sp else 24.sp,

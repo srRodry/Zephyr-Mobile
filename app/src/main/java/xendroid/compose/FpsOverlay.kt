@@ -8,6 +8,7 @@ import android.os.BatteryManager
 import android.os.Process
 import android.os.SystemClock
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.gestures.detectTransformGestures
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -677,13 +678,19 @@ internal fun HudBar(
     val bar: @Composable () -> Unit = {
         Row(
             Modifier.padding(top = if (style.edge == HudEdge.TOP) (4 * scale).dp else 0.dp, bottom = if (style.edge == HudEdge.BOTTOM) (4 * scale).dp else 0.dp)
-                .hudBackground(look, style, scale)
+                .then(if (look == HudLook.BOX && style.opacity > 0f) {
+                    val shape = RoundedCornerShape(50)
+                    Modifier.background(Color(0xFF071A13).copy(alpha = style.opacity), shape)
+                        .border(1.dp, Color(0xFFB1ED8A).copy(alpha = style.opacity * .45f), shape)
+                } else Modifier)
                 .horizontalScroll(rememberScrollState())
                 .padding(horizontal = (10 * scale).dp, vertical = (4 * scale).dp),
             horizontalArrangement = Arrangement.spacedBy((12 * scale).dp),
             verticalAlignment = Alignment.CenterVertically,
         ) {
             lines.forEachIndexed { i, line ->
+                if (i > 0) Box(Modifier.width(1.dp).height((12 * scale).dp)
+                    .background(Color.White.copy(alpha = .20f)))
                 Row(horizontalArrangement = Arrangement.spacedBy((5 * scale).dp), verticalAlignment = Alignment.CenterVertically) {
                     Text(line.label, style = text.copy(fontWeight = FontWeight.Bold), color = labelColor(line, style.colors), maxLines = 1)
                     Text(line.value, style = text, color = valueColor(line, style.colors), maxLines = 1)

@@ -77,12 +77,12 @@ internal fun SettingsTouchFrame(
     }
     // System Back and the mapped gamepad cancel use the same route as the toolbar.
     BackHandler(enabled = !home, onBack = back)
-    BoxWithConstraints(Modifier.fillMaxSize().background(c.bg).testTag("settings-touch-frame")) {
-        val compact = maxHeight > maxWidth || maxWidth < 840.dp
+    BoxWithConstraints(Modifier.fillMaxSize().zephyrBackdrop(animated = false).testTag("settings-touch-frame")) {
+        val compact = maxHeight > maxWidth || maxWidth < 680.dp
         val body: @Composable (Modifier) -> Unit = { modifier ->
             CompositionLocalProvider(LocalXdButtonShape provides ZephyrActionShape) {
                 Column(modifier.fillMaxHeight().windowInsetsPadding(WindowInsets.safeDrawing.part(
-                    top = !compact, bottom = true, start = compact, end = true))) {
+                    top = !compact, bottom = !compact, start = compact, end = true))) {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         XdIconButton(XdIcons.back, stringResource(R.string.xd_back), back,
                             Modifier.testTag("settings-hub-back"))
@@ -124,7 +124,7 @@ internal fun SettingsTouchFrame(
                 }
             }
         }
-        if (compact) Column(Modifier.fillMaxSize()) { BTopAreaBar(XdArea.SETTINGS); body(Modifier.weight(1f)) }
+        if (compact) Column(Modifier.fillMaxSize()) { ZephyrPortraitHeader(); body(Modifier.weight(1f)); ZephyrBottomBar(XdArea.SETTINGS) }
         else Row(Modifier.fillMaxSize()) { BRail(XdArea.SETTINGS); body(Modifier.weight(1f)) }
     }
 }
@@ -133,7 +133,7 @@ internal fun SettingsTouchFrame(
 private fun SettingsHubCards(sections: List<XdSection>, onNavigate: (String) -> Unit) {
     val categories = SettingsHubCategory.entries.filter { settingsHubSections(it, sections).isNotEmpty() }
     BoxWithConstraints(Modifier.fillMaxWidth().testTag("settings-hub-home")) {
-        val columns = if (maxWidth >= 640.dp) 2 else 1
+        val columns = if (maxWidth >= 690.dp) 3 else if (maxWidth >= 510.dp) 2 else 1
         Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
             categories.chunked(columns).forEach { row ->
                 Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -143,7 +143,7 @@ private fun SettingsHubCards(sections: List<XdSection>, onNavigate: (String) -> 
                                 "settings-hub-category:${category.key}") { onNavigate(category.destination) }
                         }
                     }
-                    if (columns == 2 && row.size == 1) Spacer(Modifier.weight(1f))
+                    repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
         }

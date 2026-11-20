@@ -16,6 +16,11 @@
     <string name="zephyr_library_titles">Games</string>
     <string name="zephyr_library_medium_covers">Medium covers</string>
     <string name="zephyr_game_adjustments">Settings</string>
+    <string name="zephyr_content_search">Search games and packages</string>
+    <string name="zephyr_content_all">All</string>
+    <string name="zephyr_content_no_results">No packages match this search or filter.</string>
+    <string name="zephyr_editor_redo">Redo</string>
+    <string name="zephyr_game_patches_dlc">Patches / DLC</string>
     <string name="zephyr_game_data">Data</string>
     <string name="zephyr_game_identifiers">Game identification</string>
     <string name="zephyr_game_title_id">Title ID</string>

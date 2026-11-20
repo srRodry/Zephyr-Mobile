@@ -1,5 +1,7 @@
 package xendroid.compose.ui.library
 
+import androidx.compose.animation.Crossfade
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -33,7 +35,6 @@ import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -52,6 +53,8 @@ import androidx.compose.ui.unit.sp
 import androidx.compose.ui.zIndex
 import coil.compose.AsyncImage
 import androidx.compose.ui.layout.ContentScale
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
 import xendroid.compose.R
 import xendroid.compose.data.Game
 import xendroid.compose.ui.design.*
@@ -69,13 +72,26 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 internal fun LibraryConsole(
     portrait: Boolean, area: XdArea, games: List<Game>, game: Game, data: LibraryData,
     artOf: (Game) -> CoverArt, onSelect: (Game) -> Unit, preparing: Boolean,
-    onPlay: () -> Unit, onOpen: () -> Unit, onFavorite: () -> Unit,
+    onPlay: () -> Unit, onOpen: () -> Unit, onOpenSettings: (() -> Unit)?,
+    onLaunchOptions: (() -> Unit)?, lastFps: String?, onFavorite: () -> Unit,
+    onInspect: (Game) -> Unit,
     onBrowse: () -> Unit, onMenu: () -> Unit, notices: @Composable () -> Unit,
 ) {
     val c = Xd.colors
+    val lifecycle = LocalLifecycleOwner.current.lifecycle
+    val lifecycleState by lifecycle.currentStateFlow.collectAsState()
+    val foreground = lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
+    val animate = foreground && !preparing
+    var settledId by remember { mutableStateOf(game.stableId) }
+    val settledGame = games.firstOrNull { it.stableId == settledId } ?: game
+    LaunchedEffect(settledGame.identityKey, foreground) {
+        if (foreground) onInspect(settledGame)
+    }
+    val backdropModel = artOf(settledGame).takeUnless { it.smart }?.model
+    val onSettle: (Game) -> Unit = { settledId = it.stableId }
     val body: @Composable (Modifier) -> Unit = { modifier ->
         Column(modifier.windowInsetsPadding(WindowInsets.safeDrawing.part(
-            top = !portrait, bottom = true, end = true, start = portrait))) {
+            top = !portrait, bottom = !portrait, end = true, start = portrait))) {
             Row(Modifier.fillMaxWidth().heightIn(min = if (portrait) 44.dp else 56.dp)
                 .padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (!portrait) {
@@ -98,18 +114,18 @@ internal fun LibraryConsole(
                     val stageHeight = (maxHeight * .53f).coerceIn(190.dp, 370.dp)
                     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
                         verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ConsoleCoverflow(games, game, data, artOf, onSelect,
+                        ConsoleCoverflow(games, game, artOf, onSelect, onSettle,
                             Modifier.fillMaxWidth().height(stageHeight))
-                        ConsoleIdentity(game, data, artOf(game), preparing, onPlay, onOpen, onFavorite,
+                        ConsoleIdentity(game, data, preparing, onPlay, onOpen, onOpenSettings, onLaunchOptions, lastFps, onFavorite,
                             Modifier.fillMaxWidth().padding(horizontal = 20.dp), false)
                         RecentStrip(games, game, data, artOf, onSelect, onBrowse)
                     }
                 } else {
                     Row(Modifier.fillMaxSize().padding(end = 16.dp, bottom = 10.dp),
                         verticalAlignment = Alignment.CenterVertically) {
-                        ConsoleCoverflow(games, game, data, artOf, onSelect,
+                        ConsoleCoverflow(games, game, artOf, onSelect, onSettle,
                             Modifier.weight(1f).fillMaxHeight())
-                        ConsoleIdentity(game, data, artOf(game), preparing, onPlay, onOpen, onFavorite,
+                        ConsoleIdentity(game, data, preparing, onPlay, onOpen, onOpenSettings, onLaunchOptions, lastFps, onFavorite,
                             Modifier.width(if (enlarged) 270.dp else (sceneWidth * .32f).coerceIn(220.dp, 300.dp))
                                 .fillMaxHeight().verticalScroll(rememberScrollState()), true)
                     }
@@ -117,15 +133,28 @@ internal fun LibraryConsole(
             }
         }
     }
-    if (portrait) Column(Modifier.fillMaxSize().consoleAtmosphere()) {
-        BTopAreaBar(area)
-        body(Modifier.weight(1f))
-        if (Xd.controller) ControllerConsoleHints()
-    } else Row(Modifier.fillMaxSize().consoleAtmosphere()) {
-        ZephyrBladeRail(area)
-        Column(Modifier.weight(1f)) {
+    Box(Modifier.fillMaxSize().zephyrBackdrop(animated = false,
+        motionKey = settledGame.stableId.takeIf { animate })) {
+        val artwork: @Composable (Any?) -> Unit = { model ->
+            if (model != null) {
+                AsyncImage(model, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = .16f)
+            }
+        }
+        if (animate) Crossfade(backdropModel, Modifier.matchParentSize(), tween(250), label = "Game backdrop", content = artwork)
+        else Box(Modifier.matchParentSize()) { artwork(backdropModel) }
+        Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(
+            c.bg.copy(alpha = .32f), Color.Transparent, c.bg.copy(alpha = .62f)))))
+        if (portrait) Column(Modifier.fillMaxSize()) {
+            ZephyrPortraitHeader()
             body(Modifier.weight(1f))
             if (Xd.controller) ControllerConsoleHints()
+            ZephyrBottomBar(area)
+        } else Row(Modifier.fillMaxSize()) {
+            ZephyrBladeRail(area)
+            Column(Modifier.weight(1f)) {
+                body(Modifier.weight(1f))
+                if (Xd.controller) ControllerConsoleHints()
+            }
         }
     }
 }
@@ -143,37 +172,11 @@ private fun ControllerConsoleHints() {
     ), modifier = Modifier.padding(horizontal = 16.dp), scrim = false)
 }
 
-/** Wide flowing ribbons and localized light are cached vector geometry, not a full-screen bitmap. */
-private fun Modifier.consoleAtmosphere(): Modifier = drawWithCache {
-    val ribbons = listOf(.03f, .62f, .88f).map { y ->
-        Path().apply {
-            moveTo(-size.width * .1f, size.height * (y + .24f))
-            cubicTo(size.width * .22f, size.height * (y - .18f), size.width * .7f,
-                size.height * (y + .25f), size.width * 1.1f, size.height * (y - .28f))
-            lineTo(size.width * 1.1f, size.height * (y - .19f))
-            cubicTo(size.width * .68f, size.height * (y + .39f), size.width * .2f,
-                size.height * (y - .08f), -size.width * .1f, size.height * (y + .34f))
-            close()
-        }
-    }
-    val base = Brush.radialGradient(listOf(Color(0xFF0E3C27), Color(0xFF020B09)),
-        center = Offset(size.width * .45f, size.height * .45f), radius = size.maxDimension * .85f)
-    val ribbon = Brush.linearGradient(listOf(Color(0xFF020C08), Color(0xFF194E31), Color(0xFF062016)),
-        end = Offset(size.width, size.height))
-    onDrawBehind {
-        drawRect(base)
-        ribbons.forEach {
-            drawPath(it, ribbon)
-            drawPath(it, Color(0xFF91F15C).copy(alpha = .25f), style = Stroke(.7.dp.toPx()))
-        }
-    }
-}
-
 /** Bounded rendering of an unbounded circular sequence; drag, coast, then settle on one game. */
 @Composable
 private fun ConsoleCoverflow(
-    games: List<Game>, game: Game, data: LibraryData, artOf: (Game) -> CoverArt,
-    onSelect: (Game) -> Unit, modifier: Modifier,
+    games: List<Game>, game: Game, artOf: (Game) -> CoverArt,
+    onSelect: (Game) -> Unit, onSettle: (Game) -> Unit, modifier: Modifier,
 ) {
     if (games.isEmpty()) return
     val c = Xd.colors
@@ -187,7 +190,9 @@ private fun ConsoleCoverflow(
     val decay = remember(screenDensity) { splineBasedDecay<Float>(screenDensity) }
     val selectNow by rememberUpdatedState(onSelect)
     val currentGames by rememberUpdatedState(games)
+    val settleNow by rememberUpdatedState(onSettle)
     LaunchedEffect(identities) {
+        settleNow(currentGames[index])
         snapshotFlow { circularCoverIndex(position, games.size) }
             .distinctUntilChanged().collect { selectNow(currentGames[it]) }
     }
@@ -200,7 +205,10 @@ private fun ConsoleCoverflow(
                 Animatable(position).animateTo(target, spring(
                     dampingRatio = Spring.DampingRatioNoBouncy,
                     stiffness = Spring.StiffnessMediumLow)) { position = value }
-                selectNow(currentGames[circularCoverIndex(position, currentGames.size)])
+                val settled = circularCoverIndex(position, currentGames.size)
+                selectNow(currentGames[settled])
+                settleNow(currentGames[settled])
+                position = settled.toFloat()
             } finally { moving = false }
         }
     }
@@ -240,8 +248,9 @@ private fun ConsoleCoverflow(
                         pixels.animateTo(position.roundToInt() * spacingPx, spring(
                             dampingRatio = Spring.DampingRatioNoBouncy,
                             stiffness = Spring.StiffnessMediumLow)) { position = value / spacingPx }
-                        val settled = circularCoverIndex(position, games.size)
+                        val settled = circularCoverIndex(position, currentGames.size)
                         selectNow(currentGames[settled])
+                        settleNow(currentGames[settled])
                         // Rebase only after rest: keep float precision for arbitrarily many circles.
                         position = settled.toFloat()
                     } finally { moving = false }
@@ -249,7 +258,6 @@ private fun ConsoleCoverflow(
             },
         )
         Box(dragModifier, contentAlignment = Alignment.Center) {
-        val coverHeight = coverWidth * (4f / 3f)
         Canvas(Modifier.fillMaxSize()) {
             val w = size.width * .97f
             val h = size.height * .16f
@@ -288,10 +296,7 @@ private fun ConsoleCoverflow(
                 .then(if (primary) Modifier.semantics { contentDescription = title.name; selected = slot == center }
                     else Modifier.clearAndSetSemantics {})
                 .clickable(role = Role.Button) { travel(nearestCoverPosition(position, titleIndex, games.size)) }) {
-                // A dim floor reflection is part of the stage, not another game or touch target.
-                LibraryArtwork(title, artOf(title), Modifier.fillMaxWidth()
-                    .graphicsLayer { scaleY = -1f; translationY = coverHeight.toPx() * .97f; alpha = .075f })
-                Box(Modifier.shadow(if (slot == center) 18.dp else 5.dp, RoundedCornerShape(5.dp),
+                Box(Modifier.shadow(if (slot == center) 12.dp else 1.dp, RoundedCornerShape(5.dp),
                     ambientColor = c.acc, spotColor = c.acc)
                     .border(if (slot == center) 1.5.dp else .7.dp,
                         c.acc.copy(alpha = if (slot == center) .9f else .5f), RoundedCornerShape(5.dp))) {
@@ -321,18 +326,14 @@ private fun ConsoleCoverflow(
 
 @Composable
 private fun ConsoleIdentity(
-    game: Game, data: LibraryData, art: CoverArt, preparing: Boolean,
-    onPlay: () -> Unit, onOpen: () -> Unit, onFavorite: () -> Unit, modifier: Modifier, landscape: Boolean,
+    game: Game, data: LibraryData, preparing: Boolean,
+    onPlay: () -> Unit, onOpen: () -> Unit, onOpenSettings: (() -> Unit)?,
+    onLaunchOptions: (() -> Unit)?, lastFps: String?, onFavorite: () -> Unit, modifier: Modifier, landscape: Boolean,
 ) {
     val c = Xd.colors
     val shape = RoundedCornerShape(topStart = 36.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 36.dp)
     Column(modifier.testTag("library-featured").then(if (landscape) Modifier.zephyrSurface(shape, true) else Modifier)
         .padding(if (landscape) 18.dp else 0.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        if (landscape) Box(Modifier.fillMaxWidth().height(70.dp)
-            .clip(RoundedCornerShape(topStart = 24.dp, topEnd = 10.dp, bottomEnd = 10.dp, bottomStart = 10.dp))) {
-            AsyncImage(art.model, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-            Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(Color.Transparent, c.s1))))
-        }
         Column(Modifier.testTag("library-featured-identity"), verticalArrangement = Arrangement.spacedBy(6.dp)) {
             Text(game.name, style = XdText.heroSm.copy(fontStyle = FontStyle.Italic, fontWeight = FontWeight.Bold,
                 fontSize = if (landscape) 25.sp else 28.sp, lineHeight = 31.sp), color = c.fg,
@@ -341,15 +342,24 @@ private fun ConsoleIdentity(
                 Text(formatLabel(game.format), style = XdText.small, color = c.fg2)
                 LibraryStatusLine(game, data)
             }
+            if (lastFps != null) XdBadge(lastFps, icon = XdIcons.chart)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             ConsolePlay(onPlay, !preparing, Modifier.weight(1f))
             XdIconButton(if (data.favorite(game)) XdIcons.starFilled else XdIcons.star,
                 stringResource(R.string.lib_favorites), onFavorite, on = data.favorite(game))
         }
-        XdButton(stringResource(R.string.xd_lib_sheet), onOpen,
-            Modifier.fillMaxWidth().heightIn(min = 48.dp).testTag("library-featured-open"),
-            kind = XdButtonKind.GHOST, icon = XdIcons.info)
+        if (onLaunchOptions != null) XdButton(stringResource(R.string.xd_game_sec_launch), onLaunchOptions,
+            Modifier.fillMaxWidth().heightIn(min = 48.dp), kind = XdButtonKind.SECONDARY,
+            icon = XdIcons.sliders, enabled = !preparing)
+        Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
+            XdButton(stringResource(R.string.xd_lib_sheet), onOpen,
+                Modifier.weight(1f).heightIn(min = 48.dp).testTag("library-featured-open"),
+                kind = XdButtonKind.GHOST, icon = XdIcons.info)
+            if (onOpenSettings != null) XdIconButton(XdIcons.gear,
+                stringResource(R.string.zephyr_game_adjustments), onOpenSettings,
+                modifier = Modifier.testTag("library-featured-settings"))
+        }
     }
 }
 

@@ -68,7 +68,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import xendroid.compose.R
 import xendroid.compose.data.Game
-import xendroid.compose.ui.design.BTopAreaBar
+import xendroid.compose.ui.design.ZephyrBottomBar
+import xendroid.compose.ui.design.ZephyrPortraitHeader
 import xendroid.compose.ui.design.CGuide
 import xendroid.compose.ui.design.BRail
 import xendroid.compose.ui.design.GameCover
@@ -93,7 +94,6 @@ import xendroid.compose.ui.design.XdStatusPill
 import xendroid.compose.ui.design.XdText
 import xendroid.compose.ui.design.ZephyrActionShape
 import xendroid.compose.ui.design.padButtonOf
-import xendroid.compose.ui.design.zephyrBackdrop
 import xendroid.compose.ui.design.part
 
 /** One library card's art: the cover file (or icon) and whether only the 64 px icon exists. */
@@ -126,6 +126,10 @@ fun LibraryTouch(
     notices: @Composable () -> Unit,
     detail: @Composable (Game) -> Unit,
     area: XdArea = XdArea.GAMES,
+    onOpenSettings: ((Game) -> Unit)? = null,
+    onLaunchOptions: ((Game) -> Unit)? = null,
+    lastFps: (Game) -> String? = { null },
+    onInspect: (Game) -> Unit = {},
 ) {
     var optionsExpanded by rememberSaveable { mutableStateOf(false) }
     val frameColors = Xd.colors
@@ -145,6 +149,8 @@ fun LibraryTouch(
     var stageFocused by remember { mutableStateOf(false) }
     var guideOpen by remember { mutableStateOf(false) }
     val stageActive = !optionsExpanded && query.isBlank() && filter == LibraryFilter.All && featured != null
+    val browsedGame = featured.takeUnless { stageActive }
+    LaunchedEffect(browsedGame?.identityKey) { browsedGame?.let(onInspect) }
     LaunchedEffect(controller, stageActive, guideOpen) {
         if (controller && stageActive && !guideOpen) runCatching { controllerFocus.requestFocus() }
     }
@@ -181,20 +187,24 @@ fun LibraryTouch(
             }
         }
         .focusable() else Modifier
-    BoxWithConstraints(Modifier.fillMaxSize().zephyrBackdrop().then(controllerKeys)) {
+    BoxWithConstraints(Modifier.fillMaxSize().then(controllerKeys)) {
         val viewportWidth = maxWidth
         val portrait = maxHeight > viewportWidth || viewportWidth < 600.dp
         if (!optionsExpanded && query.isBlank() && filter == LibraryFilter.All && featured != null) {
             LibraryConsole(portrait, area, shown, featured, data, artOf, onSelect, preparing,
                 onPlay = { onSelect(featured); onPlay(featured) },
-                onOpen = { openSelected(featured) }, onFavorite = { onFavorite(featured) },
+                onOpen = { openSelected(featured) },
+                onOpenSettings = onOpenSettings?.let { open -> { open(featured) } },
+                onLaunchOptions = onLaunchOptions?.let { open -> { open(featured) } },
+                lastFps = lastFps(featured), onInspect = onInspect,
+                onFavorite = { onFavorite(featured) },
                 onBrowse = { optionsExpanded = true }, onMenu = onMenu, notices = notices)
             return@BoxWithConstraints
         }
         val listMode = portrait && density == CoverDensity.MEDIUM
         val main: @Composable (Modifier) -> Unit = { m ->
             LibraryPlane(m.windowInsetsPadding(WindowInsets.safeDrawing.part(top = !portrait,
-                bottom = portrait, start = portrait, end = portrait)).fillMaxHeight()) {
+                start = portrait, end = portrait)).fillMaxHeight()) {
                 val c = Xd.colors
                 LazyVerticalGrid(state = gridState,
                     columns = if (listMode) GridCells.Fixed(1) else GridCells.Adaptive(density.minWidth.dp),
@@ -288,7 +298,7 @@ fun LibraryTouch(
                 }
             }
         }
-        if (portrait) Column(Modifier.fillMaxSize()) { BTopAreaBar(area); main(Modifier.weight(1f)) }
+        if (portrait) Column(Modifier.fillMaxSize()) { ZephyrPortraitHeader(); main(Modifier.weight(1f)); ZephyrBottomBar(area) }
         else Row(Modifier.fillMaxSize()) {
             BRail(area)
             main(Modifier.weight(1f))

@@ -1,5 +1,6 @@
 package xendroid.compose.ui.design
 
+import androidx.compose.animation.core.Animatable
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -13,6 +14,8 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -31,7 +34,7 @@ import xendroid.compose.R
 
 /** Slow dashboard motion reads its phase in draw, leaving composition and layout alone. */
 @Composable
-fun Modifier.zephyrBackdrop(animated: Boolean = true): Modifier {
+fun Modifier.zephyrBackdrop(animated: Boolean = true, motionKey: Any? = null): Modifier {
     val c = Xd.colors
     val drift = if (animated) {
         rememberInfiniteTransition(label = "Zephyr atmosphere").animateFloat(
@@ -40,6 +43,14 @@ fun Modifier.zephyrBackdrop(animated: Boolean = true): Modifier {
             animationSpec = infiniteRepeatable(tween(12000), RepeatMode.Reverse),
             label = "Ribbon drift",
         )
+    } else null
+    val pulse = if (motionKey != null && !animated) {
+        val phase = remember { Animatable(0f) }
+        LaunchedEffect(motionKey) {
+            phase.snapTo(.58f)
+            phase.animateTo(0f, tween(720))
+        }
+        phase
     } else null
     return drawWithCache {
         val atmosphere = Brush.linearGradient(
@@ -58,11 +69,14 @@ fun Modifier.zephyrBackdrop(animated: Boolean = true): Modifier {
         )
         onDrawBehind {
             drawRect(atmosphere)
-            val phase = drift?.value ?: 0f
+            val phase = drift?.value ?: pulse?.value ?: 0f
             drawRect(halo, alpha = .78f + phase * .22f)
             translate(top = (phase - .5f) * minOf(size.height * .07f, 36.dp.toPx())) {
-                drawPath(current, c.acc.copy(alpha = .045f), style = Stroke(64.dp.toPx()))
+                drawPath(current, c.acc.copy(alpha = .045f), style = Stroke(46.dp.toPx()))
                 drawPath(current, c.acc.copy(alpha = .26f), style = Stroke(1.dp.toPx()))
+                translate(top = 26.dp.toPx()) {
+                    drawPath(current, c.acc.copy(alpha = .12f), style = Stroke(.75.dp.toPx()))
+                }
             }
             drawLine(c.chrome.copy(alpha = .085f), Offset(size.width * .08f, 0f),
                 Offset(size.width * .42f, 0f), .75.dp.toPx())

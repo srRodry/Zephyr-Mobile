@@ -232,6 +232,7 @@ jobs:
             --tests 'xendroid.compose.screens.ProfilesWorkspaceTest' \
             --tests 'xendroid.compose.screens.ControlsHubTest' \
             --tests 'xendroid.compose.gamepad.MenuButtonsTest' \
+            --tests 'xendroid.compose.gamepad.ControlOptionsTest' \
             --tests 'xendroid.compose.screens.BaseShots' \
             --tests 'xendroid.compose.screens.FirstRunReturnTest' \
             --tests 'xendroid.compose.bundle.*' \

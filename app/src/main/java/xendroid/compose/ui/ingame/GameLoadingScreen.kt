@@ -53,6 +53,7 @@ import xendroid.compose.ui.design.XdEyebrow
 import xendroid.compose.ui.design.XdHint
 import xendroid.compose.ui.design.XdIcons
 import xendroid.compose.ui.design.XdNote
+import xendroid.compose.ui.design.ZephyrOrbitMark
 import xendroid.compose.ui.design.XdText
 import xendroid.compose.ui.design.rememberCoverColors
 
@@ -105,7 +106,10 @@ fun GameLoadingScreen(
                     if (art != null) Box(Modifier.width(w)) { GameCover(art, name.orEmpty(), smart, radius = 12.dp) }
                 }
                 val body: @Composable ColumnScope.() -> Unit = {
-                    XdEyebrow(stringResource(R.string.xd_boot_opening, status.seconds))
+                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                        ZephyrOrbitMark(30.dp)
+                        XdEyebrow(stringResource(R.string.xd_boot_opening, status.seconds))
+                    }
                     if (!name.isNullOrBlank()) Text(name, style = XdText.hero, color = c.fg, maxLines = 2, overflow = TextOverflow.Ellipsis)
                     val who = listOfNotNull(details?.profile?.let { stringResource(R.string.xd_boot_signs_in, it) },
                         details?.titleId?.let { stringResource(R.string.xd_boot_title, it) })

@@ -59,35 +59,52 @@ private val bladeShape = GenericShape { size, _ ->
     close()
 }
 
-/** Portrait navigation belongs above the viewport; its parent supplies bottom safe insets. */
 @Composable
-fun BTopAreaBar(current: XdArea?, modifier: Modifier = Modifier) {
-    val c = Xd.colors
-    val enlargedText = LocalDensity.current.fontScale > 1.15f
-    Column(modifier.fillMaxWidth().zephyrBackdrop(animated = false).testTag("zephyr-navigation-portrait")
+fun ZephyrPortraitHeader() {
+    Column(Modifier.fillMaxWidth().zephyrBackdrop(animated = false)
         .windowInsetsPadding(WindowInsets.safeDrawing.part(top = true, start = true, end = true))) {
         BladeIdentity(Modifier.fillMaxWidth())
-        Row(Modifier.fillMaxWidth().then(if (enlargedText) Modifier.horizontalScroll(rememberScrollState()) else Modifier)
-            .padding(horizontal = 10.dp, vertical = 7.dp),
-            horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-            BladeGroup.entries.forEach { group ->
-                BladeTab(group, current, if (enlargedText) Modifier.width(132.dp) else Modifier.weight(1f))
-            }
-        }
         ZephyrChromeDivider()
     }
+}
+
+@Composable
+fun ZephyrBottomBar(current: XdArea?, modifier: Modifier = Modifier) {
+    val enlarged = LocalDensity.current.fontScale > 1.15f
+    Row(modifier.fillMaxWidth().testTag("zephyr-navigation-portrait")
+        .windowInsetsPadding(WindowInsets.safeDrawing.part(bottom = true, start = true, end = true))
+        .padding(horizontal = 8.dp, vertical = 4.dp).zephyrSurface(ZephyrPanelShape)
+        .then(if (enlarged) Modifier.horizontalScroll(rememberScrollState()) else Modifier)
+        .padding(3.dp), verticalAlignment = Alignment.CenterVertically) {
+        val itemWidth = if (enlarged) 104.dp else 64.dp
+        fun RowScope.tabSize() = if (enlarged) Modifier.width(itemWidth) else Modifier.weight(1f)
+        BladeTab(BladeGroup.GAMES, current, tabSize(), stacked = true)
+        BladeTab(BladeGroup.CONTENT, current, tabSize(), stacked = true)
+        ZephyrGuideAccess(if (enlarged) Modifier.width(itemWidth) else Modifier.width(56.dp))
+        BladeTab(BladeGroup.PROFILES, current, tabSize(), stacked = true)
+        BladeTab(BladeGroup.SYSTEM, current, tabSize(), stacked = true)
+    }
+}
+
+@Composable
+private fun ZephyrGuideAccess(modifier: Modifier) {
+    var open by remember { mutableStateOf(false) }
+    val label = stringResource(R.string.zephyr_game_guide)
+    Column(modifier.heightIn(min = 52.dp).focusRing(ZephyrActionShape)
+        .clickable(role = Role.Button) { open = true }.padding(vertical = 3.dp),
+        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.Center) {
+        ZephyrOrbitMark(30.dp)
+        Text(label, style = XdText.small, color = Xd.colors.fg)
+    }
+    if (open) CGuide(onDismiss = { open = false })
 }
 
 /** Landscape areas stay scrollable even on short displays; no navigation target is clipped. */
 @Composable
 fun ZephyrBladeRail(current: XdArea?, modifier: Modifier = Modifier) {
-    val c = Xd.colors
     Column(modifier.width(128.dp).fillMaxHeight().zephyrBackdrop(animated = false).testTag("zephyr-navigation-landscape")
         .windowInsetsPadding(WindowInsets.safeDrawing.part(top = true, bottom = true, start = true))) {
-        Column(Modifier.fillMaxWidth().padding(top = 12.dp, bottom = 16.dp), horizontalAlignment = Alignment.CenterHorizontally) {
-            ZephyrOrbitMark(48.dp)
-            Text("ZEPHYR", style = XdText.eyebrow, color = c.chrome, modifier = Modifier.padding(top = 6.dp))
-        }
+        ZephyrGuideAccess(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp))
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
             .padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             BladeGroup.entries.forEach { group -> BladeTab(group, current, Modifier.fillMaxWidth(), showIcon = true) }
@@ -121,7 +138,7 @@ private fun BladeProfile(modifier: Modifier) {
 }
 
 @Composable
-private fun BladeTab(group: BladeGroup, current: XdArea?, modifier: Modifier, showIcon: Boolean = false) {
+private fun BladeTab(group: BladeGroup, current: XdArea?, modifier: Modifier, showIcon: Boolean = false, stacked: Boolean = false) {
     val c = Xd.colors
     val nav = LocalXdNavigator.current
     val picked = groupOf(current) == group
@@ -132,33 +149,47 @@ private fun BladeTab(group: BladeGroup, current: XdArea?, modifier: Modifier, sh
         BladeGroup.PROFILES -> R.string.xd_area_profiles
         BladeGroup.SYSTEM -> R.string.zephyr_ui2_system
     })
+    val icon = when (group) {
+        BladeGroup.GAMES -> XdIcons.gamepad
+        BladeGroup.CONTENT -> XdIcons.layers
+        BladeGroup.PROFILES -> XdIcons.user
+        BladeGroup.SYSTEM -> XdIcons.gear
+    }
+    val open: () -> Unit = {
+        when (group) {
+            BladeGroup.GAMES, BladeGroup.SYSTEM -> expanded = true
+            BladeGroup.CONTENT -> nav.area(XdArea.CONTENT)
+            BladeGroup.PROFILES -> nav.area(XdArea.PROFILES)
+        }
+    }
     Box(modifier) {
-        Column(Modifier.fillMaxWidth().heightIn(min = 56.dp).focusRing(bladeShape).zephyrSurface(bladeShape, emphasized = picked)
+        if (stacked) {
+            Column(Modifier.fillMaxWidth().heightIn(min = 52.dp).focusRing(ZephyrActionShape)
+                .clip(ZephyrActionShape).background(if (picked) c.acc.copy(alpha = .14f) else Color.Transparent)
+                .clickable(role = Role.Tab, onClick = open).semantics { selected = picked }
+                .padding(horizontal = 2.dp, vertical = 4.dp), horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center) {
+                val tint = if (picked) c.acc else c.fg2
+                Icon(icon, null, Modifier.size(20.dp), tint = tint)
+                Text(label, style = XdText.small.copy(fontSize = 10.sp, lineHeight = 13.sp),
+                    color = if (picked) c.fg else c.fg2, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
+            }
+        } else Column(Modifier.fillMaxWidth().heightIn(min = 56.dp).focusRing(bladeShape).zephyrSurface(bladeShape, emphasized = picked)
             .background(Brush.verticalGradient(if (picked)
                 listOf(Color(0xFF63E855).copy(alpha = .62f), Color(0xFF08642D).copy(alpha = .4f),
                     Color(0xFF25A94F).copy(alpha = .38f)) else listOf(Color.Transparent, Color.Transparent)))
-            .clickable(role = if (group == BladeGroup.SYSTEM || group == BladeGroup.GAMES) Role.Button else Role.Tab) {
-                when (group) {
-                    BladeGroup.GAMES, BladeGroup.SYSTEM -> expanded = true
-                    BladeGroup.CONTENT -> nav.area(XdArea.CONTENT)
-                    BladeGroup.PROFILES -> nav.area(XdArea.PROFILES)
-                }
-            }.semantics { selected = picked }.padding(horizontal = 12.dp, vertical = 10.dp),
+            .clickable(role = if (group == BladeGroup.SYSTEM || group == BladeGroup.GAMES) Role.Button else Role.Tab,
+                onClick = open).semantics { selected = picked }.padding(horizontal = 12.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.Center) {
             Row(verticalAlignment = Alignment.CenterVertically) {
                 if (showIcon) {
-                    Icon(when (group) {
-                        BladeGroup.GAMES -> XdIcons.gamepad
-                        BladeGroup.CONTENT -> XdIcons.layers
-                        BladeGroup.PROFILES -> XdIcons.user
-                        BladeGroup.SYSTEM -> XdIcons.gear
-                    }, null, Modifier.size(18.dp), tint = c.chrome)
+                    Icon(icon, null, Modifier.size(17.dp), tint = if (picked) c.acc else c.chrome)
                     Spacer(Modifier.width(7.dp))
                 }
-                Text(label, Modifier.weight(1f), color = if (picked) c.onAction else c.fg2,
+                Text(label, Modifier.weight(1f), color = if (picked) c.fg else c.fg2,
                     style = XdText.label.copy(fontSize = 13.sp, lineHeight = 17.sp,
                         fontWeight = if (picked) FontWeight.Bold else FontWeight.Medium),
-                    maxLines = 1, overflow = TextOverflow.Ellipsis)
+                    maxLines = 2)
                 if (group == BladeGroup.GAMES || group == BladeGroup.SYSTEM) {
                     Icon(XdIcons.chevD, null, Modifier.size(12.dp), tint = if (picked) c.onAction else c.fg2)
                 }
@@ -166,13 +197,11 @@ private fun BladeTab(group: BladeGroup, current: XdArea?, modifier: Modifier, sh
             // A geometric selection mark accompanies color; the complete shape is the touch target.
             if (picked) Box(Modifier.padding(top = 5.dp).width(26.dp).height(2.dp).background(Brush.horizontalGradient(listOf(c.chrome, c.acc))))
         }
-        DropdownMenu(expanded, onDismissRequest = { expanded = false }, modifier = Modifier.background(c.s1)) {
-            val areas = when (group) {
-                BladeGroup.GAMES -> listOf(XdArea.GAMES, XdArea.COLLECTIONS)
-                BladeGroup.SYSTEM -> listOf(XdArea.SETTINGS, XdArea.CONTROLS, XdArea.DRIVERS)
-                else -> emptyList()
-            }
-            areas.forEach { area ->
+        if (group == BladeGroup.SYSTEM && expanded) {
+            ZephyrSystemHub { expanded = false }
+        }
+        DropdownMenu(expanded && group == BladeGroup.GAMES, onDismissRequest = { expanded = false }, modifier = Modifier.background(c.s1)) {
+            listOf(XdArea.GAMES, XdArea.COLLECTIONS).forEach { area ->
                 DropdownMenuItem(
                     text = { Text(stringResource(area.label), color = c.fg) },
                     leadingIcon = { Icon(area.icon, null, tint = c.fg2) },
@@ -180,17 +209,36 @@ private fun BladeTab(group: BladeGroup, current: XdArea?, modifier: Modifier, sh
                     onClick = { expanded = false; nav.area(area) },
                 )
             }
-            if (group == BladeGroup.SYSTEM) {
-                ZephyrChromeDivider()
-                listOf(
-                    Triple(XdShortcut.DIAGNOSTICS, R.string.xd_guide_diagnostics, XdIcons.bug),
-                    Triple(XdShortcut.COMPARE, R.string.xd_guide_compare, XdIcons.ab),
-                    Triple(XdShortcut.ABOUT, R.string.xd_guide_about, XdIcons.info),
-                ).forEach { (shortcut, text, icon) ->
-                    DropdownMenuItem(text = { Text(stringResource(text), color = c.fg) },
-                        leadingIcon = { Icon(icon, null, tint = c.fg2) },
-                        modifier = Modifier.heightIn(min = 48.dp),
-                        onClick = { expanded = false; nav.shortcut(shortcut) })
+        }
+    }
+}
+
+@Composable
+private fun ZephyrSystemHub(onDismiss: () -> Unit) {
+    val nav = LocalXdNavigator.current
+    val destinations = listOf(
+        Triple(XdIcons.gear, R.string.xd_guide_settings) { nav.area(XdArea.SETTINGS) },
+        Triple(XdIcons.gamepad, R.string.xd_area_controls) { nav.area(XdArea.CONTROLS) },
+        Triple(XdIcons.chip, R.string.xd_area_drivers) { nav.area(XdArea.DRIVERS) },
+        Triple(XdIcons.bug, R.string.xd_guide_diagnostics) { nav.shortcut(XdShortcut.DIAGNOSTICS) },
+        Triple(XdIcons.ab, R.string.xd_guide_compare) { nav.shortcut(XdShortcut.COMPARE) },
+        Triple(XdIcons.info, R.string.xd_guide_about) { nav.shortcut(XdShortcut.ABOUT) },
+    )
+    XdSheet(onDismiss = onDismiss, title = stringResource(R.string.zephyr_ui2_system), wide = true) {
+        BoxWithConstraints(Modifier.fillMaxWidth()) {
+            val columns = if (maxWidth >= 620.dp) 3 else if (maxWidth >= 290.dp) 2 else 1
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (row in destinations.chunked(columns)) Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    for ((icon, title, route) in row) {
+                        Column(Modifier.weight(1f).heightIn(min = 88.dp).focusRing(ZephyrPanelShape)
+                            .zephyrSurface().clickable(role = Role.Button) { onDismiss(); route() }.padding(9.dp),
+                            verticalArrangement = Arrangement.Center, horizontalAlignment = Alignment.CenterHorizontally) {
+                            Icon(icon, null, Modifier.size(22.dp), tint = Xd.colors.acc)
+                            Text(stringResource(title), style = XdText.labelSm, color = Xd.colors.fg,
+                                textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.padding(top = 6.dp))
+                        }
+                    }
+                    repeat(columns - row.size) { Spacer(Modifier.weight(1f)) }
                 }
             }
         }

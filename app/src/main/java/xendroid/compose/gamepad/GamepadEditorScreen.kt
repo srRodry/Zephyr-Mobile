@@ -82,6 +82,8 @@ import xendroid.compose.ui.design.XdSwitch
 import xendroid.compose.ui.design.XdText
 import xendroid.compose.ui.design.XdToastHost
 import xendroid.compose.ui.design.XdToastState
+import xendroid.compose.ui.design.zephyrBackdrop
+import xendroid.compose.ui.design.zephyrSurface
 
 /** Snap grid: cells along the SHORTER screen edge. The longer edge gets proportionally more
  *  cells of the same pixel pitch, so the cells are square. Higher = smaller (finer) cells. */
@@ -126,6 +128,7 @@ private fun GamepadEditorContent(controller: GamepadController, onDone: () -> Un
     var working by remember(persisted) { mutableStateOf(persisted) }
     val history = remember(persisted) { EditHistory<GamepadConfigDto>() }
     var canUndo by remember(persisted) { mutableStateOf(false) }
+    var canRedo by remember(persisted) { mutableStateOf(false) }
     val startLandscape = LocalConfiguration.current.orientation != Configuration.ORIENTATION_PORTRAIT
     var landscape by remember { mutableStateOf(startLandscape) }
     var selected by remember { mutableStateOf<ControlId?>(null) }
@@ -197,12 +200,19 @@ private fun GamepadEditorContent(controller: GamepadController, onDone: () -> Un
     fun commit(next: GamepadConfigDto) {
         if (next == working) return
         history.push(working)
-        canUndo = true
+        canUndo = history.canUndo
+        canRedo = history.canRedo
         working = next
     }
     fun undo() {
-        history.undo()?.let { working = it }
+        history.undo(working)?.let { working = it }
         canUndo = history.canUndo
+        canRedo = history.canRedo
+    }
+    fun redo() {
+        history.redo(working)?.let { working = it }
+        canUndo = history.canUndo
+        canRedo = history.canRedo
     }
     fun layoutWith(cfg: GamepadConfigDto, transform: (List<OnScreenControl>) -> List<OnScreenControl>): GamepadConfigDto =
         // U06: controls and fields this build does not know stay in the stored layout.
@@ -252,7 +262,8 @@ private fun GamepadEditorContent(controller: GamepadController, onDone: () -> Un
     CompositionLocalProvider(LocalXdToast provides toast) {
     // A dark frame stands for the game (in a game, the paused frame shows through it).
     Box(
-        Modifier.fillMaxSize().background(if (inGame) Color(0xFF15171C).copy(alpha = 0.55f) else Color(0xFF15171C))
+        Modifier.fillMaxSize().then(if (inGame) Modifier.background(Color(0xFF06160F).copy(alpha = .52f))
+            else Modifier.zephyrBackdrop(animated = false))
             .onSizeChanged { editorSize = it }
             .focusRequester(rootFocus)
             .focusable(enabled = controllerMode)
@@ -294,7 +305,11 @@ private fun GamepadEditorContent(controller: GamepadController, onDone: () -> Un
                 val cur = dragRaw?.takeIf { it.first == id }?.second
                     ?: base.firstOrNull { it.id == id }?.let { Offset(it.xFraction, it.yFraction) }
                     ?: return@GamepadOverlay
-                if (first) { history.push(working); canUndo = true }
+                if (first) {
+                    history.push(working)
+                    canUndo = history.canUndo
+                    canRedo = history.canRedo
+                }
                 val nx = (cur.x + dx).coerceIn(0.02f, 0.98f)
                 val ny = (cur.y + dy).coerceIn(0.02f, 0.98f)
                 dragRaw = id to Offset(nx, ny)
@@ -355,8 +370,8 @@ private fun GamepadEditorContent(controller: GamepadController, onDone: () -> Un
                 }
             } else {
                 FlowRow(
-                    Modifier.padding(horizontal = 10.dp, vertical = 8.dp).widthIn(max = 980.dp).clip(RoundedCornerShape(16.dp))
-                        .background(c.solid(c.sheet).copy(alpha = 0.94f)).border(1.dp, Color.White.copy(alpha = 0.08f), RoundedCornerShape(16.dp))
+                    Modifier.padding(horizontal = 10.dp, vertical = 8.dp).widthIn(max = 980.dp)
+                        .zephyrSurface(RoundedCornerShape(16.dp))
                         .onFocusChanged { barFocused = it.hasFocus }
                         .padding(horizontal = 10.dp, vertical = 8.dp),
                     horizontalArrangement = Arrangement.spacedBy(6.dp), verticalArrangement = Arrangement.spacedBy(6.dp),
@@ -373,6 +388,8 @@ private fun GamepadEditorContent(controller: GamepadController, onDone: () -> Un
                     }, mid)
                     Bar(mid)
                     XdIconButton(XdIcons.reset, stringResource(R.string.xd_undo), ::undo, mid, enabled = canUndo, size = 34.dp)
+                    XdButton(stringResource(R.string.zephyr_editor_redo), ::redo, modifier = mid,
+                        enabled = canRedo, kind = XdButtonKind.GHOST, size = XdButtonSize.SM)
                     XdButton(stringResource(R.string.lp_title), { layoutsOpen = true }, mid, kind = XdButtonKind.GHOST, size = XdButtonSize.SM)
                     XdButton(stringResource(R.string.ge_globals), { globalsOpen = true }, mid, kind = XdButtonKind.GHOST, size = XdButtonSize.SM)
                     XdButton(stringResource(R.string.ge_reset), {
@@ -433,7 +450,7 @@ private fun ControlPanel(
     val c = Xd.colors
     val shape = RoundedCornerShape(14.dp)
     Column(
-        modifier.width(250.dp).clip(shape).background(c.solid(c.sheet).copy(alpha = 0.95f)).border(1.dp, Color.White.copy(alpha = 0.08f), shape)
+        modifier.width(250.dp).zephyrSurface(shape)
             .padding(start = 14.dp, end = 8.dp, top = 6.dp, bottom = 12.dp),
         verticalArrangement = Arrangement.spacedBy(8.dp),
     ) {

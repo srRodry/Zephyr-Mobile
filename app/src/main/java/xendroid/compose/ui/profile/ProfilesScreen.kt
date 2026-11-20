@@ -9,6 +9,7 @@ import android.text.format.Formatter
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.PickVisualMediaRequest
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -46,6 +47,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.layout.ContentScale
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.platform.LocalContext
@@ -95,6 +97,7 @@ import xendroid.compose.ui.design.XdTextInput
 import xendroid.compose.ui.design.ZephyrActionShape
 import xendroid.compose.ui.design.ZephyrPanelShape
 import xendroid.compose.ui.design.focusRing
+import xendroid.compose.ui.design.zephyrSurface
 import xendroid.compose.ui.profile.ProfileManagerViewModel.ListState
 import xendroid.compose.ui.profile.ProfileManagerViewModel.OpState
 import xendroid.compose.ui.profile.ProfileManagerViewModel.ProfileEntry
@@ -149,7 +152,6 @@ fun ProfilesScreen(
     val summaries by vm.summaries.collectAsStateWithLifecycle()
     var editing by remember { mutableStateOf<Editing>(Editing.None) }
     var purgeTarget by remember { mutableStateOf<TrashedProfile?>(null) }
-    var menuOf by remember { mutableStateOf<ProfileEntry?>(null) }
     var savesOf by remember { mutableStateOf<ProfileEntry?>(null) }
     var detailsOf by remember { mutableStateOf<String?>(null) }
     var slotPicking by remember { mutableStateOf<Int?>(null) }
@@ -170,14 +172,13 @@ fun ProfilesScreen(
                 XdNote(s.message, tone = NoteTone.ERROR)
                 XdButton(stringResource(R.string.common_retry), { vm.refresh() }, kind = XdButtonKind.PRIMARY)
             }
-            is ListState.Loaded -> if (Xd.colors.controller) ControllerProfiles(s.profiles, s.slots, onPick = { menuOf = it }, onCreate = { editing = Editing.Create })
-                else TouchProfiles(s.profiles, s.slots, summaries, onActive = { vm.setActive(it.xuid) }, onEdit = { editing = Editing.Rename(it) },
+            is ListState.Loaded -> TouchProfiles(s.profiles, s.slots, summaries, onActive = { vm.setActive(it.xuid) }, onEdit = { editing = Editing.Rename(it) },
                     onSaves = { savesOf = it }, onTrash = { vm.requestDelete(it) }, onDetails = { detailsOf = it.xuid })
         }
     }
     val sections = listOf(
         XdSection(ProfilesSections.LIST, stringResource(R.string.xd_pf_sec_list), XdIcons.user, badge = profiles.size.takeIf { it > 0 }?.toString(),
-            heading = if (Xd.controller) stringResource(R.string.xd_pf_sec_list) else null) {
+            heading = null) {
             listBody()
         },
         XdSection(ProfilesSections.PLAYERS, stringResource(R.string.xd_pf_sec_players), XdIcons.gamepad,
@@ -228,19 +229,6 @@ fun ProfilesScreen(
         is Editing.Rename -> ProfileForm(e.entry, onDismiss = { editing = Editing.None }) { tag, lang, country, avatar ->
             editing = Editing.None
             vm.rename(e.entry.xuid, tag, lang, country, avatar)
-        }
-    }
-
-    menuOf?.let { p ->
-        val games = summaries[p.xuid]?.gameTitles.orEmpty()
-        XdSheet(onDismiss = { menuOf = null }, title = p.gamertag.ifBlank { p.xuid }, subtitle = statusText(p, slots) ?: p.xuid) {
-            if (!p.isActive) XdMenuItem(stringResource(R.string.xd_pf_make_active), { menuOf = null; vm.setActive(p.xuid) }, icon = XdIcons.user,
-                subtitle = stringResource(R.string.xd_pf_make_active_sub))
-            XdMenuItem(stringResource(R.string.pf_edit), { menuOf = null; editing = Editing.Rename(p) }, icon = XdIcons.text,
-                subtitle = stringResource(R.string.xd_pf_edit_sub))
-            XdMenuItem(stringResource(R.string.xd_pf_saves), { menuOf = null; savesOf = p }, icon = XdIcons.save, enabled = games.isNotEmpty(),
-                subtitle = savesText(summaries[p.xuid]))
-            XdMenuItem(stringResource(R.string.pf_trash), { menuOf = null; vm.requestDelete(p) }, icon = XdIcons.trash)
         }
     }
 
@@ -364,7 +352,6 @@ internal fun TouchProfiles(
         ?: profiles.firstOrNull { it.isActive } ?: profiles.firstOrNull()
     Column(Modifier.testTag("profiles-workspace"), verticalArrangement = Arrangement.spacedBy(12.dp)) {
         Text(stringResource(R.string.zephyr_profiles_local), style = XdText.h2, color = c.fg)
-        Text(stringResource(R.string.zephyr_profiles_inspect_hint), style = XdText.bodySm, color = c.fg2)
         if (chosen == null) XdEmpty(stringResource(R.string.zephyr_ui2_profiles_empty))
         else {
             androidx.compose.foundation.lazy.LazyRow(
@@ -375,8 +362,7 @@ internal fun TouchProfiles(
                     val p = profiles[i]
                     val selected = p.xuid == chosen.xuid
                     Column(Modifier.width(132.dp).heightIn(min = 164.dp).testTag("profile-select:${p.xuid}")
-                        .focusRing(ZephyrPanelShape).clip(ZephyrPanelShape).background(if (selected) c.s2 else c.s1)
-                        .border(1.dp, if (selected) c.acc else c.line2, ZephyrPanelShape)
+                        .focusRing(ZephyrPanelShape).zephyrSurface(emphasized = selected)
                         .selectable(selected = selected, role = Role.RadioButton, onClick = { inspected = p.xuid })
                         .padding(12.dp), horizontalAlignment = Alignment.CenterHorizontally,
                         verticalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -403,8 +389,8 @@ private fun ProfileIdentityCard(
 ) {
     val c = Xd.colors
     CompositionLocalProvider(LocalXdButtonShape provides ZephyrActionShape) {
-        Column(Modifier.fillMaxWidth().testTag("profile-inspected:${p.xuid}").clip(ZephyrPanelShape)
-            .background(c.s1).border(1.dp, c.line2, ZephyrPanelShape).padding(14.dp),
+        Column(Modifier.fillMaxWidth().testTag("profile-inspected:${p.xuid}")
+            .zephyrSurface(emphasized = p.isActive).padding(14.dp),
             verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                 ProfileAvatar(p.xuid, p.gamertag, p.hasAvatar, 72.dp)
@@ -412,6 +398,15 @@ private fun ProfileIdentityCard(
                     Text(stringResource(R.string.zephyr_profiles_identity), style = XdText.labelSm, color = c.fg2)
                     Text(p.gamertag.ifBlank { p.xuid }, style = XdText.h2, color = c.fg)
                     statusText(p, slots)?.let { Text(it, style = XdText.labelSm, color = c.acc) }
+                }
+                Canvas(Modifier.size(46.dp)) {
+                    repeat(ProfileSlots.COUNT) { slot ->
+                        drawArc(
+                            if (slots.getOrNull(slot) == p.xuid) c.acc else c.line2,
+                            -177f + slot * 90f, 84f, useCenter = false,
+                            style = Stroke(3.dp.toPx()),
+                        )
+                    }
                 }
             }
             XdKv(listOf(stringResource(R.string.xd_pf_lang_region) to languageText(p),
@@ -433,46 +428,6 @@ private fun ProfileIdentityCard(
             }
         }
     }
-}
-
-/** Controller mode: big avatars side by side; A opens the profile's options. */
-@Composable
-private fun ControllerProfiles(profiles: List<ProfileEntry>, slots: List<String?>, onPick: (ProfileEntry) -> Unit, onCreate: () -> Unit) {
-    val c = Xd.colors
-    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-        androidx.compose.foundation.lazy.LazyRow(horizontalArrangement = Arrangement.spacedBy(14.dp)) {
-            items(profiles.size) { i ->
-                val p = profiles[i]
-                BigTile(onClick = { onPick(p) }, on = p.isActive) {
-                    ProfileAvatar(p.xuid, p.gamertag, p.hasAvatar, 88.dp)
-                    Text(p.gamertag.ifBlank { p.xuid }, style = XdText.label.copy(fontSize = 16.sp), color = c.fg, maxLines = 1, overflow = TextOverflow.Ellipsis)
-                    Text(statusText(p, slots) ?: languageText(p), style = XdText.small, color = if (p.isActive) c.acc else c.fg3, maxLines = 1)
-                }
-            }
-            item {
-                BigTile(onClick = onCreate, on = false) {
-                    Box(Modifier.size(88.dp).clip(CircleShape).background(c.s3), contentAlignment = Alignment.Center) {
-                        Icon(XdIcons.plus, null, Modifier.size(38.dp), tint = c.fg2)
-                    }
-                    Text(stringResource(R.string.pf_create), style = XdText.label.copy(fontSize = 16.sp), color = c.fg)
-                    Text(stringResource(R.string.xd_pf_new_sub), style = XdText.small, color = c.fg3)
-                }
-            }
-        }
-        Text(stringResource(R.string.xd_pf_c_note), style = XdText.note, color = c.fg3)
-    }
-}
-
-@Composable
-private fun BigTile(onClick: () -> Unit, on: Boolean, content: @Composable () -> Unit) {
-    val c = Xd.colors
-    Column(
-        Modifier.width(160.dp).focusRing(ZephyrPanelShape).clip(ZephyrPanelShape)
-            .background(if (on) c.s2 else c.s1)
-            .border(1.dp, if (on) c.acc else c.line2, ZephyrPanelShape)
-            .clickable(role = Role.Button, onClick = onClick).padding(vertical = 18.dp, horizontal = 12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally, verticalArrangement = Arrangement.spacedBy(8.dp),
-    ) { content() }
 }
 
 /** U11: who signs in as P1–P4; P1 is the active profile. */
