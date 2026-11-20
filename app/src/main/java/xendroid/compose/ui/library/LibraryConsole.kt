@@ -72,7 +72,8 @@ import androidx.compose.ui.semantics.clearAndSetSemantics
 internal fun LibraryConsole(
     portrait: Boolean, area: XdArea, games: List<Game>, game: Game, data: LibraryData,
     artOf: (Game) -> CoverArt, onSelect: (Game) -> Unit, preparing: Boolean,
-    onPlay: () -> Unit, onOpen: () -> Unit, onOpenSettings: (() -> Unit)?, onFavorite: () -> Unit,
+    onPlay: () -> Unit, onOpen: () -> Unit, onOpenSettings: (() -> Unit)?,
+    onLaunchOptions: (() -> Unit)?, lastFps: String?, onFavorite: () -> Unit,
     onBrowse: () -> Unit, onMenu: () -> Unit, notices: @Composable () -> Unit,
 ) {
     val c = Xd.colors
@@ -85,7 +86,7 @@ internal fun LibraryConsole(
     val onSettle: (Game) -> Unit = { settledId = it.stableId }
     val body: @Composable (Modifier) -> Unit = { modifier ->
         Column(modifier.windowInsetsPadding(WindowInsets.safeDrawing.part(
-            top = !portrait, bottom = true, end = true, start = portrait))) {
+            top = !portrait, bottom = !portrait, end = true, start = portrait))) {
             Row(Modifier.fillMaxWidth().heightIn(min = if (portrait) 44.dp else 56.dp)
                 .padding(horizontal = 16.dp), verticalAlignment = Alignment.CenterVertically) {
                 if (!portrait) {
@@ -110,7 +111,7 @@ internal fun LibraryConsole(
                         verticalArrangement = Arrangement.spacedBy(8.dp)) {
                         ConsoleCoverflow(games, game, artOf, onSelect, onSettle,
                             Modifier.fillMaxWidth().height(stageHeight))
-                        ConsoleIdentity(game, data, preparing, onPlay, onOpen, onOpenSettings, onFavorite,
+                        ConsoleIdentity(game, data, preparing, onPlay, onOpen, onOpenSettings, onLaunchOptions, lastFps, onFavorite,
                             Modifier.fillMaxWidth().padding(horizontal = 20.dp), false)
                         RecentStrip(games, game, data, artOf, onSelect, onBrowse)
                     }
@@ -119,7 +120,7 @@ internal fun LibraryConsole(
                         verticalAlignment = Alignment.CenterVertically) {
                         ConsoleCoverflow(games, game, artOf, onSelect, onSettle,
                             Modifier.weight(1f).fillMaxHeight())
-                        ConsoleIdentity(game, data, preparing, onPlay, onOpen, onOpenSettings, onFavorite,
+                        ConsoleIdentity(game, data, preparing, onPlay, onOpen, onOpenSettings, onLaunchOptions, lastFps, onFavorite,
                             Modifier.width(if (enlarged) 270.dp else (sceneWidth * .32f).coerceIn(220.dp, 300.dp))
                                 .fillMaxHeight().verticalScroll(rememberScrollState()), true)
                     }
@@ -139,9 +140,10 @@ internal fun LibraryConsole(
         Box(Modifier.matchParentSize().background(Brush.verticalGradient(listOf(
             c.bg.copy(alpha = .32f), Color.Transparent, c.bg.copy(alpha = .62f)))))
         if (portrait) Column(Modifier.fillMaxSize()) {
-            BTopAreaBar(area)
+            ZephyrPortraitHeader()
             body(Modifier.weight(1f))
             if (Xd.controller) ControllerConsoleHints()
+            ZephyrBottomBar(area)
         } else Row(Modifier.fillMaxSize()) {
             ZephyrBladeRail(area)
             Column(Modifier.weight(1f)) {
@@ -320,7 +322,8 @@ private fun ConsoleCoverflow(
 @Composable
 private fun ConsoleIdentity(
     game: Game, data: LibraryData, preparing: Boolean,
-    onPlay: () -> Unit, onOpen: () -> Unit, onOpenSettings: (() -> Unit)?, onFavorite: () -> Unit, modifier: Modifier, landscape: Boolean,
+    onPlay: () -> Unit, onOpen: () -> Unit, onOpenSettings: (() -> Unit)?,
+    onLaunchOptions: (() -> Unit)?, lastFps: String?, onFavorite: () -> Unit, modifier: Modifier, landscape: Boolean,
 ) {
     val c = Xd.colors
     val shape = RoundedCornerShape(topStart = 36.dp, topEnd = 16.dp, bottomStart = 16.dp, bottomEnd = 36.dp)
@@ -334,12 +337,16 @@ private fun ConsoleIdentity(
                 Text(formatLabel(game.format), style = XdText.small, color = c.fg2)
                 LibraryStatusLine(game, data)
             }
+            if (lastFps != null) XdBadge(lastFps, icon = XdIcons.chart)
         }
         Row(horizontalArrangement = Arrangement.spacedBy(10.dp), verticalAlignment = Alignment.CenterVertically) {
             ConsolePlay(onPlay, !preparing, Modifier.weight(1f))
             XdIconButton(if (data.favorite(game)) XdIcons.starFilled else XdIcons.star,
                 stringResource(R.string.lib_favorites), onFavorite, on = data.favorite(game))
         }
+        if (onLaunchOptions != null) XdButton(stringResource(R.string.xd_game_sec_launch), onLaunchOptions,
+            Modifier.fillMaxWidth().heightIn(min = 48.dp), kind = XdButtonKind.SECONDARY,
+            icon = XdIcons.sliders, enabled = !preparing)
         Row(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalAlignment = Alignment.CenterVertically) {
             XdButton(stringResource(R.string.xd_lib_sheet), onOpen,
                 Modifier.weight(1f).heightIn(min = 48.dp).testTag("library-featured-open"),

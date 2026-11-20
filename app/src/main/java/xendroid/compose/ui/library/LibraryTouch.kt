@@ -68,7 +68,8 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import xendroid.compose.R
 import xendroid.compose.data.Game
-import xendroid.compose.ui.design.BTopAreaBar
+import xendroid.compose.ui.design.ZephyrBottomBar
+import xendroid.compose.ui.design.ZephyrPortraitHeader
 import xendroid.compose.ui.design.CGuide
 import xendroid.compose.ui.design.BRail
 import xendroid.compose.ui.design.GameCover
@@ -126,6 +127,8 @@ fun LibraryTouch(
     detail: @Composable (Game) -> Unit,
     area: XdArea = XdArea.GAMES,
     onOpenSettings: ((Game) -> Unit)? = null,
+    onLaunchOptions: ((Game) -> Unit)? = null,
+    lastFps: (Game) -> String? = { null },
 ) {
     var optionsExpanded by rememberSaveable { mutableStateOf(false) }
     val frameColors = Xd.colors
@@ -189,6 +192,8 @@ fun LibraryTouch(
                 onPlay = { onSelect(featured); onPlay(featured) },
                 onOpen = { openSelected(featured) },
                 onOpenSettings = onOpenSettings?.let { open -> { open(featured) } },
+                onLaunchOptions = onLaunchOptions?.let { open -> { open(featured) } },
+                lastFps = lastFps(featured),
                 onFavorite = { onFavorite(featured) },
                 onBrowse = { optionsExpanded = true }, onMenu = onMenu, notices = notices)
             return@BoxWithConstraints
@@ -196,7 +201,7 @@ fun LibraryTouch(
         val listMode = portrait && density == CoverDensity.MEDIUM
         val main: @Composable (Modifier) -> Unit = { m ->
             LibraryPlane(m.windowInsetsPadding(WindowInsets.safeDrawing.part(top = !portrait,
-                bottom = portrait, start = portrait, end = portrait)).fillMaxHeight()) {
+                start = portrait, end = portrait)).fillMaxHeight()) {
                 val c = Xd.colors
                 LazyVerticalGrid(state = gridState,
                     columns = if (listMode) GridCells.Fixed(1) else GridCells.Adaptive(density.minWidth.dp),
@@ -290,7 +295,7 @@ fun LibraryTouch(
                 }
             }
         }
-        if (portrait) Column(Modifier.fillMaxSize()) { BTopAreaBar(area); main(Modifier.weight(1f)) }
+        if (portrait) Column(Modifier.fillMaxSize()) { ZephyrPortraitHeader(); main(Modifier.weight(1f)); ZephyrBottomBar(area) }
         else Row(Modifier.fillMaxSize()) {
             BRail(area)
             main(Modifier.weight(1f))

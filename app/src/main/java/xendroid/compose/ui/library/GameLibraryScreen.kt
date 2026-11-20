@@ -326,6 +326,8 @@ fun GameLibraryScreen(
                     selected, { selectedId = it.stableId }, art, onOpen = { onOpenGame(it, null) }, onFavorite = actions::toggleFavorite,
                     onPlay = { actions.play(it) }, preparing = actions.preparing,
                     onOpenSettings = { onOpenGame(it, xendroid.compose.ui.game.GameSections.SETTINGS) },
+                    onLaunchOptions = { onOpenGame(it, xendroid.compose.ui.game.GameSections.LAUNCH) },
+                    lastFps = lastFps,
                     onMenu = { menuOpen = true }, gridState = gridState,
                     notices = { LibraryNotices(loaded, missing, viewModel, openFolders) { missingOpen = true } },
                     detail = { game ->

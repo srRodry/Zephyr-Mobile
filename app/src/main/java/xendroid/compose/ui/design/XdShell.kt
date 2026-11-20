@@ -319,12 +319,12 @@ fun XdSectionedScreen(
         }
     } else {
     val c = Xd.colors
-    BoxWithConstraints(sharedModifier.fillMaxSize().zephyrBackdrop()) {
+    BoxWithConstraints(sharedModifier.fillMaxSize().zephyrBackdrop(animated = false)) {
         val portrait = maxHeight > maxWidth
         if (portrait) {
             Column(Modifier.fillMaxSize()) {
-                BTopAreaBar(area)
-                Column(Modifier.weight(1f).windowInsetsPadding(WindowInsets.safeDrawing.part(bottom = true, start = true, end = true))) {
+                ZephyrPortraitHeader()
+                Column(Modifier.weight(1f).windowInsetsPadding(WindowInsets.safeDrawing.part(start = true, end = true))) {
                     BTopBar(title, subtitle = subtitle, subtitleMono = subtitleMono, onBack = onBack, lead = lead, art = art, portrait = true, actions = actions)
                     Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()).padding(horizontal = 10.dp, vertical = 8.dp),
                         horizontalArrangement = Arrangement.spacedBy(4.dp)) {
@@ -333,6 +333,7 @@ fun XdSectionedScreen(
                     ZephyrChromeDivider()
                     SectionBody(current, Modifier.weight(1f)) { BackToLink(history, sections) }
                 }
+                ZephyrBottomBar(area)
             }
         } else {
             Row(Modifier.fillMaxSize()) {
@@ -455,10 +456,10 @@ fun XdSingleScreen(
     LaunchedEffect(controller, guideVisible) {
         if (controller && !guideVisible) runCatching { rootFocus.requestFocus() }
     }
-    BoxWithConstraints(sharedModifier.fillMaxSize().zephyrBackdrop()) {
+    BoxWithConstraints(sharedModifier.fillMaxSize().zephyrBackdrop(animated = false)) {
         val portrait = maxHeight > maxWidth
         val body: @Composable (Modifier) -> Unit = { m ->
-            Column(m.windowInsetsPadding(WindowInsets.safeDrawing.part(top = !portrait || !showNav, start = portrait, end = true, bottom = portrait && showNav))) {
+            Column(m.windowInsetsPadding(WindowInsets.safeDrawing.part(top = !portrait || !showNav, start = portrait, end = true))) {
                 BTopBar(title, subtitle = subtitle, onBack = onBack, portrait = portrait, actions = actions)
                 val inner = Modifier.weight(1f).fillMaxWidth()
                 if (scroll) Column(inner.verticalScroll(rememberScrollState()).padding(start = 16.dp, end = 16.dp, top = 14.dp, bottom = 24.dp), content = content)
@@ -477,7 +478,7 @@ fun XdSingleScreen(
         }
         when {
             !showNav -> body(Modifier.fillMaxSize().windowInsetsPadding(WindowInsets.safeDrawing.part(bottom = true, start = !portrait)))
-            portrait -> Column(Modifier.fillMaxSize()) { BTopAreaBar(area); body(Modifier.weight(1f)) }
+            portrait -> Column(Modifier.fillMaxSize()) { ZephyrPortraitHeader(); body(Modifier.weight(1f)); ZephyrBottomBar(area) }
             else -> Row(Modifier.fillMaxSize()) { BRail(area); body(Modifier.weight(1f)) }
         }
         overlay?.invoke(this)
@@ -491,7 +492,7 @@ fun XdSingleScreen(
 @Composable
 fun CBackground(art: Any?, modifier: Modifier = Modifier) {
     val c = Xd.colors
-    Box(modifier.fillMaxSize().zephyrBackdrop()) {
+    Box(modifier.fillMaxSize().zephyrBackdrop(animated = false)) {
         Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(c.dyn.copy(alpha = 0.62f), Color.Transparent), radius = 1400f)))
         if (art != null) AsyncImage(art, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = 0.12f)
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(

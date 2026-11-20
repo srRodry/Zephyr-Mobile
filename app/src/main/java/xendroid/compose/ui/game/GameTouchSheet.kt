@@ -85,7 +85,7 @@ internal fun GameTouchSheet(
         val identityWidth = (maxWidth * .28f).coerceIn(185.dp, 260.dp)
         val body: @Composable (Modifier) -> Unit = { modifier ->
             Column(modifier.fillMaxHeight().windowInsetsPadding(WindowInsets.safeDrawing.part(
-                top = !compact, bottom = true, start = compact, end = true))) {
+                top = !compact, bottom = !compact, start = compact, end = true))) {
                 Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                     XdIconButton(XdIcons.back, stringResource(R.string.lib_title), onBack)
                     Text(stringResource(R.string.xd_lib_sheet), Modifier.weight(1f), style = XdText.label, color = c.fg)
@@ -126,7 +126,7 @@ internal fun GameTouchSheet(
                 if (Xd.controller) CHints(hints)
             }
         }
-        if (compact) Column(Modifier.fillMaxSize()) { BTopAreaBar(XdArea.GAMES); body(Modifier.weight(1f)) }
+        if (compact) Column(Modifier.fillMaxSize()) { ZephyrPortraitHeader(); body(Modifier.weight(1f)); ZephyrBottomBar(XdArea.GAMES) }
         else Row(Modifier.fillMaxSize()) { BRail(XdArea.GAMES); body(Modifier.weight(1f)) }
     }
 }

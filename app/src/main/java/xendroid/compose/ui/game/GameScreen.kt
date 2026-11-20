@@ -41,8 +41,10 @@ import xendroid.compose.ui.compress.GameCompressViewModel
 import xendroid.compose.ui.design.LocalSwapConfirm
 import xendroid.compose.ui.design.LocalXdToast
 import xendroid.compose.ui.design.PadButton
+import xendroid.compose.ui.design.Xd
 import xendroid.compose.ui.design.XdArea
 import xendroid.compose.ui.design.XdButton
+import xendroid.compose.ui.design.XdButtonSize
 import xendroid.compose.ui.design.XdButtonKind
 import xendroid.compose.ui.design.XdEmpty
 import xendroid.compose.ui.design.XdHint
@@ -93,6 +95,7 @@ class GameScreenLinks(
 object GameSections {
     const val OVERVIEW = "ov"
     const val SETTINGS = "settings"
+    const val LAUNCH = "launch"
     const val PERF = "perf"
     const val CONTENT = "cont"
     const val DATA = "data"
@@ -182,7 +185,7 @@ fun GameScreen(
         else -> savedSection
     }
     val launchState = remember(game.identityKey) { LaunchFormState() }
-    var launchOpen by remember { mutableStateOf(false) }
+    var launchOpen by rememberSaveable(game.identityKey) { mutableStateOf(initialSection == GameSections.LAUNCH) }
     var moreOpen by remember { mutableStateOf(false) }
     var presetsOpen by remember { mutableStateOf(false) }
     var tomlOpen by remember { mutableStateOf(false) }

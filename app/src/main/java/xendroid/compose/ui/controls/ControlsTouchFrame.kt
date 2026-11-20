@@ -59,11 +59,11 @@ internal fun ControlsTouchFrame(
     // System Back and the mapped gamepad cancel use the same route as the toolbar.
     BackHandler(enabled = !home, onBack = back)
     BoxWithConstraints(Modifier.fillMaxSize().background(c.bg).testTag("controls-touch-frame")) {
-        val compact = maxHeight > maxWidth || maxWidth < 840.dp
+        val compact = maxHeight > maxWidth || maxWidth < 680.dp
         val body: @Composable (Modifier) -> Unit = { modifier ->
             CompositionLocalProvider(LocalXdButtonShape provides ZephyrActionShape) {
                 Column(modifier.fillMaxHeight().windowInsetsPadding(WindowInsets.safeDrawing.part(
-                    top = !compact, bottom = true, start = compact, end = true))) {
+                    top = !compact, bottom = !compact, start = compact, end = true))) {
                     Row(Modifier.fillMaxWidth().padding(horizontal = 8.dp), verticalAlignment = Alignment.CenterVertically) {
                         if (!home || onBack != null) XdIconButton(XdIcons.back, stringResource(R.string.xd_back), back,
                             Modifier.testTag("controls-hub-back"))
@@ -89,7 +89,7 @@ internal fun ControlsTouchFrame(
                 }
             }
         }
-        if (compact) Column(Modifier.fillMaxSize()) { BTopAreaBar(XdArea.CONTROLS); body(Modifier.weight(1f)) }
+        if (compact) Column(Modifier.fillMaxSize()) { ZephyrPortraitHeader(); body(Modifier.weight(1f)); ZephyrBottomBar(XdArea.CONTROLS) }
         else Row(Modifier.fillMaxSize()) { BRail(XdArea.CONTROLS); body(Modifier.weight(1f)) }
     }
 }

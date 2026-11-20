@@ -29,6 +29,7 @@ import xendroid.compose.ui.design.*
 internal fun TouchGameGuide(
     model: InGameMenuModel, modifier: Modifier,
     onResume: () -> Unit, onControls: () -> Unit, onSettings: () -> Unit, onQuit: () -> Unit,
+    onHud: (() -> Unit)? = null, onDiagnostics: (() -> Unit)? = null,
 ) {
     val c = Xd.colors
     Column(
@@ -51,6 +52,9 @@ internal fun TouchGameGuide(
         GuideEntry(stringResource(R.string.zephyr_guide_resume), XdIcons.play, "game-guide-resume", onResume, primary = true)
         GuideEntry(stringResource(R.string.menu_tab_controls), XdIcons.gamepad, "game-guide-controls", onControls)
         GuideEntry(stringResource(R.string.zephyr_guide_settings), XdIcons.gear, "game-guide-settings", onSettings)
+        if (onHud != null) GuideEntry(stringResource(R.string.menu_tab_hud), XdIcons.chart, "game-guide-hud", onHud)
+        if (onDiagnostics != null) GuideEntry(stringResource(R.string.xd_guide_diagnostics), XdIcons.bug,
+            "game-guide-diagnostics", onDiagnostics)
         GuideEntry(stringResource(R.string.menu_exit_game), XdIcons.exit, "game-guide-quit", onQuit, danger = true)
     }
 }

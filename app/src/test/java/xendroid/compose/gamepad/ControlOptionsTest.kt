@@ -68,4 +68,18 @@ class ControlOptionsTest {
         assertNull(history.undo())
         assertFalse(history.canUndo)
     }
+    @Test fun redoRestoresUndoneStateAndNewEditDiscardsFuture() {
+        val history = EditHistory<Int>()
+        history.push(1)
+        history.push(2)
+        assertEquals(2, history.undo(3))
+        assertEquals(1, history.undo(2))
+        assertEquals(2, history.redo(1))
+        assertEquals(3, history.redo(2))
+        assertFalse(history.canRedo)
+        assertEquals(2, history.undo(3))
+        history.push(2)
+        assertFalse(history.canRedo)
+        assertEquals(2, history.undo(4))
+    }
 }
