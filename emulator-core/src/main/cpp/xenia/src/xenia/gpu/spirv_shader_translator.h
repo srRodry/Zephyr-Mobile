@@ -188,7 +188,9 @@ class SpirvShaderTranslator : public ShaderTranslator {
     // should be safe at least temporarily).
     kSysFlag_FSIDepthStencilEarlyWrite_Shift,
 
-    kSysFlag_Count,
+    // Four consecutive bits, one for each host 7e3 color attachment.
+    kSysFlag_SanitizeColor0Float7e3_Shift,
+    kSysFlag_Count = kSysFlag_SanitizeColor0Float7e3_Shift + 4,
 
     // For HostVertexShaderType kVertex, if fullDrawIndexUint32 is not
     // supported (ignored otherwise), whether to fetch the index manually
@@ -227,6 +229,8 @@ class SpirvShaderTranslator : public ShaderTranslator {
     kSysFlag_FSIStencilTest = 1u << kSysFlag_FSIStencilTest_Shift,
     kSysFlag_FSIDepthStencilEarlyWrite =
         1u << kSysFlag_FSIDepthStencilEarlyWrite_Shift,
+    kSysFlag_SanitizeColor0Float7e3 =
+        1u << kSysFlag_SanitizeColor0Float7e3_Shift,
   };
   static_assert(kSysFlag_Count <= 32, "Too many flags in the system constants");
 

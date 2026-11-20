@@ -13,10 +13,13 @@
 
 #include "third_party/glslang/SPIRV/GLSL.std.450.h"
 #include "xenia/base/assert.h"
+#include "xenia/base/cvar.h"
 #include "xenia/base/math.h"
 #include "xenia/gpu/draw_util.h"
 #include "xenia/gpu/render_target_cache.h"
 #include "xenia/gpu/spirv_compatibility.h"
+
+DECLARE_bool(vulkan_sanitize_host_7e3_exports);
 
 namespace xe {
 namespace gpu {
@@ -1497,6 +1500,46 @@ void SpirvShaderTranslator::CompleteFragmentShaderInMain() {
           }
         }
 
+        if (cvars::vulkan_sanitize_host_7e3_exports) {
+          const spv::Id sanitize = builder_->createBinOp(
+              spv::OpINotEqual, type_bool_,
+              builder_->createBinOp(
+                  spv::OpBitwiseAnd, type_uint_, main_system_constant_flags_,
+                  builder_->makeUintConstant(kSysFlag_SanitizeColor0Float7e3
+                                             << color_target_index)),
+              const_uint_0_);
+          SpirvBuilder::IfBuilder if_sanitize(
+              sanitize, spv::SelectionControlDontFlattenMask, *builder_);
+
+          // Classify by IEEE bits so fast-math assumptions about NaNs and
+          // infinities cannot fold the test away. Leave finite values intact:
+          // clamping them here would change host blend factors and sources.
+          id_vector_temp_.assign(4, builder_->makeUintConstant(0x7F800000u));
+          const spv::Id exponent_mask =
+              builder_->makeCompositeConstant(type_uint4_, id_vector_temp_);
+          const spv::Id bits =
+              builder_->createUnaryOp(spv::OpBitcast, type_uint4_, color);
+          const spv::Id exponent = builder_->createBinOp(
+              spv::OpBitwiseAnd, type_uint4_, bits, exponent_mask);
+          const spv::Id non_finite = builder_->createBinOp(
+              spv::OpIEqual, type_bool4_, exponent, exponent_mask);
+          id_vector_temp_.assign(3, builder_->makeFloatConstant(31.875f));
+          id_vector_temp_.push_back(const_float_1_);
+          const spv::Id maximum =
+              builder_->makeCompositeConstant(type_float4_, id_vector_temp_);
+          // +Inf has the same bits as the exponent mask. Every other
+          // non-finite value (NaN or -Inf) becomes zero.
+          const spv::Id positive_infinity = builder_->createBinOp(
+              spv::OpIEqual, type_bool4_, bits, exponent_mask);
+          const spv::Id finite_replacement = builder_->createTriOp(
+              spv::OpSelect, type_float4_, positive_infinity, maximum,
+              const_float4_0_);
+          const spv::Id sanitized = builder_->createTriOp(
+              spv::OpSelect, type_float4_, non_finite, finite_replacement,
+              color);
+          if_sanitize.makeEndIf();
+          color = if_sanitize.createMergePhi(sanitized, color);
+        }
         builder_->createStore(color, out_color);
       }
     }

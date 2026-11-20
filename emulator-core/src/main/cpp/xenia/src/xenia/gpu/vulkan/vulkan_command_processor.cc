@@ -257,6 +257,11 @@ DEFINE_bool(
     "Vulkan");
 
 DEFINE_bool(
+    vulkan_sanitize_host_7e3_exports, false,
+    "Prevent non-finite 7e3 fragment exports from entering host blending.",
+    "Vulkan");
+
+DEFINE_bool(
     vulkan_army_tdc_neutralize_ssao, false,
     "Replace Army TDC's aliased 640x352 SSAO mask with neutral occlusion. "
     "The rest of the lighting pipeline stays enabled.",
@@ -10574,6 +10579,15 @@ void VulkanCommandProcessor::UpdateSystemConstantValues(
       if (color_infos[i].color_format ==
           xenos::ColorRenderTargetFormat::k_8_8_8_8_GAMMA) {
         flags |= SpirvShaderTranslator::kSysFlag_ConvertColor0ToGamma << i;
+      }
+    }
+  }
+  if (!edram_fragment_shader_interlock &&
+      cvars::vulkan_sanitize_host_7e3_exports) {
+    for (uint32_t i = 0; i < xenos::kMaxColorRenderTargets; ++i) {
+      if (xenos::GetStorageColorFormat(color_infos[i].color_format) ==
+          xenos::ColorRenderTargetFormat::k_2_10_10_10_FLOAT) {
+        flags |= SpirvShaderTranslator::kSysFlag_SanitizeColor0Float7e3 << i;
       }
     }
   }

@@ -51,6 +51,8 @@ static const Quirk kQuirks[] = {
      "sample Army TDC integer textures in guest units"},
     {0x454109AB, "vulkan_army_tdc_selective_resolve_readback", true,
      "copy the Army TDC lighting inputs and small resolves to the guest CPU"},
+    {0x454109AB, "vulkan_sanitize_host_7e3_exports", true,
+     "keep non-finite HDR exports out of host blending"},
     {0x454109AB, "vulkan_army_tdc_neutralize_ssao", true,
      "replace the aliased Army TDC ambient occlusion mask with neutral AO"},
     {0x454109AB, "spirv_texture_unorm8_precision", true,
