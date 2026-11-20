@@ -129,6 +129,7 @@ fun LibraryTouch(
     onOpenSettings: ((Game) -> Unit)? = null,
     onLaunchOptions: ((Game) -> Unit)? = null,
     lastFps: (Game) -> String? = { null },
+    onInspect: (Game) -> Unit = {},
 ) {
     var optionsExpanded by rememberSaveable { mutableStateOf(false) }
     val frameColors = Xd.colors
@@ -148,6 +149,8 @@ fun LibraryTouch(
     var stageFocused by remember { mutableStateOf(false) }
     var guideOpen by remember { mutableStateOf(false) }
     val stageActive = !optionsExpanded && query.isBlank() && filter == LibraryFilter.All && featured != null
+    val browsedGame = featured.takeUnless { stageActive }
+    LaunchedEffect(browsedGame?.identityKey) { browsedGame?.let(onInspect) }
     LaunchedEffect(controller, stageActive, guideOpen) {
         if (controller && stageActive && !guideOpen) runCatching { controllerFocus.requestFocus() }
     }
@@ -193,7 +196,7 @@ fun LibraryTouch(
                 onOpen = { openSelected(featured) },
                 onOpenSettings = onOpenSettings?.let { open -> { open(featured) } },
                 onLaunchOptions = onLaunchOptions?.let { open -> { open(featured) } },
-                lastFps = lastFps(featured),
+                lastFps = lastFps(featured), onInspect = onInspect,
                 onFavorite = { onFavorite(featured) },
                 onBrowse = { optionsExpanded = true }, onMenu = onMenu, notices = notices)
             return@BoxWithConstraints

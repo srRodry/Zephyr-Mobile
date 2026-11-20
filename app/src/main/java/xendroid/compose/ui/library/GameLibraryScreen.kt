@@ -318,7 +318,6 @@ fun GameLibraryScreen(
             val filter = filterKey?.let(LibraryFilter::parse) ?: defaultFilter
             val shown = data.shown(filter, query)
             val selected = shown.firstOrNull { it.stableId == selectedId } ?: shown.firstOrNull()
-            LaunchedEffect(selected?.identityKey) { selected?.let { viewModel.loadDetails(it) } }
             PullToRefreshBox(isRefreshing = isRefreshing, onRefresh = { viewModel.refresh() }, modifier = Modifier.fillMaxSize()) {
                 LibraryTouch(
                     data, filter, { filterKey = it.key }, query, { query = it }, density,
@@ -327,7 +326,7 @@ fun GameLibraryScreen(
                     onPlay = { actions.play(it) }, preparing = actions.preparing,
                     onOpenSettings = { onOpenGame(it, xendroid.compose.ui.game.GameSections.SETTINGS) },
                     onLaunchOptions = { onOpenGame(it, xendroid.compose.ui.game.GameSections.LAUNCH) },
-                    lastFps = lastFps,
+                    lastFps = lastFps, onInspect = { viewModel.loadDetails(it) },
                     onMenu = { menuOpen = true }, gridState = gridState,
                     notices = { LibraryNotices(loaded, missing, viewModel, openFolders) { missingOpen = true } },
                     detail = { game ->

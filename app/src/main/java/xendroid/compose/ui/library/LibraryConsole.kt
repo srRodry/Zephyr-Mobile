@@ -74,14 +74,19 @@ internal fun LibraryConsole(
     artOf: (Game) -> CoverArt, onSelect: (Game) -> Unit, preparing: Boolean,
     onPlay: () -> Unit, onOpen: () -> Unit, onOpenSettings: (() -> Unit)?,
     onLaunchOptions: (() -> Unit)?, lastFps: String?, onFavorite: () -> Unit,
+    onInspect: (Game) -> Unit,
     onBrowse: () -> Unit, onMenu: () -> Unit, notices: @Composable () -> Unit,
 ) {
     val c = Xd.colors
     val lifecycle = LocalLifecycleOwner.current.lifecycle
     val lifecycleState by lifecycle.currentStateFlow.collectAsState()
-    val animate = lifecycleState.isAtLeast(Lifecycle.State.RESUMED) && !preparing
+    val foreground = lifecycleState.isAtLeast(Lifecycle.State.RESUMED)
+    val animate = foreground && !preparing
     var settledId by remember { mutableStateOf(game.stableId) }
     val settledGame = games.firstOrNull { it.stableId == settledId } ?: game
+    LaunchedEffect(settledGame.identityKey, foreground) {
+        if (foreground) onInspect(settledGame)
+    }
     val backdropModel = artOf(settledGame).takeUnless { it.smart }?.model
     val onSettle: (Game) -> Unit = { settledId = it.stableId }
     val body: @Composable (Modifier) -> Unit = { modifier ->
