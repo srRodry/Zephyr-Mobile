@@ -206,6 +206,7 @@ dependencies {
     debugImplementation libs.compose.ui.tooling
     implementation libs.coil.compose
     implementation libs.kotlinx.serialization.json
+    implementation 'org.tomlj:tomlj:1.1.1'
     implementation libs.androidx.datastore.preferences
     testImplementation libs.junit
     testImplementation libs.kotlinx.coroutines.test

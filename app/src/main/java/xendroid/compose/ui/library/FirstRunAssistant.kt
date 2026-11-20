@@ -67,9 +67,8 @@ import xendroid.compose.R
 import xendroid.compose.core.AllFilesAccess
 import xendroid.compose.core.EmulatorRuntime
 import xendroid.compose.core.Gamertag
-import xendroid.compose.settings.ConfigStore
+import xendroid.compose.settings.GuestLocaleConfig
 import xendroid.compose.settings.SettingLevelStore
-import xendroid.compose.settings.SettingsSchema
 import xendroid.compose.settings.UiMode
 import xendroid.compose.settings.UiModeStore
 import xendroid.compose.ui.design.NoteTone
@@ -339,11 +338,7 @@ private fun LocaleStep() {
                     scope.launch {
                         val result = withContext(Dispatchers.IO) {
                             runCatching {
-                                EmulatorRuntime.ensureLoaded()
-                                ConfigStore(context.applicationContext).editLiveConfig { config ->
-                                    locale.languageValue?.let { config.putSetting(SettingsSchema.byKey.getValue("Console|user_language"), it) }
-                                    locale.countryValue?.let { config.putSetting(SettingsSchema.byKey.getValue("Console|user_country"), it) }
-                                }
+                                GuestLocaleConfig.save(context.applicationContext, locale.languageValue, locale.countryValue)
                             }
                         }
                         saved = result.isSuccess
