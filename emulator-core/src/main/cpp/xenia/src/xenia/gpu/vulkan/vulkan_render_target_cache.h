@@ -471,6 +471,10 @@ class VulkanRenderTargetCache final : public RenderTargetCache {
   VkPipelineLayout resolve_copy_native_pipeline_layout_ = VK_NULL_HANDLE;
   std::array<VkPipeline, size_t(draw_util::ResolveCopyShaderIndex::kCount)>
       resolve_copy_native_pipelines_{};
+  // Optional lean full-copy variants alongside the accurate primary set.
+  decltype(resolve_copy_pipelines_) resolve_copy_fast_format_pipelines_{};
+  decltype(resolve_copy_native_pipelines_)
+      resolve_copy_fast_format_native_pipelines_{};
 
   VkPipelineLayout direct_host_resolve_pipeline_layout_color_ = VK_NULL_HANDLE;
   VkPipelineLayout direct_host_resolve_pipeline_layout_depth_ = VK_NULL_HANDLE;

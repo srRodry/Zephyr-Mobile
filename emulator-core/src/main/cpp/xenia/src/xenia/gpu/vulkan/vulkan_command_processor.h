@@ -1641,6 +1641,7 @@ class VulkanCommandProcessor final : public CommandProcessor {
   // The open submission has such exports: it ends with a barrier making the
   // shader writes visible to the host.
   bool memexport_readbacks_in_submission_ = false;
+  bool uma_resolve_host_barrier_pending_ = false;
   // Stores the changes of the pending exports in guest memory once the
   // submissions of all of them have completed - as submissions complete, and
   // so by the time the guest can see the GPU as done (while any is pending,

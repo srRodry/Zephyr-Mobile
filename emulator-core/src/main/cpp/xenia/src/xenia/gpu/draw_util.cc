@@ -1491,6 +1491,10 @@ ResolveCopyShaderIndex ResolveInfo::GetCopyShader(
       !is_depth && color_edram_info.decode_pwl_gamma &&
       xenos::ColorRenderTargetFormat(color_edram_info.format) ==
           xenos::ColorRenderTargetFormat::k_8_8_8_8_GAMMA;
+  const bool check_number_format =
+      cvars::resolve_check_number_format ||
+      (cvars::accurate_resolve_number_formats &&
+       cvars::resolve_copy_dest_number_packing);
   if (is_depth ||
       (!gamma_decoded_source && !copy_dest_info.copy_dest_exp_bias &&
        xenos::IsSingleCopySampleSelected(
@@ -1498,7 +1502,7 @@ ResolveCopyShaderIndex ResolveInfo::GetCopyShader(
        xenos::IsColorResolveFormatBitwiseEquivalent(
            xenos::ColorRenderTargetFormat(color_edram_info.format),
            xenos::ColorFormat(copy_dest_info.copy_dest_format)) &&
-       (!cvars::resolve_check_number_format ||
+       (!check_number_format ||
         ColorResolveNumberFormatMatches(
             xenos::ColorFormat(copy_dest_info.copy_dest_format),
             copy_dest_info.copy_dest_number)))) {

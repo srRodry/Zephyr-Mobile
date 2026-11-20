@@ -696,6 +696,17 @@ struct ResolveInfo {
   uint32_t rb_color_clear;
   uint32_t rb_color_clear_lo;
 
+  // The lean shaders match the accurate ones for ordinary unsigned-fraction
+  // copies with no PWL gamma decode.
+  bool NeedsAccurateColorResolve() const {
+    return !IsCopyingDepth() &&
+           (copy_dest_info.copy_dest_number !=
+                xenos::SurfaceNumberFormat::kUnsignedRepeatingFraction ||
+            (color_edram_info.decode_pwl_gamma &&
+             xenos::ColorRenderTargetFormat(color_edram_info.format) ==
+                 xenos::ColorRenderTargetFormat::k_8_8_8_8_GAMMA));
+  }
+
   bool IsCopyingDepth() const {
     return rb_copy_control.copy_src_select >= xenos::kMaxColorRenderTargets;
   }

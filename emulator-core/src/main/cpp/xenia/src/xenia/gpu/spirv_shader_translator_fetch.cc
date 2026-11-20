@@ -1723,9 +1723,10 @@ void SpirvShaderTranslator::ProcessTextureFetchInstruction(
             int((fetch_constant_word_0_index + 3) >> 2)));
         id_vector_temp_.push_back(builder_->makeIntConstant(
             int((fetch_constant_word_0_index + 3) & 3)));
+        const spv::Id fetch_constant_word_3 =
+            LoadTextureFetchConstantWordFromTemp();
         spv::Id fetch_constant_word_3_signed = builder_->createUnaryOp(
-            spv::OpBitcast, type_int_,
-            LoadTextureFetchConstantWordFromTemp());
+            spv::OpBitcast, type_int_, fetch_constant_word_3);
 
         // Load the fetch constant word 4, needed unconditionally for LOD
         // biasing, and conditionally for stacked texture filtering.
@@ -2403,10 +2404,20 @@ void SpirvShaderTranslator::ProcessTextureFetchInstruction(
               builder_->createBinOp(spv::OpBitwiseAnd, type_uint_, format_bit,
                                     builder_->makeUintConstant(kUnorm8Formats)),
               const_uint_0_);
+          // Integer fetches use the same normalized host views, but their
+          // samples must retain full precision before scaling to guest units.
+          const spv::Id fractional_fetch = builder_->createBinOp(
+              spv::OpIEqual, type_bool_,
+              builder_->createBinOp(spv::OpBitwiseAnd, type_uint_,
+                                    fetch_constant_word_3,
+                                    builder_->makeUintConstant(1)),
+              const_uint_0_);
+          const spv::Id unorm8_format = builder_->createBinOp(
+              spv::OpLogicalAnd, type_bool_, lower_format, listed);
           const spv::Id mask = builder_->createTriOp(
               spv::OpSelect, type_uint_,
-              builder_->createBinOp(spv::OpLogicalAnd, type_bool_, lower_format,
-                                    listed),
+              builder_->createBinOp(spv::OpLogicalAnd, type_bool_,
+                                    unorm8_format, fractional_fetch),
               builder_->makeUintConstant(0xFFFFFF00u),
               builder_->makeUintConstant(0xFFFFFFFFu));
           uint32_t remaining = used_result_nonzero_components;

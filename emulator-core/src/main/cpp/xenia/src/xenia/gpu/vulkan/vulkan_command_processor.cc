@@ -2384,6 +2384,7 @@ void VulkanCommandProcessor::ShutdownContext() {
   pending_memexport_readbacks_.clear();
   pending_memexport_snapshot_used_ = 0;
   memexport_readbacks_in_submission_ = false;
+  uma_resolve_host_barrier_pending_ = false;
 
   // Resolve downscale cleanup.
   ui::vulkan::util::DestroyAndNullHandle(dfn.vkDestroyBuffer, device,
@@ -7959,6 +7960,9 @@ bool VulkanCommandProcessor::IssueCopy() {
     // upstream's zero_copy on devices that cannot import guest RAM. Kept
     // selectable against kFast/kAll so the two designs can be compared.
     if (uma_direct) {
+      // Later reads may also consume writes skipped by the guest read watch.
+      // Publish these writes at submission end, before signaling the fence.
+      uma_resolve_host_barrier_pending_ = true;
       ++vk_frame_sync_stats_.rb_uma_direct;
       const uint64_t resolve_submission = GetCurrentSubmission();
       const uint64_t resolve_key =
@@ -7988,17 +7992,6 @@ bool VulkanCommandProcessor::IssueCopy() {
         ++vk_frame_sync_stats_.readback_awaits;
         // Seed a new range, or publish the current exposure instead of
         // waiting for this range's next resolve to notice the completed write.
-        // In-pass resolves write from the fragment stage.
-        PushBufferMemoryBarrier(
-            shared_memory_->buffer(), written_address, written_length,
-            guest_shader_pipeline_stages_ |
-                VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT |
-                VK_PIPELINE_STAGE_TRANSFER_BIT,
-            VK_PIPELINE_STAGE_HOST_BIT,
-            VK_ACCESS_SHADER_WRITE_BIT | VK_ACCESS_TRANSFER_WRITE_BIT,
-            VK_ACCESS_HOST_READ_BIT, VK_QUEUE_FAMILY_IGNORED,
-            VK_QUEUE_FAMILY_IGNORED, false);
-        SubmitBarriers(true);
         if (!AwaitAllQueueOperationsCompletion()) {
           XELOGE("VulkanCommandProcessor: uma resolve readback drain failed");
           PopDebugMarker();
@@ -9568,10 +9561,12 @@ bool VulkanCommandProcessor::EndSubmission(bool is_swap) {
 
     EndRenderPass();
 
-    // memexport_readback_deferred: the host reads this submission's exports
-    // once it completes.
-    if (memexport_readbacks_in_submission_) {
+    // Publish mapped resolve and memexport writes once for the submission.
+    // Resolve writes may come from fragment, compute or transfer commands.
+    if (memexport_readbacks_in_submission_ ||
+        uma_resolve_host_barrier_pending_) {
       memexport_readbacks_in_submission_ = false;
+      uma_resolve_host_barrier_pending_ = false;
       PushBufferMemoryBarrier(
           shared_memory_->buffer(), 0, VK_WHOLE_SIZE,
           guest_shader_pipeline_stages_ | VK_PIPELINE_STAGE_COMPUTE_SHADER_BIT |

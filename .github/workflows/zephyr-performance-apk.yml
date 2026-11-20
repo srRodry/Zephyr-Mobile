@@ -161,6 +161,7 @@ jobs:
         python3 tools/test-shared-page-refresh.py
         python3 tools/test-memexport-page-bitmap.py
         python3 tools/test-army-quirk.py
+        python3 tools/test-vulkan-resolve-formats.py
         python3 tools/test-edge30-policy.py
         python3 tools/test-scheduler-phase-stats.py
         python3 tools/test-posix-multiwait-futex.py

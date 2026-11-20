@@ -1258,7 +1258,7 @@ bool VulkanRenderTargetCache::Initialize(uint32_t shared_memory_binding_count) {
 
   // Resolve copy pipelines.
   XELOGI("Resolve copy shaders: {} number-format variants",
-         cvars::accurate_resolve_number_formats ? "ACCURATE" : "FAST");
+         cvars::accurate_resolve_number_formats ? "PER RESOLVE" : "FAST");
   for (size_t i = 0; i < size_t(draw_util::ResolveCopyShaderIndex::kCount);
        ++i) {
     const draw_util::ResolveCopyShaderInfo& resolve_copy_shader_info =
@@ -1310,6 +1310,27 @@ bool VulkanRenderTargetCache::Initialize(uint32_t shared_memory_binding_count) {
                                    resolve_copy_native_pipeline,
                                    resolve_copy_shader_info.debug_name);
       resolve_copy_native_pipelines_[i] = resolve_copy_native_pipeline;
+    }
+
+    // The four raw-copy variants share identical code in both families.
+    // The lean full-copy variants are optional. If one can't be created, use
+    // the already initialized accurate pipeline for that copy.
+    const auto& fast = kResolveCopyShadersFastFormats[i];
+    if (cvars::accurate_resolve_number_formats &&
+        fast.unscaled != resolve_copy_shader_code.unscaled) {
+      resolve_copy_fast_format_pipelines_[i] =
+          ui::vulkan::util::CreateComputePipeline(
+              vulkan_device, resolve_copy_pipeline_layout_,
+              draw_resolution_scaled ? fast.scaled : fast.unscaled,
+              draw_resolution_scaled ? fast.scaled_size_bytes
+                                     : fast.unscaled_size_bytes,
+              nullptr, "main", 64);
+      if (draw_resolution_scaled) {
+        resolve_copy_fast_format_native_pipelines_[i] =
+            ui::vulkan::util::CreateComputePipeline(
+                vulkan_device, resolve_copy_native_pipeline_layout_,
+                fast.unscaled, fast.unscaled_size_bytes);
+      }
     }
   }
 
@@ -1885,6 +1906,13 @@ void VulkanRenderTargetCache::Shutdown(bool from_destructor) {
   }
   render_passes_.clear();
 
+  for (auto* pipelines : {&resolve_copy_fast_format_pipelines_,
+                          &resolve_copy_fast_format_native_pipelines_}) {
+    for (VkPipeline& pipeline : *pipelines) {
+      ui::vulkan::util::DestroyAndNullHandle(dfn.vkDestroyPipeline, device,
+                                             pipeline);
+    }
+  }
   for (VkPipeline& resolve_copy_native_pipeline :
        resolve_copy_native_pipelines_) {
     ui::vulkan::util::DestroyAndNullHandle(dfn.vkDestroyPipeline, device,
@@ -4086,6 +4114,12 @@ bool VulkanRenderTargetCache::Resolve(
         DumpRenderTargets(dump_base, dump_row_length_used, dump_rows,
                           dump_pitch, copy_native);
       }
+    } else {
+      // FSI draws already write EDRAM, so there are no host render targets to
+      // dump. The copy shader is still required to get those bytes out.
+      copy_shader = resolve_info.GetCopyShader(
+          draw_resolution_scale_x(), draw_resolution_scale_y(),
+          copy_shader_constants, copy_group_count_x, copy_group_count_y);
     }
     bool copy_dest_scaled = draw_resolution_scaled && !copy_native;
 
@@ -4186,14 +4220,14 @@ bool VulkanRenderTargetCache::Resolve(
             }
           }
 
+          if (copy_dest_scaled && !scaled_buffer_ready) {
+            // The scaled dispatch and addressing cannot target guest RAM.
+            // Leave the destination untouched instead of corrupting neighbors.
+            command_processor_.PopDebugMarker();
+            return false;
+          }
           if (!scaled_buffer_ready && !use_persistent_dest) {
             // Write unscaled or native resolves to shared memory.
-            if (copy_dest_scaled) {
-              XELOGW(
-                  "Falling back to unscaled resolve at 0x{:08X} - scaled "
-                  "buffer not available",
-                  resolve_info.copy_dest_base);
-            }
             write_descriptor_set_dest_buffer_info.buffer =
                 shared_memory.buffer();
             write_descriptor_set_dest_buffer_info.offset =
@@ -4260,9 +4294,20 @@ bool VulkanRenderTargetCache::Resolve(
           VkPipelineLayout copy_pipeline_layout =
               copy_native ? resolve_copy_native_pipeline_layout_
                           : resolve_copy_pipeline_layout_;
-          command_processor_.BindExternalComputePipeline(
-              copy_native ? resolve_copy_native_pipelines_[size_t(copy_shader)]
-                          : resolve_copy_pipelines_[size_t(copy_shader)]);
+          const size_t shader_index = size_t(copy_shader);
+          VkPipeline copy_pipeline =
+              copy_native ? resolve_copy_native_pipelines_[shader_index]
+                          : resolve_copy_pipelines_[shader_index];
+          if (!resolve_info.NeedsAccurateColorResolve()) {
+            const VkPipeline fast_pipeline =
+                copy_native
+                    ? resolve_copy_fast_format_native_pipelines_[shader_index]
+                    : resolve_copy_fast_format_pipelines_[shader_index];
+            if (fast_pipeline != VK_NULL_HANDLE) {
+              copy_pipeline = fast_pipeline;
+            }
+          }
+          command_processor_.BindExternalComputePipeline(copy_pipeline);
           VkDescriptorSet descriptor_sets[kResolveCopyDescriptorSetCount] = {};
           descriptor_sets[kResolveCopyDescriptorSetEdram] =
               edram_storage_buffer_descriptor_set_;

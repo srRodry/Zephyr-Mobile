@@ -645,7 +645,10 @@ bool VulkanSharedMemory::ReadHostMapped(uint32_t guest_address, uint32_t length,
                                        uint64_t(atom_size)),
                           uint64_t(kBufferSize)) -
                  range.offset;
-    dfn.vkInvalidateMappedMemoryRanges(vulkan_device->device(), 1, &range);
+    if (dfn.vkInvalidateMappedMemoryRanges(vulkan_device->device(), 1,
+                                            &range) != VK_SUCCESS) {
+      return false;
+    }
   }
   memory::vastcpy(static_cast<uint8_t*>(dest), host_mapped_data_ + guest_address,
                   length);
