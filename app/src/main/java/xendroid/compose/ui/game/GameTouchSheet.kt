@@ -80,7 +80,7 @@ internal fun GameTouchSheet(
             }
         }
     }
-    BoxWithConstraints(Modifier.fillMaxSize().zephyrBackdrop(animated = false)) {
+    BoxWithConstraints(Modifier.fillMaxSize().zephyrBackdrop()) {
         val compact = maxHeight >= maxWidth || maxWidth < 680.dp
         val identityWidth = (maxWidth * .28f).coerceIn(185.dp, 260.dp)
         val body: @Composable (Modifier) -> Unit = { modifier ->

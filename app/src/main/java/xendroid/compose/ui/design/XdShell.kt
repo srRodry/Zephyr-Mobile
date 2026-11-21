@@ -319,7 +319,7 @@ fun XdSectionedScreen(
         }
     } else {
     val c = Xd.colors
-    BoxWithConstraints(sharedModifier.fillMaxSize().zephyrBackdrop(animated = false)) {
+    BoxWithConstraints(sharedModifier.fillMaxSize().zephyrBackdrop()) {
         val portrait = maxHeight > maxWidth
         if (portrait) {
             Column(Modifier.fillMaxSize()) {
@@ -456,7 +456,7 @@ fun XdSingleScreen(
     LaunchedEffect(controller, guideVisible) {
         if (controller && !guideVisible) runCatching { rootFocus.requestFocus() }
     }
-    BoxWithConstraints(sharedModifier.fillMaxSize().zephyrBackdrop(animated = false)) {
+    BoxWithConstraints(sharedModifier.fillMaxSize().zephyrBackdrop()) {
         val portrait = maxHeight > maxWidth
         val body: @Composable (Modifier) -> Unit = { m ->
             Column(m.windowInsetsPadding(WindowInsets.safeDrawing.part(top = !portrait || !showNav, start = portrait, end = true))) {
@@ -492,7 +492,7 @@ fun XdSingleScreen(
 @Composable
 fun CBackground(art: Any?, modifier: Modifier = Modifier) {
     val c = Xd.colors
-    Box(modifier.fillMaxSize().zephyrBackdrop(animated = false)) {
+    Box(modifier.fillMaxSize().zephyrBackdrop()) {
         Box(Modifier.fillMaxSize().background(Brush.radialGradient(listOf(c.dyn.copy(alpha = 0.62f), Color.Transparent), radius = 1400f)))
         if (art != null) AsyncImage(art, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = 0.12f)
         Box(Modifier.fillMaxSize().background(Brush.verticalGradient(

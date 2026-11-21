@@ -90,7 +90,7 @@ fun Modifier.focusRing(shape: Shape, color: Color? = null, width: Dp = 2.dp): Mo
 internal fun Modifier.zephyrPressMotion(pressed: Boolean): Modifier {
     val scale = animateFloatAsState(
         if (pressed) .975f else 1f,
-        tween(if (pressed) 85 else 160),
+        tween(if (pressed) 55 else 120),
         label = "Zephyr button press",
     )
     return graphicsLayer {
@@ -126,8 +126,8 @@ fun XdButton(
     }
     val height = when (size) {
         XdButtonSize.SM -> if (c.controller) 36.dp else 32.dp
-        XdButtonSize.MD -> if (c.controller) 42.dp else 38.dp
-        XdButtonSize.LG -> if (c.controller) 48.dp else 44.dp
+        XdButtonSize.MD -> 44.dp
+        XdButtonSize.LG -> 48.dp
     }
     val pad = when (size) { XdButtonSize.SM -> 12.dp; XdButtonSize.MD -> 15.dp; XdButtonSize.LG -> 20.dp }
     val style = when (size) {
@@ -140,12 +140,12 @@ fun XdButton(
         modifier
             .zephyrPressMotion(enabled && pressed)
             // An accent ring would vanish on the accent fill of a primary button.
-            .focusRing(shape, color = if (kind == XdButtonKind.PRIMARY) c.fg else null)
+            .focusRing(shape, color = if (kind == XdButtonKind.PRIMARY) c.onAction else null)
             .defaultMinSize(minHeight = height)
             .height(height)
             .clip(shape)
-            .background(Brush.verticalGradient(if (kind == XdButtonKind.PRIMARY && !c.controller)
-                listOf(Color(0xFF28734A), bg, Color(0xFF0D3B2C)) else listOf(bg, bg)))
+            .background(Brush.verticalGradient(if (kind == XdButtonKind.PRIMARY)
+                listOf(lerp(bg, Color.White, if (pressed) .24f else .10f), bg, Color(0xFF36AFE9)) else listOf(bg, bg)))
             .then(if (kind == XdButtonKind.GHOST || kind == XdButtonKind.PRIMARY)
                 Modifier.border(1.dp, if (kind == XdButtonKind.PRIMARY) c.acc.copy(alpha = .65f) else c.line2, shape)
                 else Modifier)

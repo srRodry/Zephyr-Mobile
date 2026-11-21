@@ -11,8 +11,6 @@ import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.spring
 import androidx.compose.animation.splineBasedDecay
 import androidx.compose.foundation.gestures.Orientation
-import androidx.compose.foundation.interaction.MutableInteractionSource
-import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.*
@@ -22,7 +20,6 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material3.Icon
-import androidx.compose.material3.ripple
 import androidx.compose.material3.Text
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -133,11 +130,10 @@ internal fun LibraryConsole(
             }
         }
     }
-    Box(Modifier.fillMaxSize().zephyrBackdrop(animated = false,
-        motionKey = settledGame.stableId.takeIf { animate })) {
+    Box(Modifier.fillMaxSize().zephyrBackdrop(animated = animate)) {
         val artwork: @Composable (Any?) -> Unit = { model ->
             if (model != null) {
-                AsyncImage(model, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = .16f)
+                AsyncImage(model, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop, alpha = .11f)
             }
         }
         if (animate) Crossfade(backdropModel, Modifier.matchParentSize(), tween(250), label = "Game backdrop", content = artwork)
@@ -204,7 +200,7 @@ private fun ConsoleCoverflow(
             try {
                 Animatable(position).animateTo(target, spring(
                     dampingRatio = Spring.DampingRatioNoBouncy,
-                    stiffness = Spring.StiffnessMediumLow)) { position = value }
+                    stiffness = Spring.StiffnessMedium)) { position = value }
                 val settled = circularCoverIndex(position, currentGames.size)
                 selectNow(currentGames[settled])
                 settleNow(currentGames[settled])
@@ -233,7 +229,7 @@ private fun ConsoleCoverflow(
         val drag = rememberDraggableState { delta -> position -= delta / spacingPx }
         val dragModifier = Modifier.fillMaxSize().draggable(
             state = drag, orientation = Orientation.Horizontal, enabled = games.size > 1,
-            startDragImmediately = moving,
+            startDragImmediately = false,
             onDragStarted = {
                 motion?.cancelAndJoin()
                 moving = true
@@ -247,7 +243,7 @@ private fun ConsoleCoverflow(
                         }
                         pixels.animateTo(position.roundToInt() * spacingPx, spring(
                             dampingRatio = Spring.DampingRatioNoBouncy,
-                            stiffness = Spring.StiffnessMediumLow)) { position = value / spacingPx }
+                            stiffness = Spring.StiffnessMedium)) { position = value / spacingPx }
                         val settled = circularCoverIndex(position, currentGames.size)
                         selectNow(currentGames[settled])
                         settleNow(currentGames[settled])
@@ -265,8 +261,8 @@ private fun ConsoleCoverflow(
             drawRect(Brush.radialGradient(listOf(c.acc.copy(alpha = .12f), Color.Transparent),
                 center = Offset(size.width / 2, floorY), radius = size.width * .55f))
             val tl = Offset((size.width - w) / 2, floorY - h / 2)
-            drawOval(Color(0xFF03130C), tl + Offset(0f, 7.dp.toPx()), Size(w, h))
-            drawOval(Brush.verticalGradient(listOf(Color(0xFF154D30), Color(0xFF061A12))), tl, Size(w, h))
+            drawOval(c.bg, tl + Offset(0f, 7.dp.toPx()), Size(w, h))
+            drawOval(Brush.verticalGradient(listOf(c.s3, c.bg)), tl, Size(w, h))
             for (stroke in listOf(9f, 4f, 1f)) drawOval(c.acc.copy(alpha = if (stroke == 1f) .85f else .055f),
                 tl, Size(w, h), style = Stroke(stroke.dp.toPx()))
             drawOval(c.acc.copy(alpha = .25f), tl + Offset(w * .06f, h * .14f),
@@ -363,25 +359,16 @@ private fun ConsoleIdentity(
     }
 }
 
-/** Luminous bevel with a dark label bed: localized brightness rather than unreadable lime text. */
 @Composable
 private fun ConsolePlay(onClick: () -> Unit, enabled: Boolean, modifier: Modifier) {
-    val c = Xd.colors
-    val shape = RoundedCornerShape(topStart = 24.dp, topEnd = 12.dp, bottomStart = 12.dp, bottomEnd = 24.dp)
-    val source = remember { MutableInteractionSource() }
-    val pressed by source.collectIsPressedAsState()
-    Row(modifier.zephyrPressMotion(enabled && pressed).heightIn(min = 58.dp)
-        .shadow(12.dp, shape, ambientColor = c.acc, spotColor = c.acc)
-        .clip(shape).background(Brush.verticalGradient(listOf(Color(0xFF73DC49), Color(0xFF176A32),
-            Color(0xFF073D22), Color(0xFF258944))))
-        .border(1.5.dp, c.acc, shape).focusRing(shape, c.fg)
-        .clickable(interactionSource = source, indication = ripple(), enabled = enabled,
-            role = Role.Button, onClick = onClick)
-        .testTag("library-featured-play").padding(horizontal = 20.dp, vertical = 14.dp),
-        verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp, Alignment.CenterHorizontally)) {
-        Icon(XdIcons.play, null, tint = Color.White, modifier = Modifier.size(23.dp))
-        Text(stringResource(R.string.lib_play), style = XdText.button.copy(fontSize = 20.sp, fontStyle = FontStyle.Italic), color = Color.White)
-    }
+    XdButton(
+        stringResource(R.string.lib_play), onClick,
+        modifier.testTag("library-featured-play"),
+        kind = XdButtonKind.PRIMARY,
+        size = XdButtonSize.LG,
+        icon = XdIcons.play,
+        enabled = enabled,
+    )
 }
 
 @Composable

@@ -3,7 +3,6 @@ package xendroid.compose.ui
 import android.net.Uri
 import androidx.compose.animation.fadeIn
 import androidx.compose.animation.fadeOut
-import androidx.compose.animation.slideInHorizontally
 import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
@@ -95,8 +94,11 @@ object Routes {
 fun gameRoute(game: xendroid.compose.data.Game, section: String? = null): String =
     "${Routes.GAME}?key=${Uri.encode(game.stableId)}" + (section?.let { "&section=${Uri.encode(it)}" } ?: "")
 
+private fun NavBackStackEntry.canNavigate(nav: NavController): Boolean =
+    nav.currentBackStackEntry == this && lifecycle.currentState.isAtLeast(Lifecycle.State.STARTED)
+
 private fun NavBackStackEntry.backOnce(nav: NavController): () -> Unit = {
-    if (lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) nav.popBackStack()
+    if (canNavigate(nav)) nav.popBackStack()
 }
 
 @Composable
@@ -156,20 +158,19 @@ fun AppNavHost(container: AppContainer) {
     NavHost(
         navController = nav,
         startDestination = Routes.LIBRARY,
-        enterTransition = { fadeIn(tween(190)) + slideInHorizontally(tween(220)) { it / 32 } },
-        exitTransition = { fadeOut(tween(120)) },
-        popEnterTransition = { fadeIn(tween(190)) + slideInHorizontally(tween(220)) { -it / 32 } },
-        popExitTransition = { fadeOut(tween(120)) },
+        enterTransition = { fadeIn(tween(105)) },
+        exitTransition = { fadeOut(tween(75)) },
+        popEnterTransition = { fadeIn(tween(105)) },
+        popExitTransition = { fadeOut(tween(75)) },
     ) {
         composable(Routes.LIBRARY) { libraryEntry ->
             val vm: GameLibraryViewModel =
                 viewModel(factory = container.libraryViewModelFactory())
             val compressVm: GameCompressViewModel =
                 viewModel(factory = container.gameCompressViewModelFactory())
-            // Guard against duplicate navigation: the library entry drops below RESUMED after the
-            // first navigate, so a racy second navigate from the same event is a no-op.
+            // Only the current entry may navigate, including while its fade is running.
             val navigateOnce: (String) -> Unit = { route ->
-                if (libraryEntry.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) {
+                if (libraryEntry.canNavigate(nav)) {
                     nav.navigate(route)
                 }
             }
@@ -251,7 +252,7 @@ fun AppNavHost(container: AppContainer) {
             val settings: GameSettingsViewModel? = id?.let { viewModel(key = "game-settings-$it", factory = container.gameSettingsViewModelFactory(it)) }
             val patches: GamePatchesViewModel? = id?.let { viewModel(key = "game-patches-$it", factory = container.gamePatchesViewModelFactory(it)) }
             val global: SettingsViewModel = viewModel(key = "global-settings", factory = container.settingsViewModelFactory())
-            val go: (String) -> Unit = { route -> if (entry.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) nav.navigate(route) }
+            val go: (String) -> Unit = { route -> if (entry.canNavigate(nav)) nav.navigate(route) }
             xendroid.compose.ui.game.GameScreen(
                 game = game, library = library, compressVm = compressVm, settings = settings, global = global, patches = patches,
                 initialSection = entry.arguments?.getString("section"),
@@ -286,7 +287,7 @@ fun AppNavHost(container: AppContainer) {
         composable(Routes.SETTINGS) { entry ->
             val vm: SettingsViewModel = viewModel(factory = container.settingsViewModelFactory())
             val games = libraryGames(nav, entry, container)
-            val go: (String) -> Unit = { route -> if (entry.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) nav.navigate(route) }
+            val go: (String) -> Unit = { route -> if (entry.canNavigate(nav)) nav.navigate(route) }
             SettingsScreen(vm = vm, onBack = entry.backOnce(nav), links = xendroid.compose.ui.settings.SettingsLinks(
                 onDrivers = { go(Routes.DRIVERS) },
                 onGameSettings = { title -> games.byTitle[title]?.let { go(gameRoute(it, xendroid.compose.ui.game.GameSections.SETTINGS)) } },
@@ -301,7 +302,7 @@ fun AppNavHost(container: AppContainer) {
         composable(Routes.DRIVERS) { entry ->
             val vm: SettingsViewModel = viewModel(factory = container.settingsViewModelFactory())
             val games = libraryGames(nav, entry, container)
-            val go: (String) -> Unit = { route -> if (entry.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) nav.navigate(route) }
+            val go: (String) -> Unit = { route -> if (entry.canNavigate(nav)) nav.navigate(route) }
             xendroid.compose.ui.drivers.DriversScreen(
                 global = vm, onBack = entry.backOnce(nav),
                 onGameSettings = { title -> games.byTitle[title]?.let { go(gameRoute(it, xendroid.compose.ui.game.GameSections.SETTINGS)) } },
@@ -312,7 +313,7 @@ fun AppNavHost(container: AppContainer) {
         composable(Routes.CONTROLS) { entry ->
             val vm: SettingsViewModel = viewModel(factory = container.settingsViewModelFactory())
             val keymap: KeymapViewModel = viewModel(factory = container.keymapViewModelFactory())
-            val go: (String) -> Unit = { route -> if (entry.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) nav.navigate(route) }
+            val go: (String) -> Unit = { route -> if (entry.canNavigate(nav)) nav.navigate(route) }
             xendroid.compose.ui.controls.ControlsScreen(vm, keymap, onBack = entry.backOnce(nav), links = xendroid.compose.ui.controls.ControlsLinks(
                 onKeymap = { go(Routes.KEYMAP) },
                 onEditor = { go(Routes.GAMEPAD_EDITOR) },
@@ -326,7 +327,7 @@ fun AppNavHost(container: AppContainer) {
             KeymapScreen(vm = vm, onBack = entry.backOnce(nav))
         }
         composable(Routes.ABOUT) { entry ->
-            val go: (String) -> Unit = { route -> if (entry.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) nav.navigate(route) }
+            val go: (String) -> Unit = { route -> if (entry.canNavigate(nav)) nav.navigate(route) }
             AboutScreen(onBack = entry.backOnce(nav), onUpdates = { go(Routes.UPDATES) }, onDiagnostics = { go("${Routes.DIAGNOSTICS}?title=") },
                 onSetup = {
                     assistantRequested = true
@@ -340,7 +341,7 @@ fun AppNavHost(container: AppContainer) {
             val vm: ProfileManagerViewModel =
                 viewModel(factory = container.profileManagerViewModelFactory())
             val games = libraryGames(nav, entry, container)
-            val go: (String) -> Unit = { route -> if (entry.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) nav.navigate(route) }
+            val go: (String) -> Unit = { route -> if (entry.canNavigate(nav)) nav.navigate(route) }
             ProfilesScreen(vm = vm, onBack = entry.backOnce(nav), links = xendroid.compose.ui.profile.ProfilesLinks(
                 onSaves = { title -> go("${Routes.SAVES}/$title?name=${Uri.encode(games.byTitle[title]?.name.orEmpty())}") },
                 gameName = { games.byTitle[it]?.name },
@@ -406,7 +407,7 @@ fun AppNavHost(container: AppContainer) {
             val vm: ContentManagerViewModel = viewModel(factory = container.gameContentManagerViewModelFactory(null))
             val installer: InstallContentViewModel = viewModel(factory = container.installContentViewModelFactory())
             val games = libraryGames(nav, entry, container)
-            val go: (String) -> Unit = { route -> if (entry.lifecycle.currentState.isAtLeast(Lifecycle.State.RESUMED)) nav.navigate(route) }
+            val go: (String) -> Unit = { route -> if (entry.canNavigate(nav)) nav.navigate(route) }
             ContentScreen(vm = vm, onBack = entry.backOnce(nav), installer = installer,
                 links = xendroid.compose.ui.content.ContentLinks(
                     gameName = { games.byTitle[it]?.name },

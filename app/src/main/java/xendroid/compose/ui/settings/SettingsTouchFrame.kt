@@ -77,7 +77,7 @@ internal fun SettingsTouchFrame(
     }
     // System Back and the mapped gamepad cancel use the same route as the toolbar.
     BackHandler(enabled = !home, onBack = back)
-    BoxWithConstraints(Modifier.fillMaxSize().zephyrBackdrop(animated = false).testTag("settings-touch-frame")) {
+    BoxWithConstraints(Modifier.fillMaxSize().zephyrBackdrop().testTag("settings-touch-frame")) {
         val compact = maxHeight > maxWidth || maxWidth < 680.dp
         val body: @Composable (Modifier) -> Unit = { modifier ->
             CompositionLocalProvider(LocalXdButtonShape provides ZephyrActionShape) {

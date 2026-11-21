@@ -1,6 +1,6 @@
 package xendroid.compose.ui.design
 
-import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.LinearEasing
 import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.infiniteRepeatable
@@ -14,112 +14,80 @@ import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.LaunchedEffect
-import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
-import androidx.compose.ui.draw.drawWithCache
-import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.Path
 import androidx.compose.ui.graphics.Shape
-import androidx.compose.ui.graphics.drawscope.Stroke
-import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.runtime.collectAsState
+import androidx.compose.ui.draw.drawWithCache
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.translate
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LocalLifecycleOwner
+import kotlin.math.cos
+import kotlin.math.sin
 import xendroid.compose.R
 
-/** Slow dashboard motion reads its phase in draw, leaving composition and layout alone. */
+/** Cache the light gradients and read the motion only during drawing. */
 @Composable
-fun Modifier.zephyrBackdrop(animated: Boolean = true, motionKey: Any? = null): Modifier {
+fun Modifier.zephyrBackdrop(animated: Boolean = true): Modifier {
     val c = Xd.colors
-    val drift = if (animated) {
-        rememberInfiniteTransition(label = "Zephyr atmosphere").animateFloat(
-            initialValue = 0f,
-            targetValue = 1f,
-            animationSpec = infiniteRepeatable(tween(12000), RepeatMode.Reverse),
-            label = "Ribbon drift",
-        )
-    } else null
-    val pulse = if (motionKey != null && !animated) {
-        val phase = remember { Animatable(0f) }
-        LaunchedEffect(motionKey) {
-            phase.snapTo(.58f)
-            phase.animateTo(0f, tween(720))
-        }
-        phase
+    val phase = if (animated) {
+        val lifecycle = LocalLifecycleOwner.current.lifecycle.currentStateFlow.collectAsState()
+        if (lifecycle.value.isAtLeast(Lifecycle.State.RESUMED)) {
+            rememberInfiniteTransition(label = "Zephyr atmosphere").animateFloat(
+                initialValue = 0f,
+                targetValue = 6.2831855f,
+                animationSpec = infiniteRepeatable(tween(9000, easing = LinearEasing), RepeatMode.Restart),
+                label = "Aurora drift",
+            )
+        } else null
     } else null
     return drawWithCache {
-        val atmosphere = Brush.linearGradient(
-            listOf(Color(0xFF19513C), c.bg, Color(0xFF0B2D27)),
-            start = Offset(size.width, 0f), end = Offset(0f, size.height),
+        val base = Brush.verticalGradient(listOf(c.bg, c.dyn, c.bg))
+        val cyan = Brush.radialGradient(
+            listOf(c.acc.copy(alpha = .34f), c.acc.copy(alpha = .12f), Color.Transparent),
+            center = Offset(size.width * .75f, size.height * .28f),
+            radius = size.maxDimension.coerceAtLeast(1f) * .44f,
         )
-        val current = Path().apply {
-            moveTo(-size.width * .15f, size.height * .72f)
-            cubicTo(size.width * .25f, size.height * .12f, size.width * .56f,
-                size.height * 1.05f, size.width * 1.15f, size.height * .18f)
-        }
-        val halo = Brush.radialGradient(
-            listOf(c.acc.copy(alpha = .18f), Color.Transparent),
-            center = Offset(size.width * .78f, size.height * .16f),
-            radius = size.maxDimension * .7f,
+        val violet = Brush.radialGradient(
+            listOf(Color(0xFF7656E9).copy(alpha = .30f), Color.Transparent),
+            center = Offset(size.width * .12f, size.height * .47f),
+            radius = size.maxDimension.coerceAtLeast(1f) * .46f,
+        )
+        val textShade = Brush.verticalGradient(
+            listOf(c.bg.copy(alpha = .20f), Color.Transparent, c.bg.copy(alpha = .48f)),
         )
         onDrawBehind {
-            drawRect(atmosphere)
-            val phase = drift?.value ?: pulse?.value ?: 0f
-            drawRect(halo, alpha = .78f + phase * .22f)
-            translate(top = (phase - .5f) * minOf(size.height * .07f, 36.dp.toPx())) {
-                drawPath(current, c.acc.copy(alpha = .045f), style = Stroke(46.dp.toPx()))
-                drawPath(current, c.acc.copy(alpha = .26f), style = Stroke(1.dp.toPx()))
-                translate(top = 26.dp.toPx()) {
-                    drawPath(current, c.acc.copy(alpha = .12f), style = Stroke(.75.dp.toPx()))
-                }
+            val angle = phase?.value ?: 0f
+            val x = cos(angle)
+            val y = sin(angle)
+            drawRect(base)
+            translate(left = x * size.width * .21f, top = y * size.height * .19f) {
+                drawRect(cyan, topLeft = Offset(-size.width, -size.height), size = size * 3f)
             }
-            drawLine(c.chrome.copy(alpha = .085f), Offset(size.width * .08f, 0f),
-                Offset(size.width * .42f, 0f), .75.dp.toPx())
+            translate(left = -y * size.width * .22f, top = x * size.height * .18f) {
+                drawRect(violet, topLeft = Offset(-size.width, -size.height), size = size * 3f)
+            }
+            drawRect(textShade)
         }
     }
 }
 
-/** Solid readable glass illusion; the content behind a panel never bleeds into its text. */
+/** Shared surface for cards, navigation and settings. */
 @Composable
 fun Modifier.zephyrSurface(shape: Shape = ZephyrPanelShape, emphasized: Boolean = false): Modifier {
     val c = Xd.colors
-    val top = lerp(if (emphasized) c.solid(c.s3) else c.solid(c.s2), c.chrome, .025f)
-    val bottom = c.solid(c.s1)
+    val top = if (emphasized) c.s3 else c.s2
+    val edge = if (emphasized) c.acc.copy(alpha = .47f) else c.line2.copy(alpha = .56f)
     return clip(shape)
-        .background(Brush.linearGradient(listOf(top, bottom, Color(0xFF09271E))))
-        .border(1.dp, Brush.linearGradient(listOf(
-            c.chrome.copy(alpha = if (emphasized) .48f else .28f),
-            if (emphasized) c.acc.copy(alpha = .42f) else c.line,
-            c.line, c.chromeShade.copy(alpha = .24f),
-        )), shape)
-        .drawWithCache {
-            val sheen = Brush.linearGradient(
-                listOf(c.chrome.copy(alpha = .19f), Color.Transparent),
-                end = Offset(size.width * .7f, size.height * .5f),
-            )
-            val reflection = Path().apply {
-                moveTo(0f, 0f)
-                lineTo(size.width * .78f, 0f)
-                quadraticBezierTo(size.width * .48f, size.height * .24f, 0f, size.height * .58f)
-                close()
-            }
-            val rim = Brush.horizontalGradient(listOf(Color.Transparent,
-                c.chrome.copy(alpha = if (emphasized) .52f else .30f), Color.Transparent))
-            onDrawBehind {
-                drawRect(sheen)
-                drawPath(reflection, c.chrome.copy(alpha = .048f))
-                drawLine(rim, Offset(0f, size.height - 1.dp.toPx()),
-                    Offset(size.width, size.height - 1.dp.toPx()), 1.dp.toPx())
-                drawLine(c.chrome.copy(alpha = if (emphasized) .6f else .32f),
-                    Offset(24.dp.toPx(), 1.dp.toPx()),
-                    Offset(size.width * .6f, 1.dp.toPx()), 1.dp.toPx())
-            }
-        }
+        .background(Brush.verticalGradient(listOf(top, c.s1)))
+        .border(1.dp, Brush.verticalGradient(listOf(edge, c.line)), shape)
 }
 
 /** Shared Zephyr-Mobile emblem, without a second decorative ring or runtime animation. */

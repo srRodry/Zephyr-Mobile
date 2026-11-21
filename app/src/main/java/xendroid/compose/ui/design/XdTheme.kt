@@ -26,7 +26,7 @@ import androidx.compose.ui.unit.sp
 import xendroid.compose.R
 
 /**
- * Shared Emerald tokens for touch and controller. Input mode may change focus and target
+ * Shared Zephyr tokens for touch and controller. Input mode may change focus and target
  * sizes, but never the brand palette, component hierarchy or content. Material components
  * also receive these colors through the [ColorScheme] built from them.
  */
@@ -49,9 +49,9 @@ data class XdColors(
     val dyn: Color,
     val controller: Boolean,
 ) {
-    /** Deep green actions keep white labels readable; lime is for focus and highlights. */
-    val action: Color get() = Color(0xFF15573F)
-    val onAction: Color get() = Color.White
+    /** Primary actions use dark text on cyan; status colors remain independent. */
+    val action: Color get() = Color(0xFF32D6EB)
+    val onAction: Color get() = Color(0xFF051924)
     /** Neutral silver from the Zephyr-Mobile mark: trim and secondary glyphs, never status colors. */
     val chrome: Color get() = Color(0xFFE1E7E7)
     val chromeShade: Color get() = Color(0xFF899B9C)
@@ -74,16 +74,16 @@ data class XdColors(
     val coverRadius: Dp get() = 7.dp
 
     companion object {
-        // Zephyr-Mobile: dark green surfaces, deep green actions and restrained lime highlights.
+        // Zephyr-Mobile: navy surfaces, cyan actions and neutral foregrounds.
         // Keep semantic compatibility colors independent of branding.
         val Touch = XdColors(
-            bg = Color(0xFF04110F), s1 = Color(0xFF0D2C25), s2 = Color(0xFF143D31), s3 = Color(0xFF1D4C3C),
-            s4 = Color(0xFF285E49), sheet = Color(0xFF0B231E),
-            line = Color(0xFF40564C), line2 = Color(0xFF657D6E),
-            fg = Color(0xFFE9F8F0), fg2 = Color(0xFFCDD8D1), fg3 = Color(0xFFC0CFC5),
-            acc = Color(0xFF87F16D), onAcc = Color(0xFF081D13), dyn = Color(0xFF113128), controller = false,
+            bg = Color(0xFF060D1D), s1 = Color(0xFF0B172A), s2 = Color(0xFF10223A), s3 = Color(0xFF17304D),
+            s4 = Color(0xFF214361), sheet = Color(0xFF0D1A30),
+            line = Color(0xFF263A56), line2 = Color(0xFF577494),
+            fg = Color(0xFFF1F7FF), fg2 = Color(0xFFCBD9EA), fg3 = Color(0xFFACBED3),
+            acc = Color(0xFF52E4F3), onAcc = Color(0xFF051924), dyn = Color(0xFF0B1B38), controller = false,
         )
-        // Input method never changes the visual identity: both modes share Emerald tokens.
+        // Input method never changes the visual identity: both modes share the same tokens.
         val Controller = Touch.copy(controller = true)
 
         fun of(mode: InputMode) = if (mode == InputMode.CONTROLLER) Controller else Touch

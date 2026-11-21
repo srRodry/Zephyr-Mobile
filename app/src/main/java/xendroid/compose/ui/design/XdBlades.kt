@@ -61,7 +61,7 @@ private val bladeShape = GenericShape { size, _ ->
 
 @Composable
 fun ZephyrPortraitHeader() {
-    Column(Modifier.fillMaxWidth().zephyrBackdrop(animated = false)
+    Column(Modifier.fillMaxWidth().background(Xd.colors.bg.copy(alpha = .88f))
         .windowInsetsPadding(WindowInsets.safeDrawing.part(top = true, start = true, end = true))) {
         BladeIdentity(Modifier.fillMaxWidth())
         ZephyrChromeDivider()
@@ -102,7 +102,7 @@ private fun ZephyrGuideAccess(modifier: Modifier) {
 /** Landscape areas stay scrollable even on short displays; no navigation target is clipped. */
 @Composable
 fun ZephyrBladeRail(current: XdArea?, modifier: Modifier = Modifier) {
-    Column(modifier.width(128.dp).fillMaxHeight().zephyrBackdrop(animated = false).testTag("zephyr-navigation-landscape")
+    Column(modifier.width(128.dp).fillMaxHeight().background(Xd.colors.bg.copy(alpha = .88f)).testTag("zephyr-navigation-landscape")
         .windowInsetsPadding(WindowInsets.safeDrawing.part(top = true, bottom = true, start = true))) {
         ZephyrGuideAccess(Modifier.fillMaxWidth().padding(horizontal = 8.dp, vertical = 8.dp))
         Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(rememberScrollState())
@@ -175,9 +175,7 @@ private fun BladeTab(group: BladeGroup, current: XdArea?, modifier: Modifier, sh
                     color = if (picked) c.fg else c.fg2, textAlign = androidx.compose.ui.text.style.TextAlign.Center)
             }
         } else Column(Modifier.fillMaxWidth().heightIn(min = 56.dp).focusRing(bladeShape).zephyrSurface(bladeShape, emphasized = picked)
-            .background(Brush.verticalGradient(if (picked)
-                listOf(Color(0xFF63E855).copy(alpha = .62f), Color(0xFF08642D).copy(alpha = .4f),
-                    Color(0xFF25A94F).copy(alpha = .38f)) else listOf(Color.Transparent, Color.Transparent)))
+            .background(if (picked) c.acc.copy(alpha = .10f) else Color.Transparent)
             .clickable(role = if (group == BladeGroup.SYSTEM || group == BladeGroup.GAMES) Role.Button else Role.Tab,
                 onClick = open).semantics { selected = picked }.padding(horizontal = 12.dp, vertical = 10.dp),
             verticalArrangement = Arrangement.Center) {
@@ -191,7 +189,7 @@ private fun BladeTab(group: BladeGroup, current: XdArea?, modifier: Modifier, sh
                         fontWeight = if (picked) FontWeight.Bold else FontWeight.Medium),
                     maxLines = 2)
                 if (group == BladeGroup.GAMES || group == BladeGroup.SYSTEM) {
-                    Icon(XdIcons.chevD, null, Modifier.size(12.dp), tint = if (picked) c.onAction else c.fg2)
+                    Icon(XdIcons.chevD, null, Modifier.size(12.dp), tint = if (picked) c.acc else c.fg2)
                 }
             }
             // A geometric selection mark accompanies color; the complete shape is the touch target.

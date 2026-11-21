@@ -46,12 +46,12 @@ import xendroid.compose.R
 import xendroid.compose.data.Game
 import xendroid.compose.ui.design.*
 
-/** Library and game sheet share the green theme; the viewport only overrides button geometry. */
+/** Library and game sheet share the Zephyr palette; the viewport only overrides button geometry. */
 @Composable
 internal fun LibraryPlane(modifier: Modifier = Modifier, content: @Composable () -> Unit) {
     val colors = Xd.colors
     CompositionLocalProvider(LocalXd provides colors, LocalXdButtonShape provides ZephyrActionShape) {
-        Box(modifier.zephyrBackdrop(animated = false)) { content() }
+        Box(modifier.zephyrBackdrop()) { content() }
     }
 }
 
