@@ -44,6 +44,10 @@ DEFINE_bool(apu_aaudio_log_stats, false,
             "clock reads to the realtime path.",
             "APU");
 
+DEFINE_double(apu_aaudio_game_gain, 1.0,
+              "Gain for the game mix before the Android output limiter (0 to 1).",
+              "APU");
+
 namespace xe {
 namespace apu {
 namespace aaudio {
@@ -80,6 +84,15 @@ bool AAudioAudioDriver::Initialize() {
   if (frame_channels_ != 6 && frame_channels_ != 2) {
     XELOGE("AAudio: {} channels, not 2 or 6", frame_channels_);
     return false;
+  }
+  if (frame_channels_ == 6) {
+    const double gain = cvars::apu_aaudio_game_gain;
+    if (std::isfinite(gain)) {
+      game_gain_ = static_cast<float>(std::clamp(gain, 0.0, 1.0));
+    }
+    if (game_gain_ != 1.0f) {
+      XELOGI("AAudio: game mix gain {:.3f} before limiting", game_gain_);
+    }
   }
   {
     std::unique_lock<std::mutex> guard(frames_unused_mutex_);
@@ -273,7 +286,8 @@ aaudio_data_callback_result_t AAudioAudioDriver::AudioCallback(
   }
 
   // AAudio has no stream volume control, so the gain is applied in software.
-  const float gain = driver->driver_volume_.load(std::memory_order_relaxed) *
+  const float gain = driver->game_gain_ *
+                     driver->driver_volume_.load(std::memory_order_relaxed) *
                      (float(ae::EffectiveVolume()) / 100.0f);
   const AudioBlockRenderer::Result result = driver->renderer_.Render(
       output_buffer, numFrames, driver->rate_, gain,
