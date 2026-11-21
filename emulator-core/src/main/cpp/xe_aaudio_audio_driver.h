@@ -157,6 +157,7 @@ class AAudioAudioDriver : public AudioDriver {
 
   // Per-driver volume (XMP): written by other threads, read by the callback.
   std::atomic<float> driver_volume_{1.0f};
+  float game_gain_ = 1.0f;  // Configured before callbacks start.
 };
 
 }  // namespace aaudio
