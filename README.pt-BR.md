@@ -41,6 +41,16 @@ Os lançamentos Research incluem APK, **SHA-256**, relatório de assinatura e id
 
 **Estado: beta experimental.** Corrupção de texturas, travamentos e títulos incompatíveis continuam sob investigação. Compilar e passar em testes automatizados não comprova compatibilidade nem ganho de FPS no telefone. Números de outro aparelho não são apresentados como resultados do Zephyr.
 
+## Catálogo de compatibilidade Research
+
+| Jogo | Title ID | Estado no Edge 30 Ultra |
+| --- | --- | --- |
+| **Call of Duty: Black Ops II (Brasil)** | `415608C3` | **Em teste.** Carrega o executável e começa a renderizar. A sessão encerrou com perda do dispositivo Vulkan antes de confirmar acesso ao menu ou à campanha. |
+
+Na build `cb7b7aad`, com Mesa Turnip `27.0.0-devel` (`05eb1dc97c`), `TU_DEBUG=gmem` e escala interna 1×, a espera por uma fence Vulkan retornou `VK_ERROR_DEVICE_LOST` no quadro 278. Em seguida, a thread `GPU Commands` encerrou com `SIGABRT`. O log identifica o ponto em que a falha foi detectada.
+
+Para isolar a causa, repetir o lançamento offline mantendo a ISO, a build, a escala e o driver, com `turnip_debug=sysmem`. Comparar com `gmem`, registrando o estado do cache de shaders. Se a falha persistir, comparar com outro driver mantendo as demais opções. Para marcar a campanha como jogável, confirmar acesso ao menu e completar a primeira missão sem novo encerramento.
+
 ## Requisitos
 
 - Android **10+**, **ARM64** e Vulkan.
