@@ -23,6 +23,18 @@ struct Quirk {
 // Entries apply at per-game-config priority, so a user's own per-game config
 // still overrides them.
 static const Quirk kQuirks[] = {
+    // On the Edge 30 Ultra, Turnip GMEM lost the device during boot.
+    // The same build and driver reached campaign combat with sysmem.
+    {0x415608C3, "turnip_debug", "sysmem",
+     "use the Turnip mode that reached Black Ops II campaign combat"},
+    {0x415608C3, "apu_aaudio_log_stats", true,
+     "measure Black Ops II audio starvation and decoder timing"},
+    // Evaluate the port's three-worker budget against the four-worker capture.
+    {0x415608C3, "vulkan_pipeline_creation_threads", int64_t(3),
+     "reduce pipeline compilation contention during Black Ops II shader bursts"},
+    // Use the alternate XMA implementation for the audio comparison.
+    {0x415608C3, "xma_decoder", "old",
+     "use the alternate XMA decoder for the Black Ops II audio preview"},
     // Army of Two retail: refresh page validity at frame boundaries to avoid
     // stale uploaded data (corrupt/warped character textures and geometry).
     // Source: xenia-manager/optimized-settings/settings/454107F8.toml.
