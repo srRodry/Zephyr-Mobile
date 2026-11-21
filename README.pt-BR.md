@@ -45,11 +45,13 @@ Os lançamentos Research incluem APK, **SHA-256**, relatório de assinatura e id
 
 | Jogo | Title ID | Estado no Edge 30 Ultra |
 | --- | --- | --- |
-| **Call of Duty: Black Ops II (Brasil)** | `415608C3` | **Em teste.** Carrega o executável e começa a renderizar. A sessão encerrou com perda do dispositivo Vulkan antes de confirmar acesso ao menu ou à campanha. |
+| **Call of Duty: Black Ops II (Brasil)** | `415608C3` | **Em teste.** A campanha chegou ao combate com Turnip em `sysmem`. Áudio corrompido. |
 
-Na build `cb7b7aad`, com Mesa Turnip `27.0.0-devel` (`05eb1dc97c`), `TU_DEBUG=gmem` e escala interna 1×, a espera por uma fence Vulkan retornou `VK_ERROR_DEVICE_LOST` no quadro 278. Em seguida, a thread `GPU Commands` encerrou com `SIGABRT`. O log identifica o ponto em que a falha foi detectada.
+Na build `cb7b7aad`, com Mesa Turnip `27.0.0-devel` (`05eb1dc97c`) e escala interna 1×, a sessão em `gmem` terminou no quadro 278 com `VK_ERROR_DEVICE_LOST` e `SIGABRT`. A sessão posterior em `sysmem` chegou ao quadro 8161 sem registrar perda do dispositivo Vulkan no trecho exportado. O vídeo mostra a introdução e combate controlável na campanha.
 
-Para isolar a causa, repetir o lançamento offline mantendo a ISO, a build, a escala e o driver, com `turnip_debug=sysmem`. Comparar com `gmem`, registrando o estado do cache de shaders. Se a falha persistir, comparar com outro driver mantendo as demais opções. Para marcar a campanha como jogável, confirmar acesso ao menu e completar a primeira missão sem novo encerramento.
+Na sessão em `sysmem`, o decodificador XMA `new` usava thread dedicada e registrou três solicitações ainda pendentes após 100 ms. A saída AAudio abriu em modo exclusivo, estéreo, a 48 kHz, com buffer de 1024 quadros e estatísticas desativadas. Os atrasos do XMA são uma pista. A frequência de underruns e a causa da distorção ainda precisam de medição.
+
+Para comparar a mesma cena, manter `sysmem`, a mesma versão do driver e a mesma resolução. Ativar `apu_aaudio_log_stats=true` e obter uma referência com `xma_decoder=new`. Depois repetir com `xma_decoder=old`, mantendo a thread dedicada e o buffer. Comparar a inteligibilidade das falas, atrasos do XMA, underruns e tempo de quadro.
 
 ## Requisitos
 
