@@ -26,9 +26,12 @@ namespace vulkan {
 
 class VulkanGPUCompletionTimeline : public GPUCompletionTimeline {
  public:
-  explicit VulkanGPUCompletionTimeline(VulkanDevice* const vulkan_device,
-                                       const char* const name = "")
-      : vulkan_device_(vulkan_device), name_(name) {}
+  explicit VulkanGPUCompletionTimeline(
+      VulkanDevice* const vulkan_device, const char* const name = "",
+      const bool* collect_driver_wait_stats = nullptr)
+      : vulkan_device_(vulkan_device),
+        name_(name),
+        collect_driver_wait_stats_(collect_driver_wait_stats) {}
 
   const char* name() const { return name_; }
   size_t pending_submission_count() const {
@@ -173,6 +176,8 @@ class VulkanGPUCompletionTimeline : public GPUCompletionTimeline {
 
   VulkanDevice* const vulkan_device_;
   const char* const name_;
+  // Optional live diagnostic flag owned by the caller.
+  const bool* const collect_driver_wait_stats_;
 
   std::vector<VkFence> free_fences_;
 

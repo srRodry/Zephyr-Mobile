@@ -169,16 +169,20 @@ void VulkanGPUCompletionTimeline::UpdateCompletedSubmissionUpTo(
 
 void VulkanGPUCompletionTimeline::PollPendingFences(
     const uint64_t last_submission) {
+  const bool collect_stats =
+      collect_driver_wait_stats_ && *collect_driver_wait_stats_;
   while (!pending_submission_fences_.empty() &&
          pending_submission_fences_.front().first <= last_submission) {
-    const uint64_t poll_begin_ns = TimelineNowNs();
+    const uint64_t poll_begin_ns = collect_stats ? TimelineNowNs() : 0;
     const VkResult fence_status = vulkan_device_->functions().vkGetFenceStatus(
         vulkan_device_->device(), pending_submission_fences_.front().second);
-    const uint64_t poll_ns = TimelineNowNs() - poll_begin_ns;
-    ++driver_wait_stats_.polls;
-    driver_wait_stats_.poll_ns += poll_ns;
-    if (poll_ns > kSlowFencePollNs) {
-      ++driver_wait_stats_.slow_polls;
+    if (collect_stats) {
+      const uint64_t poll_ns = TimelineNowNs() - poll_begin_ns;
+      ++driver_wait_stats_.polls;
+      driver_wait_stats_.poll_ns += poll_ns;
+      if (poll_ns > kSlowFencePollNs) {
+        ++driver_wait_stats_.slow_polls;
+      }
     }
     if (fence_status != VK_SUCCESS) {
       // Not ready, or an error.
@@ -217,13 +221,17 @@ void VulkanGPUCompletionTimeline::AwaitSubmissionImpl(
     submission_end_iterator = std::next(submission_end_iterator);
   }
   if (submission_end_iterator != pending_submission_fences_.cbegin()) {
-    const uint64_t wait_begin_ns = TimelineNowNs();
+    const bool collect_stats =
+        collect_driver_wait_stats_ && *collect_driver_wait_stats_;
+    const uint64_t wait_begin_ns = collect_stats ? TimelineNowNs() : 0;
     const VkResult fence_wait_result =
         vulkan_device_->functions().vkWaitForFences(
             vulkan_device_->device(), 1,
             &std::prev(submission_end_iterator)->second, VK_TRUE, UINT64_MAX);
-    ++driver_wait_stats_.waits;
-    driver_wait_stats_.wait_ns += TimelineNowNs() - wait_begin_ns;
+    if (collect_stats) {
+      ++driver_wait_stats_.waits;
+      driver_wait_stats_.wait_ns += TimelineNowNs() - wait_begin_ns;
+    }
     if (fence_wait_result != VK_SUCCESS) {
       XELOGE(
           "VulkanGPUCompletionTimeline[{}]: vkWaitForFences -> {} (awaited "

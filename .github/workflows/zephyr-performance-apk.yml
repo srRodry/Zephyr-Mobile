@@ -451,6 +451,9 @@ jobs:
               '- Army of Two: The Devil’s Cartel com os ajustes de iluminação, resolves e exportações de memória da série Research.',
               '- Army TDC: só o primeiro lote Vulkan após cada espera completa usa o limite reduzido de desenhos.',
               '- Telemetria por quadro preservada. Os histogramas detalhados de barreiras ficam desativados por padrão para o Army TDC.',
+              '- Vulkan: consultas e esperas de fences dispensam medições internas quando a telemetria detalhada está desligada.',
+              '- Black Ops II: inclui o decodificador XMA alternativo e a redução de ganho de 3 dB.',
+              '- Interface: biblioteca completa em grade, configurações por jogo com rolagem e correções de navegação.',
               '- Prévia para Edge 30 Ultra. Desempenho e estabilidade em jogo aguardam medição no aparelho.'
             ] : edge30Swarm ? [
               '- Army of Two: The Devil’s Cartel: envio antecipado de lotes Vulkan com exportações de memória pendentes.',

@@ -861,7 +861,7 @@ VulkanCommandProcessor::VulkanCommandProcessor(
       completion_timeline_(static_cast<const ui::vulkan::VulkanProvider*>(
                                graphics_system->provider())
                                ->vulkan_device(),
-                           "cp"),
+                           "cp", &cvars::log_gpu_frame_time_breakdown),
       deferred_command_buffer_(*this),
       deferred_setup_command_buffer_(*this, 64 * 1024),
       transient_descriptor_allocator_uniform_buffer_(
