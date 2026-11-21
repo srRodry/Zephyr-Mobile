@@ -29,6 +29,9 @@ static const Quirk kQuirks[] = {
      "use the Turnip mode that reached Black Ops II campaign combat"},
     {0x415608C3, "apu_aaudio_log_stats", true,
      "measure Black Ops II audio starvation and decoder timing"},
+    // Evaluate the port's three-worker budget against the four-worker capture.
+    {0x415608C3, "vulkan_pipeline_creation_threads", int64_t(3),
+     "reduce pipeline compilation contention during Black Ops II shader bursts"},
     // Army of Two retail: refresh page validity at frame boundaries to avoid
     // stale uploaded data (corrupt/warped character textures and geometry).
     // Source: xenia-manager/optimized-settings/settings/454107F8.toml.
