@@ -62,6 +62,7 @@ on:
       - 'emulator-core/src/main/cpp/xenia/src/xenia/cpu/**'
       - 'emulator-core/src/main/cpp/xenia/third_party/xbyak_aarch64/**'
   workflow_dispatch:
+  workflow_call:
 
 permissions:
   contents: read

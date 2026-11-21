@@ -26,9 +26,17 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  preview-ui:
+    name: Validate Preview interface
+    if: ${{ github.ref_name == 'research/edge30-design-army-preview' && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[zephyr-apk]')) }}
+    uses: ./.github/workflows/zephyr-ui-check.yml
+    permissions:
+      contents: read
+
   apk:
     name: APK (arm64-v8a)
-    if: ${{ github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[zephyr-apk]') }}
+    needs: preview-ui
+    if: ${{ !cancelled() && (github.ref_name != 'research/edge30-design-army-preview' || needs.preview-ui.result == 'success') && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[zephyr-apk]')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 300
 
@@ -189,6 +197,7 @@ jobs:
         "$cache_test_dir/test" "$cache_test_dir/data"
 
     - name: Validate shared navigation before packaging
+      if: ${{ github.ref_name != 'research/edge30-design-army-preview' }}
       run: |
         bash ./gradlew :app:testUitestUnitTest --no-daemon --stacktrace \
           --tests 'xendroid.compose.core.PresenterPerformanceHintsTest' \
