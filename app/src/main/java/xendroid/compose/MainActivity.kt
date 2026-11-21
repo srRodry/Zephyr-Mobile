@@ -9,12 +9,14 @@ import android.view.KeyEvent
 import android.annotation.SuppressLint
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.SystemBarStyle
 import androidx.activity.enableEdgeToEdge
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.CompositionLocalProvider
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
+import androidx.compose.foundation.background
 import androidx.compose.ui.Modifier
 import xendroid.compose.ui.design.InputModePref
 import xendroid.compose.ui.design.InputModeStore
@@ -205,16 +207,20 @@ class MainActivity : ComponentActivity() {
 
         val container = AppContainer(applicationContext)
 
-        enableEdgeToEdge()
+        val chrome = android.graphics.Color.rgb(8, 17, 32)
+        enableEdgeToEdge(
+            statusBarStyle = SystemBarStyle.dark(chrome),
+            navigationBarStyle = SystemBarStyle.dark(chrome),
+        )
 
-       setContent {
+        setContent {
             // Controller mode follows a controller connecting and disconnecting (Automatic).
             val mode = inputPref.resolve(rememberControllerConnected())
             val toast = remember { XdToastState() }
             CompositionLocalProvider(LocalInputMode provides mode, LocalXdToast provides toast) {
             xendroidTheme(scale = uiScale, mode = mode) {
 
-                Box(Modifier.fillMaxSize()) {
+                Box(Modifier.fillMaxSize().background(xendroid.compose.ui.design.Xd.colors.bg)) {
                     AppNavHost(container)
                     XdToastHost(toast, Modifier.align(Alignment.BottomCenter))
                 }

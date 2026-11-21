@@ -55,7 +55,8 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.focus.FocusRequester
 import androidx.compose.ui.focus.focusRequester
-import androidx.compose.ui.graphics.Color
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.tween
 import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.input.key.KeyEventType
 import androidx.compose.ui.input.key.type
@@ -331,16 +332,20 @@ private fun LibraryCard(
     val c = Xd.colors
     var focused by remember { mutableStateOf(false) }
     val cardShape = ZephyrActionShape
+    val surface by animateColorAsState(
+        targetValue = if (picked || focused) c.s2 else c.s1.copy(alpha = 0.88f),
+        animationSpec = tween(150), label = "Library card selection",
+    )
     Column(
         Modifier
             .clip(cardShape)
-            .background(if (picked || focused) c.s2 else Color.Transparent)
+            .background(surface)
             .border(
                 width = if (focused) 2.dp else 1.dp,
                 color = when {
                     focused -> c.fg
                     picked -> c.acc.copy(alpha = 0.75f)
-                    else -> Color.Transparent
+                    else -> c.line.copy(alpha = 0.55f)
                 },
                 shape = cardShape,
             )
@@ -370,7 +375,7 @@ private fun LibraryCard(
             // The card outline already indicates focus/selection; avoid a second border around the art.
             LibraryArtwork(game, art, Modifier.fillMaxWidth(), data.favorite(game))
             Text(game.name, style = XdText.labelSm.copy(fontSize = if (small) 11.5.sp else 12.5.sp, lineHeight = 15.sp), color = c.fg,
-                maxLines = 2, overflow = TextOverflow.Ellipsis)
+                minLines = 2, maxLines = 2, overflow = TextOverflow.Ellipsis)
             if (!small) Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(5.dp)) {
                 val status = data.status(game)
                 XdDot(status.tone())

@@ -1651,26 +1651,9 @@ void CommandProcessor::HandleSpecialRegisterWrite(uint32_t index,
       // Enabled - write to address.
       uint32_t scratch_addr = regs.values[XE_GPU_REG_SCRATCH_ADDR];
       uint32_t mem_addr = scratch_addr + (scratch_reg * 4);
-      // A REG4 value that is not one of the known per-frame callbacks is
-      // interesting once, but "known" is a hardcoded list from one title:
-      // any other game's callback looks rare on every single write. Log the
-      // first sighting of each distinct value, so an install is still
-      // reported without spending a formatted log line per frame forever.
-      static std::atomic<uint32_t> scratch_log_budget{64};
-      bool rare_install =
-          scratch_reg == 4 && value != 0x0BADF00D && value != 0x83744BF8 &&
-          value != 0x837C59C8;
-      if (rare_install) {
-        static std::mutex seen_mutex;
-        static std::set<uint32_t> seen_installs;
-        std::lock_guard<std::mutex> lock(seen_mutex);
-        rare_install = seen_installs.insert(value).second;
-      }
-      if (rare_install ||
-          (scratch_log_budget.load() > 0 && scratch_log_budget-- > 0)) {
-        XELOGI("CP: scratch writeback REG{} value={:08X} -> phys {:08X}{}",
-               scratch_reg, value, mem_addr,
-               rare_install ? "  <== RARE INSTALL" : "");
+      if (cvars::disassemble_pm4) {
+        XELOGI("CP: scratch writeback REG{} value={:08X} -> phys {:08X}",
+               scratch_reg, value, mem_addr);
       }
       xe::store_and_swap<uint32_t>(memory_->TranslatePhysical(mem_addr), value);
       NotifyGuestGpuProgress();

@@ -3183,7 +3183,7 @@ bool VulkanPipelineCache::EnsurePipelineCreated(
   if (!creating_placeholder) {
     creation_arguments.pipeline->second.is_placeholder.store(
         false, std::memory_order_release);
-    XELOGI("Pipeline created for VS {:016X}, PS {:016X}",
+    XELOGGPU("Pipeline created for VS {:016X}, PS {:016X}",
            creation_arguments.vertex_shader->shader().ucode_data_hash(),
            creation_arguments.pixel_shader
                ? creation_arguments.pixel_shader->shader().ucode_data_hash()
@@ -3206,16 +3206,15 @@ void VulkanPipelineCache::ProcessDeferredDestructions() {
 
     // Only destroy pipelines whose submission has completed on the GPU.
     // Keep pipelines that are still potentially in-flight.
-    auto it = deferred_destroy_pipelines_.begin();
-    while (it != deferred_destroy_pipelines_.end()) {
-      if (it->second <= completed_submission) {
-        // This submission has completed, safe to destroy.
-        pipelines_to_destroy.push_back(it->first);
-        it = deferred_destroy_pipelines_.erase(it);
+    auto keep = deferred_destroy_pipelines_.begin();
+    for (const auto& pending : deferred_destroy_pipelines_) {
+      if (pending.second <= completed_submission) {
+        pipelines_to_destroy.push_back(pending.first);
       } else {
-        ++it;
+        *keep++ = pending;
       }
     }
+    deferred_destroy_pipelines_.erase(keep, deferred_destroy_pipelines_.end());
   }
 
   if (pipelines_to_destroy.empty()) {
