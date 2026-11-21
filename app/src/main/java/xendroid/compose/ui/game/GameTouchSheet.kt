@@ -1,7 +1,5 @@
 package xendroid.compose.ui.game
 
-import androidx.compose.animation.core.Animatable
-import androidx.compose.animation.core.tween
 import androidx.compose.foundation.ScrollState
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
@@ -9,8 +7,7 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.rememberScrollState
-import androidx.compose.foundation.relocation.BringIntoViewRequester
-import androidx.compose.foundation.relocation.bringIntoViewRequester
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -24,7 +21,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
-import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.semantics.Role
@@ -44,6 +41,7 @@ internal fun GameTouchSheet(
     current: XdSection?, history: XdSectionHistory, preparing: Boolean,
     onBack: () -> Unit, onPlay: () -> Unit, onLaunch: () -> Unit,
     onFavorite: () -> Unit, onMore: () -> Unit, hints: List<XdHint>,
+    scrollingSettings: (@Composable (String, Modifier, @Composable () -> Unit) -> Unit)? = null,
 ) {
     val c = Xd.colors
     val active = GameSections.tab(current?.id)
@@ -57,20 +55,17 @@ internal fun GameTouchSheet(
                 current?.id, history::pick)
         }
     }
-    val sectionContent: @Composable () -> Unit = {
+    val sectionBack: @Composable () -> Unit = {
         sections.firstOrNull { it.id == history.previous }?.let { previous ->
             XdButton(stringResource(R.string.xd_back_to, previous.title), history::back,
                 Modifier.heightIn(min = 48.dp).testTag("game-sheet-return"), kind = XdButtonKind.GHOST, icon = XdIcons.back)
         }
+    }
+    val sectionContent: @Composable () -> Unit = {
+        sectionBack()
         if (current != null) {
-            val reveal = remember { Animatable(1f) }
-            LaunchedEffect(current.id) {
-                reveal.snapTo(.87f)
-                reveal.animateTo(1f, tween(170))
-            }
             Column(
                 Modifier.fillMaxWidth().testTag("game-sheet-content:${current.id}")
-                    .graphicsLayer { alpha = reveal.value }
                     .zephyrSurface().padding(14.dp),
                 verticalArrangement = Arrangement.spacedBy(10.dp),
             ) {
@@ -97,15 +92,29 @@ internal fun GameTouchSheet(
                 val identity: @Composable () -> Unit = {
                     SheetIdentity(game, art, data, preparing, onPlay, onLaunch, prominent = !compact)
                 }
+                val sectionId = current?.id.orEmpty()
+                val settingsList = scrollingSettings.takeIf { active == GameSections.SETTINGS }
                 if (compact) {
                     Box(Modifier.padding(horizontal = 14.dp, vertical = 6.dp)) { MainTabs(active, history::pick) }
-                    scrollStates.SaveableStateProvider(current?.id.orEmpty()) {
-                        val scroll = rememberSaveable(saver = ScrollState.Saver) { ScrollState(0) }
-                        Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(scroll).testTag("game-sheet-scroll")
-                            .padding(horizontal = 14.dp, vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                            identity()
-                            subNavigation()
-                            sectionContent()
+                    scrollStates.SaveableStateProvider(sectionId) {
+                        val viewport = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 14.dp)
+                            .testTag("game-sheet-scroll")
+                        if (settingsList != null) {
+                            settingsList(sectionId, viewport.testTag("game-sheet-content:$sectionId")) {
+                                Column(Modifier.padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                    identity()
+                                    subNavigation()
+                                    sectionBack()
+                                }
+                            }
+                        } else {
+                            val scroll = rememberSaveable(saver = ScrollState.Saver) { ScrollState(0) }
+                            Column(viewport.verticalScroll(scroll).padding(vertical = 10.dp),
+                                verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                identity()
+                                subNavigation()
+                                sectionContent()
+                            }
                         }
                     }
                 } else {
@@ -115,10 +124,16 @@ internal fun GameTouchSheet(
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                             MainTabs(active, history::pick)
                             subNavigation()
-                            scrollStates.SaveableStateProvider(current?.id.orEmpty()) {
-                                val scroll = rememberSaveable(saver = ScrollState.Saver) { ScrollState(0) }
-                                Column(Modifier.weight(1f).fillMaxWidth().verticalScroll(scroll).testTag("game-sheet-scroll"),
-                                    verticalArrangement = Arrangement.spacedBy(10.dp)) { sectionContent() }
+                            scrollStates.SaveableStateProvider(sectionId) {
+                                val viewport = Modifier.weight(1f).fillMaxWidth().testTag("game-sheet-scroll")
+                                if (settingsList != null) {
+                                    settingsList(sectionId, viewport.testTag("game-sheet-content:$sectionId"), sectionBack)
+                                } else {
+                                    val scroll = rememberSaveable(saver = ScrollState.Saver) { ScrollState(0) }
+                                    Column(viewport.verticalScroll(scroll), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        sectionContent()
+                                    }
+                                }
                             }
                         }
                     }
@@ -198,47 +213,51 @@ private fun SheetIdentity(game: Game, art: CoverArt, data: LibraryData, preparin
     }
 }
 
-@OptIn(androidx.compose.foundation.ExperimentalFoundationApi::class)
 @Composable
 private fun MainTabs(selected: String, onSelect: (String) -> Unit) {
     val c = Xd.colors
-    val choices = listOf(GameSections.OVERVIEW to R.string.xd_game_sec_overview,
+    val choices = listOf(
+        GameSections.OVERVIEW to R.string.xd_game_sec_overview,
         GameSections.SETTINGS to R.string.zephyr_game_adjustments,
-        GameSections.CONTENT to R.string.zephyr_game_patches_dlc, GameSections.DATA to R.string.zephyr_game_data)
-    val railShape = ZephyrSegmentShape
-    Row(
-        Modifier.fillMaxWidth().clip(railShape).background(c.s1).border(1.dp, c.line2, railShape)
-            .horizontalScroll(rememberScrollState()).padding(4.dp).testTag("game-sheet-main-tabs"),
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-    ) {
-        choices.forEach { (id, label) ->
-            val picked = selected == id
-            val shape = ZephyrActionShape
-            val bringIntoView = remember { BringIntoViewRequester() }
-            LaunchedEffect(picked) {
-                if (picked) {
-                    withFrameNanos { }
-                    bringIntoView.bringIntoView()
+        GameSections.CONTENT to R.string.zephyr_game_patches_dlc,
+        GameSections.DATA to R.string.zephyr_game_data,
+    )
+    val shape = RoundedCornerShape(10.dp)
+    val railShape = RoundedCornerShape(14.dp)
+    BoxWithConstraints(Modifier.fillMaxWidth().zephyrSurface(railShape)) {
+        val fontScale = LocalDensity.current.fontScale
+        val scrollable = maxWidth < 320.dp * fontScale
+        Row(
+            Modifier.fillMaxWidth().then(if (scrollable) Modifier.horizontalScroll(rememberScrollState()) else Modifier)
+                .padding(4.dp).testTag("game-sheet-main-tabs"),
+            horizontalArrangement = Arrangement.spacedBy(3.dp),
+        ) {
+            choices.forEach { (id, label) ->
+                val picked = selected == id
+                Column(
+                    (if (scrollable) Modifier.widthIn(min = 76.dp) else Modifier.weight(1f))
+                        .heightIn(min = 48.dp)
+                        .focusRing(shape, color = c.acc)
+                        .clip(shape)
+                        .background(if (picked) c.acc.copy(alpha = .15f) else Color.Transparent)
+                        .clickable(role = Role.Tab) { if (!picked) onSelect(id) }
+                        .semantics { this.selected = picked }
+                        .testTag("game-sheet-tab:$id")
+                        .padding(horizontal = 5.dp, vertical = 6.dp),
+                    verticalArrangement = Arrangement.Center,
+                    horizontalAlignment = Alignment.CenterHorizontally,
+                ) {
+                    Text(
+                        stringResource(label), style = XdText.labelSm,
+                        color = if (picked) c.acc else c.fg2,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center,
+                        maxLines = if (scrollable) 1 else 2,
+                    )
+                    if (picked) {
+                        Spacer(Modifier.height(3.dp))
+                        Box(Modifier.width(20.dp).height(2.dp).background(c.acc, shape))
+                    }
                 }
-            }
-            Column(
-                Modifier.heightIn(min = 48.dp).bringIntoViewRequester(bringIntoView)
-                    .focusRing(shape, color = if (picked) c.fg else c.acc)
-                    .clip(shape)
-                    .background(if (picked) c.action else Color.Transparent)
-                    .clickable(role = Role.Tab) { if (!picked) onSelect(id) }
-                    .semantics { this.selected = picked }
-                    .testTag("game-sheet-tab:$id")
-                    .padding(horizontal = 10.dp, vertical = 9.dp),
-                verticalArrangement = Arrangement.Center,
-                horizontalAlignment = Alignment.CenterHorizontally,
-            ) {
-                Text(
-                    stringResource(label),
-                    style = XdText.label.copy(fontWeight = if (picked) FontWeight.Bold else FontWeight.Medium),
-                    color = if (picked) c.onAction else c.fg2,
-                    maxLines = 1,
-                )
             }
         }
     }

@@ -17,6 +17,8 @@ import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
@@ -770,6 +772,7 @@ fun XdSettingsPanel(
     scopeSwitch: (@Composable () -> Unit)? = null,
     onJump: ((SettingGroup) -> Unit)? = null,
     header: Boolean = true,
+    scrollingHeader: (@Composable () -> Unit)? = null,
 ) {
     val c = Xd.colors
     val context = LocalContext.current
@@ -777,20 +780,52 @@ fun XdSettingsPanel(
     val rows = found.rows
     val hidden = found.hidden
     val elsewhere = found.elsewhere
-    Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    val panelHeader: @Composable () -> Unit = {
         if (header) PanelHeader(editing, state, pinned, group, found.perLevel, gameName, onPresets, onToml, onResetAll, scopeSwitch)
         if (hidden > 0) FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
             Text(pluralStringResource(R.plurals.xd_set_hidden_by_level, hidden, hidden, levelTitle(state.level)), style = XdText.note, color = c.fg3)
             XdLink(stringResource(R.string.xd_set_show_hidden), { state.level = SettingLevel.ALL })
         }
+    }
+    val emptyRows: @Composable () -> Unit = {
         when {
-            rows.isNotEmpty() -> SettingRows(rows, editing, state, pinned, onPinnedChange, byGroup = group == null,
-                onOpenDrivers = onOpenDrivers, onShowOverriding = onShowOverriding, onJump = onJump)
             elsewhere.isEmpty() && hidden == 0 ->
                 XdEmpty(stringResource(R.string.xd_set_none)) { XdLink(stringResource(R.string.xd_set_clear_filters), { state.clear() }) }
             group != null -> Text(stringResource(R.string.xd_set_none_in, groupTitle(group)), style = XdText.bodySm, color = c.fg2)
         }
-        if (elsewhere.isNotEmpty()) OtherTabs(elsewhere, onJump)
+    }
+    if (scrollingHeader != null) {
+        LazyColumn(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            item(key = "game-header") { scrollingHeader() }
+            item(key = "panel-header") {
+                Column(verticalArrangement = Arrangement.spacedBy(10.dp)) { panelHeader() }
+            }
+            if (rows.isEmpty()) item(key = "empty") { emptyRows() }
+            if (group == null) {
+                val grouped = rows.groupBy { SettingCatalog.meta(it).group }
+                for (section in SettingCatalog.groups) {
+                    val inGroup = grouped[section].orEmpty()
+                    if (inGroup.isEmpty()) continue
+                    item(key = "group:${section.name}") { SettingsGroupHeader(section, inGroup.size, onJump) }
+                    items(inGroup, key = { "setting:${it.key}" }) { setting ->
+                        PanelSettingRow(setting, editing, state, pinned, onPinnedChange, onOpenDrivers, onShowOverriding)
+                    }
+                }
+            } else {
+                items(rows, key = { "setting:${it.key}" }) { setting ->
+                    PanelSettingRow(setting, editing, state, pinned, onPinnedChange, onOpenDrivers, onShowOverriding)
+                }
+            }
+            if (elsewhere.isNotEmpty()) item(key = "other-tabs") { OtherTabs(elsewhere, onJump) }
+        }
+    } else {
+        Column(modifier.fillMaxWidth(), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            panelHeader()
+            if (rows.isEmpty()) emptyRows()
+            else SettingRows(rows, editing, state, pinned, onPinnedChange, byGroup = group == null,
+                onOpenDrivers = onOpenDrivers, onShowOverriding = onShowOverriding, onJump = onJump)
+            if (elsewhere.isNotEmpty()) OtherTabs(elsewhere, onJump)
+        }
     }
 }
 
@@ -866,19 +901,8 @@ private fun SettingRows(
     onShowOverriding: ((Setting) -> Unit)?,
     onJump: ((SettingGroup) -> Unit)?,
 ) {
-    val c = Xd.colors
-    val context = LocalContext.current
-    val toast = LocalXdToast.current
-    val pin: (Setting) -> (() -> Unit)? = { s ->
-        if (s is Setting.Action) null else ({
-            val next = PinnedSettings.toggled(pinned, s.key)
-            onPinnedChange(next)
-            toast.show(context.getString(if (s.key in next) R.string.xd_set_pinned else R.string.xd_set_unpinned))
-        })
-    }
-    val one: @Composable (Setting) -> Unit = { s ->
-        if (c.controller) XdControllerSettingRow(s, editing, onOpenDrivers = onOpenDrivers)
-        else XdSettingRow(s, editing, state.showDescriptions, s.key in pinned, pin(s), onOpenDrivers = onOpenDrivers, onShowOverriding = onShowOverriding)
+    val one: @Composable (Setting) -> Unit = {
+        PanelSettingRow(it, editing, state, pinned, onPinnedChange, onOpenDrivers, onShowOverriding)
     }
     if (!byGroup) {
         Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { rows.forEach { one(it) } }
@@ -888,12 +912,44 @@ private fun SettingRows(
         for (g in SettingCatalog.groups) {
             val inGroup = rows.filter { SettingCatalog.meta(it).group == g }
             if (inGroup.isEmpty()) continue
-            Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                XdGroupHeader(groupTitle(g), inGroup.size, Modifier.weight(1f))
-                if (onJump != null) XdLink(stringResource(R.string.xd_set_open_tab) + " ›", { onJump(g) }, Modifier.padding(bottom = 6.dp))
-            }
+            SettingsGroupHeader(g, inGroup.size, onJump)
             Column(verticalArrangement = Arrangement.spacedBy(6.dp)) { inGroup.forEach { one(it) } }
         }
+    }
+}
+
+@Composable
+private fun SettingsGroupHeader(group: SettingGroup, count: Int, onJump: ((SettingGroup) -> Unit)?) {
+    Row(verticalAlignment = Alignment.Bottom, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        XdGroupHeader(groupTitle(group), count, Modifier.weight(1f))
+        if (onJump != null) {
+            XdLink(stringResource(R.string.xd_set_open_tab) + " ›", { onJump(group) }, Modifier.padding(bottom = 6.dp))
+        }
+    }
+}
+
+@Composable
+private fun PanelSettingRow(
+    setting: Setting,
+    editing: SettingsEditing,
+    state: SettingsPanelState,
+    pinned: List<String>,
+    onPinnedChange: (List<String>) -> Unit,
+    onOpenDrivers: (() -> Unit)?,
+    onShowOverriding: ((Setting) -> Unit)?,
+) {
+    if (Xd.controller) {
+        XdControllerSettingRow(setting, editing, onOpenDrivers = onOpenDrivers)
+    } else {
+        val context = LocalContext.current
+        val toast = LocalXdToast.current
+        val pin: (() -> Unit)? = if (setting is Setting.Action) null else ({
+            val next = PinnedSettings.toggled(pinned, setting.key)
+            onPinnedChange(next)
+            toast.show(context.getString(if (setting.key in next) R.string.xd_set_pinned else R.string.xd_set_unpinned))
+        })
+        XdSettingRow(setting, editing, state.showDescriptions, setting.key in pinned, pin,
+            onOpenDrivers = onOpenDrivers, onShowOverriding = onShowOverriding)
     }
 }
 

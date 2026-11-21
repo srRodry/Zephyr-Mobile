@@ -14,8 +14,10 @@ import androidx.compose.foundation.gestures.Orientation
 import androidx.compose.foundation.gestures.draggable
 import androidx.compose.foundation.gestures.rememberDraggableState
 import androidx.compose.foundation.layout.*
-import androidx.compose.foundation.lazy.LazyRow
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.GridItemSpan
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.foundation.rememberScrollState
@@ -109,13 +111,32 @@ internal fun LibraryConsole(
                 if (portrait) {
                     // At large font sizes content may scroll; the play action never loses its target.
                     val stageHeight = (maxHeight * .53f).coerceIn(190.dp, 370.dp)
-                    Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
-                        verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                        ConsoleCoverflow(games, game, artOf, onSelect, onSettle,
-                            Modifier.fillMaxWidth().height(stageHeight))
-                        ConsoleIdentity(game, data, preparing, onPlay, onOpen, onOpenSettings, onLaunchOptions, lastFps, onFavorite,
-                            Modifier.fillMaxWidth().padding(horizontal = 20.dp), false)
-                        RecentStrip(games, game, data, artOf, onSelect, onBrowse)
+                    LazyVerticalGrid(
+                        columns = GridCells.Adaptive(76.dp),
+                        modifier = Modifier.fillMaxSize().testTag("library-quick-selector"),
+                        contentPadding = PaddingValues(start = 14.dp, end = 14.dp, bottom = 14.dp),
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalArrangement = Arrangement.spacedBy(8.dp),
+                    ) {
+                        item(key = "coverflow", span = { GridItemSpan(maxLineSpan) }) {
+                            ConsoleCoverflow(games, game, artOf, onSelect, onSettle,
+                                Modifier.fillMaxWidth().height(stageHeight))
+                        }
+                        item(key = "featured", span = { GridItemSpan(maxLineSpan) }) {
+                            ConsoleIdentity(game, data, preparing, onPlay, onOpen, onOpenSettings,
+                                onLaunchOptions, lastFps, onFavorite, Modifier.fillMaxWidth(), false)
+                        }
+                        item(key = "library-heading", span = { GridItemSpan(maxLineSpan) }) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Text(stringResource(R.string.zephyr_library_your_library), Modifier.weight(1f),
+                                    style = XdText.label, color = c.fg2)
+                                XdIconButton(XdIcons.grid, stringResource(R.string.zephyr_console_browse), onBrowse,
+                                    modifier = Modifier.testTag("library-browse"))
+                            }
+                        }
+                        items(games, key = { "cover:${it.stableId}" }) { title ->
+                            LibraryQuickCover(title, artOf(title), title.stableId == game.stableId) { onSelect(title) }
+                        }
                     }
                 } else {
                     Row(Modifier.fillMaxSize().padding(end = 16.dp, bottom = 10.dp),
@@ -372,27 +393,13 @@ private fun ConsolePlay(onClick: () -> Unit, enabled: Boolean, modifier: Modifie
 }
 
 @Composable
-private fun RecentStrip(
-    games: List<Game>, selected: Game, data: LibraryData, artOf: (Game) -> CoverArt,
-    onSelect: (Game) -> Unit, onBrowse: () -> Unit,
-) {
+private fun LibraryQuickCover(title: Game, art: CoverArt, picked: Boolean, onClick: () -> Unit) {
     val c = Xd.colors
-    Column(Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 2.dp)) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            Text(stringResource(R.string.zephyr_library_your_library), Modifier.weight(1f), style = XdText.label, color = c.fg2)
-            XdIconButton(XdIcons.grid, stringResource(R.string.zephyr_console_browse), onBrowse,
-                modifier = Modifier.testTag("library-browse"))
-        }
-        LazyRow(horizontalArrangement = Arrangement.spacedBy(10.dp), modifier = Modifier.testTag("library-quick-selector")) {
-            items(games, key = { it.stableId }) { title ->
-                val picked = title.stableId == selected.stableId
-                Box(Modifier.width(76.dp).height(52.dp).clip(RoundedCornerShape(10.dp))
-                    .border(1.dp, if (picked) c.acc else c.line, RoundedCornerShape(10.dp))
-                    .clickable(role = Role.Button) { onSelect(title) }
-                    .semantics { contentDescription = title.name; this.selected = picked }) {
-                    AsyncImage(artOf(title).model, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
-                }
-            }
-        }
+    val shape = RoundedCornerShape(10.dp)
+    Box(Modifier.fillMaxWidth().aspectRatio(1.25f).focusRing(shape).clip(shape)
+        .background(c.s2).border(1.dp, if (picked) c.acc else c.line, shape)
+        .clickable(role = Role.Button, onClick = onClick)
+        .semantics { contentDescription = title.name; selected = picked }) {
+        AsyncImage(art.model, null, Modifier.fillMaxSize(), contentScale = ContentScale.Crop)
     }
 }

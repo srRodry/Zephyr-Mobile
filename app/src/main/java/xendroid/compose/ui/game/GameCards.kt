@@ -73,7 +73,6 @@ import xendroid.compose.ui.design.XdTwoColumns
 import xendroid.compose.ui.library.CoverArt
 import xendroid.compose.ui.library.GameActions
 import xendroid.compose.ui.library.GameLibraryViewModel
-import xendroid.compose.ui.library.LibraryPlane
 import xendroid.compose.ui.library.LibraryData
 import xendroid.compose.ui.library.RunTimelineDialog
 import xendroid.compose.ui.library.compatShortText
@@ -150,13 +149,11 @@ class GameCards(
         BoxWithConstraints(Modifier.fillMaxWidth()) {
             val wide = maxWidth > 620.dp
             Column(verticalArrangement = Arrangement.spacedBy(16.dp)) {
-                LibraryPlane(Modifier.fillMaxWidth()) {
-                    Column(Modifier.padding(12.dp)) {
-                        GameSheetLink(stringResource(R.string.xd_game_sec_all), GameSections.SETTINGS, XdIcons.sliders, onSection)
-                        GameSheetLink(stringResource(R.string.xd_game_sec_content), GameSections.CONTENT, XdIcons.patch, onSection)
-                        GameSheetLink(stringResource(R.string.xd_game_sec_data), GameSections.DATA, XdIcons.save, onSection)
-                        GameSheetLink(stringResource(R.string.xd_game_sec_perf), GameSections.PERF, XdIcons.chart, onSection)
-                    }
+                Column(Modifier.fillMaxWidth().padding(horizontal = 4.dp)) {
+                    GameSheetLink(stringResource(R.string.xd_game_sec_all), GameSections.SETTINGS, XdIcons.sliders, onSection)
+                    GameSheetLink(stringResource(R.string.xd_game_sec_content), GameSections.CONTENT, XdIcons.patch, onSection)
+                    GameSheetLink(stringResource(R.string.xd_game_sec_data), GameSections.DATA, XdIcons.save, onSection)
+                    GameSheetLink(stringResource(R.string.xd_game_sec_perf), GameSections.PERF, XdIcons.chart, onSection)
                 }
                 LastSessionCard(full = false)
                 XdTwoColumns(wide,

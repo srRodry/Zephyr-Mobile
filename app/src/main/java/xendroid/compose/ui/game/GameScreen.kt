@@ -211,14 +211,17 @@ fun GameScreen(
             accent = true,
         )
     })
-    val settingsPanel: @Composable (xendroid.compose.settings.SettingGroup?) -> Unit = { group ->
+    val settingsPanel: @Composable (
+        xendroid.compose.settings.SettingGroup?, Modifier, (@Composable () -> Unit)?,
+    ) -> Unit = { group, modifier, scrollingHeader ->
         val e = editing
         if (e == null) NoSettings(settings == null)
         else XdSettingsPanel(
-            e, panel, pinned, onPinned, group = group, gameName = game.name,
+            e, panel, pinned, onPinned, modifier = modifier, group = group, gameName = game.name,
             onPresets = if (!panel.editGlobal) ({ presetsOpen = true }) else null,
             onToml = { tomlOpen = true }, onResetAll = resetAll, onOpenDrivers = links.onDrivers,
             scopeSwitch = scopeSwitch, onJump = { g -> savedSection = GameSections.group(g) },
+            scrollingHeader = scrollingHeader,
         )
     }
     val quick: @Composable () -> Unit = {
@@ -238,11 +241,11 @@ fun GameScreen(
         })
         // Round 2: "All settings" (the overview's link) lists every group, each a tap from its tab.
         add(XdSection(GameSections.SETTINGS, stringResource(R.string.xd_game_sec_all), XdIcons.gear, group = groupSettings,
-            badge = overrides.size.takeIf { it > 0 }?.toString()) { settingsPanel(null) })
+            badge = overrides.size.takeIf { it > 0 }?.toString()) { settingsPanel(null, Modifier, null) })
         for (g in SettingCatalog.groups) {
             val own = overrides.keys.count { key -> SettingsSchema.byKey[key]?.let { SettingCatalog.meta(it).group == g } == true }
             add(XdSection(GameSections.group(g), groupTitle(g), groupIcon(g), group = groupSettings,
-                badge = own.takeIf { it > 0 }?.toString()) { settingsPanel(g) })
+                badge = own.takeIf { it > 0 }?.toString()) { settingsPanel(g, Modifier, null) })
         }
         add(XdSection(GameSections.PERF, stringResource(R.string.xd_game_sec_perf), XdIcons.chart, group = groupMore) { cards.Performance() })
         add(XdSection(GameSections.CONTENT, stringResource(R.string.xd_game_sec_content), XdIcons.patch, group = groupMore) { cards.Content() })
@@ -264,6 +267,10 @@ fun GameScreen(
             GameTouchSheet(game, art, data, sections, current, history, actions.preparing,
                 onBack = links.onBack, onPlay = play, onLaunch = { launchOpen = true },
                 onFavorite = { actions.toggleFavorite(game) }, onMore = { moreOpen = true },
+                scrollingSettings = if (editing != null) { id, modifier, header ->
+                    val group = SettingCatalog.groups.firstOrNull { GameSections.group(it) == id }
+                    settingsPanel(group, modifier, header)
+                } else null,
                 hints = listOf(
                     XdHint(if (swap) "B" else "A", stringResource(R.string.xd_hint_select)),
                     XdHint(if (swap) "A" else "B", stringResource(R.string.xd_hint_back), links.onBack),
