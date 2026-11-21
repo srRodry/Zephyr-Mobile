@@ -47,8 +47,8 @@ int main() {
  Var<bool> refresh, exports, fences, skip_shader, skip_pipeline;
  Var<bool> accurate_resolve, destination_packing, integer_fetch, frame_timing, pass_timing;
  Var<bool> selective_readback, neutralize_ssao, unorm8_precision, sanitize_hdr, range_coherency;
- Var<bool> early_submit;
- Var<int64_t> slow_submission;
+ Var<bool> early_submit, callsites;
+ Var<int64_t> slow_submission, drain_window;
  Var<std::string> resolve;
  std::unordered_map<std::string, cvar::IConfigVar*> variables{{"clear_memory_page_state", &refresh}};
  cvar::ConfigVars = &variables;
@@ -72,7 +72,9 @@ int main() {
                    {"spirv_texture_unorm8_precision", &unorm8_precision},
                    {"log_gpu_frame_time_breakdown", &frame_timing},
                    {"log_gpu_frame_time_breakdown_passes", &pass_timing},
-                   {"vulkan_log_slow_submission_ms", &slow_submission}});
+                   {"vulkan_log_slow_submission_ms", &slow_submission},
+                   {"vulkan_drained_submission_window", &drain_window},
+                   {"vulkan_frame_sync_callsite_stats", &callsites}});
  for (uint32_t title : {0x454107F8u, 0x454108D8u, 0x41560815u, 0x4D5309C9u}) {
    xe::game_quirks::Apply(title);
    assert(exports.writes == 0 && fences.writes == 0 && skip_shader.writes == 0 &&
@@ -82,9 +84,11 @@ int main() {
           range_coherency.writes == 0 && early_submit.writes == 0);
    assert(accurate_resolve.writes == 0 && destination_packing.writes == 0 &&
           integer_fetch.writes == 0 && frame_timing.writes == 0 && pass_timing.writes == 0 &&
-          slow_submission.writes == 0);
+          slow_submission.writes == 0 && drain_window.writes == 0 && callsites.writes == 0);
  }
- assert(xe::game_quirks::Apply(0x454109AB) == 17);
+ assert(xe::game_quirks::Apply(0x454109AB) == 19);
+ assert(drain_window.writes == 1 && drain_window.current == 1);
+ assert(callsites.writes == 1 && !callsites.current);
  assert(sanitize_hdr.writes == 1 && sanitize_hdr.current);
  assert(range_coherency.writes == 1 && range_coherency.current);
  assert(early_submit.writes == 1 && early_submit.current);

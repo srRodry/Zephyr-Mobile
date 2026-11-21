@@ -119,6 +119,16 @@ int main() {
   }
   assert(xe::edge30::PipelineWorkers(-1, 8) == (ZEPHYR_EDGE30_ULTRA ? 2 : 6));
   assert(xe::edge30::PipelineWorkers(4, 8) == (ZEPHYR_EDGE30_ULTRA ? 2 : 4));
+  using xe::edge30::SubmissionDrawLimit;
+  static_assert(SubmissionDrawLimit(1300, 100, 1, 80, 80) == 100);
+  static_assert(SubmissionDrawLimit(1300, 100, 1, 81, 80) == 1300);
+  static_assert(SubmissionDrawLimit(1300, 100, 16, 95, 80) == 100);
+  static_assert(SubmissionDrawLimit(1300, 100, 16, 96, 80) == 1300);
+  static_assert(SubmissionDrawLimit(1300, 100, 0, 80, 80) == 1300);
+  static_assert(SubmissionDrawLimit(1300, 100, 1, 79, 80) == 1300);
+  static_assert(SubmissionDrawLimit(0, 100, 1, 80, 80) == 100);
+  static_assert(SubmissionDrawLimit(60, 100, 1, 80, 80) == 60);
+  static_assert(SubmissionDrawLimit(1300, 100, 1, UINT64_MAX, UINT64_MAX) == 100);
   assert(!xe::edge30::DetailedGpuTiming(false));
   assert(xe::edge30::DetailedGpuTiming(true) == !ZEPHYR_EDGE30_ULTRA);
   assert(!xe::edge30::SchedulerStats(false, false));

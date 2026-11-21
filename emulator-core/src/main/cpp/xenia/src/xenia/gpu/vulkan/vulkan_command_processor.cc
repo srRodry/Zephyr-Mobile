@@ -228,9 +228,15 @@ DEFINE_int32(
 UPDATE_from_int32(vulkan_mid_frame_submission_draws, 2026, 7, 24, 12, 0);
 
 DEFINE_int32(
+    vulkan_drained_submission_window, 16,
+    "Number of submissions allowed to use vulkan_drained_submission_draws "
+    "after draining the GPU. Zero disables the reduced draw limit.",
+    "GPU");
+
+DEFINE_int32(
     vulkan_drained_submission_draws, 100,
-    "If greater than 0, for the first 16 submissions after the command "
-    "processor awaited the GPU until it had nothing left to do (memory export "
+    "If greater than 0, for the first vulkan_drained_submission_window "
+    "submissions after the command processor drained the GPU (memory export "
     "output the guest reads, the command processor idle), end and submit the "
     "current command buffer every this many draws rather than every "
     "vulkan_mid_frame_submission_draws, so the GPU doesn't idle while the rest "
@@ -411,6 +417,12 @@ DEFINE_bool(
     "Use VK_KHR_dynamic_rendering instead of traditional render passes. "
     "May improve or worsen performance depending on driver. Requires Vulkan "
     "1.3 or VK_KHR_dynamic_rendering extension support.",
+    "Vulkan");
+
+DEFINE_bool(
+    vulkan_frame_sync_callsite_stats, true,
+    "With log_gpu_frame_time_breakdown, collect detailed CPU call-site and "
+    "stage-mask histograms for Vulkan barriers and queue waits.",
     "Vulkan");
 
 namespace {
@@ -4948,7 +4960,6 @@ bool VulkanCommandProcessor::PushImageMemoryBarrier(
 }
 
 bool VulkanCommandProcessor::SubmitBarriers(bool force_end_render_pass) {
-  void* const barrier_caller = __builtin_return_address(0);
   assert_true(submission_open_);
   SplitPendingBarrier();
   if (pending_barriers_.empty()) {
@@ -4957,8 +4968,10 @@ bool VulkanCommandProcessor::SubmitBarriers(bool force_end_render_pass) {
     }
     return false;
   }
-  if (cvars::log_gpu_frame_time_breakdown) {
-    const uintptr_t address = reinterpret_cast<uintptr_t>(barrier_caller);
+  if (cvars::log_gpu_frame_time_breakdown &&
+      cvars::vulkan_frame_sync_callsite_stats) {
+    const uintptr_t address =
+        reinterpret_cast<uintptr_t>(__builtin_return_address(0));
     for (BarrierSite& site : barrier_sites) {
       if (!site.address || site.address == address) {
         site.address = address;
@@ -7622,17 +7635,11 @@ bool VulkanCommandProcessor::IssueDraw(xenos::PrimitiveType prim_type,
                  uint32_t(std::max(0.0f, dynamic_viewport_.y +
                                              std::abs(dynamic_viewport_.height))));
   }
-  uint32_t submission_draws =
-      uint32_t(std::max(cvars::vulkan_mid_frame_submission_draws, 0));
-  if (cvars::vulkan_drained_submission_draws > 0 &&
-      GetCurrentSubmission() < drained_submission_ + 16) {
-    // Right after the GPU was drained: it waits for this submission.
-    const uint32_t drained_draws =
-        uint32_t(cvars::vulkan_drained_submission_draws);
-    submission_draws = submission_draws
-                           ? std::min(submission_draws, drained_draws)
-                           : drained_draws;
-  }
+  const uint32_t submission_draws = xe::edge30::SubmissionDrawLimit(
+      cvars::vulkan_mid_frame_submission_draws,
+      cvars::vulkan_drained_submission_draws,
+      cvars::vulkan_drained_submission_window, GetCurrentSubmission(),
+      drained_submission_);
   MaybeSubmitAfterDraw(submission_draws);
 
   return true;
@@ -9052,7 +9059,6 @@ void VulkanCommandProcessor::LogRecentSubmissions(const char* context) {
 
 void VulkanCommandProcessor::CheckSubmissionCompletionAndDeviceLoss(
     uint64_t await_submission) {
-  void* const await_caller = __builtin_return_address(0);
   // Only report once, no need to retry a wait that won't succeed anyway.
   if (device_lost_) {
     return;
@@ -9087,14 +9093,16 @@ void VulkanCommandProcessor::CheckSubmissionCompletionAndDeviceLoss(
       if (await_submission > completed_before) {
         // The await actually blocked; record how far behind the GPU was.
         vk_frame_sync_stats_.blocking_awaits++;
-        const uintptr_t await_address =
-            reinterpret_cast<uintptr_t>(await_caller);
-        for (AwaitSite& site : await_sites) {
-          if (!site.address || site.address == await_address) {
-            site.address = await_address;
-            ++site.count;
-            site.ns += t1 - t0;
-            break;
+        if (cvars::vulkan_frame_sync_callsite_stats) {
+          const uintptr_t await_address =
+              reinterpret_cast<uintptr_t>(__builtin_return_address(0));
+          for (AwaitSite& site : await_sites) {
+            if (!site.address || site.address == await_address) {
+              site.address = await_address;
+              ++site.count;
+              site.ns += t1 - t0;
+              break;
+            }
           }
         }
         vk_frame_sync_stats_.await_delta +=
