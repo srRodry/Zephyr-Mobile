@@ -447,14 +447,11 @@ jobs:
           const body = [
             '<!-- update-summary:pt-BR',
             ...(designPreview ? [
-              '- Nova interface Zephyr-Mobile com carrossel, ficha do jogo, navegação adaptativa e Guia em jogo.',
-              '- Army of Two: The Devil’s Cartel com os ajustes de iluminação, resolves e exportações de memória da série Research.',
-              '- Army TDC: só o primeiro lote Vulkan após cada espera completa usa o limite reduzido de desenhos.',
-              '- Telemetria por quadro preservada. Os histogramas detalhados de barreiras ficam desativados por padrão para o Army TDC.',
-              '- Vulkan: consultas e esperas de fences dispensam medições internas quando a telemetria detalhada está desligada.',
-              '- Black Ops II: inclui o decodificador XMA alternativo e a redução de ganho de 3 dB.',
-              '- Interface: biblioteca completa em grade, configurações por jogo com rolagem e correções de navegação.',
-              '- Prévia para Edge 30 Ultra. Desempenho e estabilidade em jogo aguardam medição no aparelho.'
+              '- Army TDC: correções de iluminação, resolves e sincronização da exportação de memória.',
+              '- Black Ops II: perfil Turnip sysmem, XMA alternativo e margem de 3 dB no áudio.',
+              '- Vulkan: medições de fences sob demanda e ajustes no envio de lotes.',
+              '- Interface: grade de jogos, abas responsivas e ajustes carregados sob demanda.',
+              '- Prévia Research voltada para o Edge 30 Ultra.'
             ] : edge30Swarm ? [
               '- Army of Two: The Devil’s Cartel: envio antecipado de lotes Vulkan com exportações de memória pendentes.',
               '- A telemetria registra envios antecipados e esperas de coerência por quadro.',
@@ -487,7 +484,35 @@ jobs:
             '- O loading do TDC permanece sem correção comprovada; desempenho ainda precisa de validação no aparelho.',
             ]),
             '-->',
-            'Beta experimental; desempenho ainda não validado no aparelho.',
+            ...(designPreview ? [
+              '',
+              '## Army of TWO: The Devil’s Cartel',
+              '',
+              '- Corrigimos a interpretação de formatos numéricos nos resolves e no acesso a texturas. Também tratamos valores HDR inválidos e ajustamos a precisão das máscaras de partículas.',
+              '- Tornamos as exportações de memória dos shaders visíveis ao jogo com sincronização por intervalo, envio antecipado e leitura seletiva. O modo alternativo de leitura usa memória mapeada pelo host quando necessário.',
+              '- Depois de uma espera que esvazia a fila Vulkan, só o primeiro lote usa o limite reduzido de desenhos. Os demais voltam ao fluxo normal.',
+              '- O jogo chegou ao gameplay no Edge 30 Ultra. Uma sessão anterior registrou mediana de 16 FPS e 11 FPS ou menos nos 5% piores segundos. Esses números são uma referência anterior, e esta build ainda precisa de comparação na mesma cena.',
+              '',
+              '## Call of Duty: Black Ops II (Brasil)',
+              '',
+              '- O perfil 415608C3 usa Turnip sysmem e três threads de compilação de pipelines. No aparelho, sysmem permitiu chegar ao combate na campanha após uma queda Vulkan com gmem.',
+              '- A prévia usa o XMA alternativo, mantém as métricas do AAudio e reduz em 3 dB o ganho da mixagem do jogo antes do limitador. O log com o XMA alternativo não repetiu os avisos de atraso de 100 ms da sessão anterior. A redução da distorção audível ainda precisa ser confirmada.',
+              '',
+              '## Desempenho e trabalho redundante',
+              '',
+              '- Consultas e esperas de fences Vulkan mantêm a sincronização e os avisos de erro. As leituras de relógio para medir essas operações só rodam quando o detalhamento de tempo de quadro está ligado.',
+              '- O Army TDC mantém a telemetria por quadro com o histograma detalhado de barreiras desligado por padrão.',
+              '- A ficha do jogo calcula os totais de ajustes alterados por grupo em uma passagem e reutiliza o resultado enquanto as chaves permanecerem iguais.',
+              '',
+              '## Biblioteca e interface',
+              '',
+              '- A biblioteca em retrato mostra os títulos em uma grade que ocupa novas linhas abaixo do carrossel.',
+              '- A ficha preserva a posição de rolagem por seção. As abas cabem lado a lado em larguras compatíveis e os ajustes são montados conforme entram na área visível.',
+              '- A biblioteca e a ficha usam a mesma margem lateral. O indicador das abas mantém o espaço reservado ao trocar de seção. A paleta azul-marinho e ciano e a aurora da interface Research continuam nesta prévia.',
+              '',
+              'Prévia para teste no Edge 30 Ultra. Ganhos de FPS, latência ao toque e qualidade do áudio desta build aguardam medição no aparelho.',
+              ''
+            ] : ['Beta experimental; desempenho ainda não validado no aparelho.']),
             'Pacote: xendroid.compose.zephyr.research',
             'VersionCode: ' + versionCode,
             'Código-fonte: https://github.com/' + context.repo.owner + '/' + context.repo.repo + '/tree/' + context.sha,
@@ -504,7 +529,7 @@ jobs:
             if (error.status !== 404) throw error;
             release = (await github.rest.repos.createRelease({
               ...context.repo, tag_name: tag, target_commitish: context.sha,
-              name: 'Zephyr-Mobile ' + (designPreview ? 'Preview — Nova interface e Army TDC' : edge30Swarm ? 'Research — Army TDC Vulkan' : armyTdc ? 'beta 18 — Army TDC native diagnostics' : nativeRecomp ? 'beta 17 — PPC native semantics' : edge30Audit ? 'beta 16 — Edge30 diagnostics' : 'beta 15') + ' — build ' + context.runNumber,
+              name: 'Zephyr-Mobile ' + (designPreview ? 'Preview — Army TDC, Black Ops II e interface' : edge30Swarm ? 'Research — Army TDC Vulkan' : armyTdc ? 'beta 18 — Army TDC native diagnostics' : nativeRecomp ? 'beta 17 — PPC native semantics' : edge30Audit ? 'beta 16 — Edge30 diagnostics' : 'beta 15') + ' — build ' + context.runNumber,
               body, draft: true, prerelease: true
             })).data;
           }

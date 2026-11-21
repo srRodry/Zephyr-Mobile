@@ -232,6 +232,10 @@ fun GameScreen(
         onSection = { savedSection = it }, quick = quick, changedCount = overrides.size)
 
     val favorite = data.favorite(game)
+    val changedByGroup = remember(overrides.keys) {
+        overrides.keys.mapNotNull { key -> SettingsSchema.byKey[key]?.let { SettingCatalog.meta(it).group } }
+            .groupingBy { it }.eachCount()
+    }
     val sections = buildList {
         val groupGame = stringResource(R.string.xd_game_group_game)
         val groupSettings = stringResource(R.string.xd_game_group_settings)
@@ -243,7 +247,7 @@ fun GameScreen(
         add(XdSection(GameSections.SETTINGS, stringResource(R.string.xd_game_sec_all), XdIcons.gear, group = groupSettings,
             badge = overrides.size.takeIf { it > 0 }?.toString()) { settingsPanel(null, Modifier, null) })
         for (g in SettingCatalog.groups) {
-            val own = overrides.keys.count { key -> SettingsSchema.byKey[key]?.let { SettingCatalog.meta(it).group == g } == true }
+            val own = changedByGroup[g] ?: 0
             add(XdSection(GameSections.group(g), groupTitle(g), groupIcon(g), group = groupSettings,
                 badge = own.takeIf { it > 0 }?.toString()) { settingsPanel(g, Modifier, null) })
         }

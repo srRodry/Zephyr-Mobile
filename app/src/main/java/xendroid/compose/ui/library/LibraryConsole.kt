@@ -114,7 +114,7 @@ internal fun LibraryConsole(
                     LazyVerticalGrid(
                         columns = GridCells.Adaptive(76.dp),
                         modifier = Modifier.fillMaxSize().testTag("library-quick-selector"),
-                        contentPadding = PaddingValues(start = 14.dp, end = 14.dp, bottom = 14.dp),
+                        contentPadding = PaddingValues(start = 16.dp, end = 16.dp, bottom = 16.dp),
                         horizontalArrangement = Arrangement.spacedBy(8.dp),
                         verticalArrangement = Arrangement.spacedBy(8.dp),
                     ) {

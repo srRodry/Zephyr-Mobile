@@ -95,12 +95,12 @@ internal fun GameTouchSheet(
                 val sectionId = current?.id.orEmpty()
                 val settingsList = scrollingSettings.takeIf { active == GameSections.SETTINGS }
                 if (compact) {
-                    Box(Modifier.padding(horizontal = 14.dp, vertical = 6.dp)) { MainTabs(active, history::pick) }
+                    Box(Modifier.padding(horizontal = 16.dp, vertical = 6.dp)) { MainTabs(active, history::pick) }
                     scrollStates.SaveableStateProvider(sectionId) {
-                        val viewport = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 14.dp)
+                        val viewport = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp)
                             .testTag("game-sheet-scroll")
                         if (settingsList != null) {
-                            Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 14.dp)
+                            Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 16.dp)
                                 .testTag("game-sheet-content:$sectionId")) {
                                 settingsList(sectionId, Modifier.fillMaxSize().testTag("game-sheet-scroll")) {
                                     Column(Modifier.padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -121,7 +121,7 @@ internal fun GameTouchSheet(
                         }
                     }
                 } else {
-                    Row(Modifier.weight(1f).padding(horizontal = 14.dp, vertical = 10.dp),
+                    Row(Modifier.weight(1f).padding(horizontal = 16.dp, vertical = 10.dp),
                         horizontalArrangement = Arrangement.spacedBy(14.dp)) {
                         Column(Modifier.width(identityWidth).verticalScroll(rememberScrollState())) { identity() }
                         Column(Modifier.weight(1f), verticalArrangement = Arrangement.spacedBy(10.dp)) {
@@ -258,10 +258,9 @@ private fun MainTabs(selected: String, onSelect: (String) -> Unit) {
                         textAlign = androidx.compose.ui.text.style.TextAlign.Center,
                         maxLines = if (scrollable) 1 else 2,
                     )
-                    if (picked) {
-                        Spacer(Modifier.height(3.dp))
-                        Box(Modifier.width(20.dp).height(2.dp).background(c.acc, shape))
-                    }
+                    Spacer(Modifier.height(3.dp))
+                    Box(Modifier.width(20.dp).height(2.dp)
+                        .background(if (picked) c.acc else Color.Transparent, shape))
                 }
             }
         }
