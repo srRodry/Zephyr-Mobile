@@ -100,11 +100,14 @@ internal fun GameTouchSheet(
                         val viewport = Modifier.weight(1f).fillMaxWidth().padding(horizontal = 14.dp)
                             .testTag("game-sheet-scroll")
                         if (settingsList != null) {
-                            settingsList(sectionId, viewport.testTag("game-sheet-content:$sectionId")) {
-                                Column(Modifier.padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                                    identity()
-                                    subNavigation()
-                                    sectionBack()
+                            Box(Modifier.weight(1f).fillMaxWidth().padding(horizontal = 14.dp)
+                                .testTag("game-sheet-content:$sectionId")) {
+                                settingsList(sectionId, Modifier.fillMaxSize().testTag("game-sheet-scroll")) {
+                                    Column(Modifier.padding(vertical = 10.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+                                        identity()
+                                        subNavigation()
+                                        sectionBack()
+                                    }
                                 }
                             }
                         } else {
@@ -127,7 +130,9 @@ internal fun GameTouchSheet(
                             scrollStates.SaveableStateProvider(sectionId) {
                                 val viewport = Modifier.weight(1f).fillMaxWidth().testTag("game-sheet-scroll")
                                 if (settingsList != null) {
-                                    settingsList(sectionId, viewport.testTag("game-sheet-content:$sectionId"), sectionBack)
+                                    Box(Modifier.weight(1f).fillMaxWidth().testTag("game-sheet-content:$sectionId")) {
+                                        settingsList(sectionId, Modifier.fillMaxSize().testTag("game-sheet-scroll"), sectionBack)
+                                    }
                                 } else {
                                     val scroll = rememberSaveable(saver = ScrollState.Saver) { ScrollState(0) }
                                     Column(viewport.verticalScroll(scroll), verticalArrangement = Arrangement.spacedBy(10.dp)) {
