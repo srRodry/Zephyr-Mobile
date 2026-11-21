@@ -35,6 +35,8 @@ static const Quirk kQuirks[] = {
     // Use the alternate XMA implementation for the audio comparison.
     {0x415608C3, "xma_decoder", "old",
      "use the alternate XMA decoder for the Black Ops II audio preview"},
+    {0x415608C3, "apu_aaudio_game_gain", 0.70710678,
+     "allow 3 dB of headroom for the Black Ops II game mix"},
     // Army of Two retail: refresh page validity at frame boundaries to avoid
     // stale uploaded data (corrupt/warped character textures and geometry).
     // Source: xenia-manager/optimized-settings/settings/454107F8.toml.
