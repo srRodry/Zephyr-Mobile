@@ -23,6 +23,12 @@ struct Quirk {
 // Entries apply at per-game-config priority, so a user's own per-game config
 // still overrides them.
 static const Quirk kQuirks[] = {
+    // On the Edge 30 Ultra, Turnip GMEM lost the device during boot.
+    // The same build and driver reached campaign combat with sysmem.
+    {0x415608C3, "turnip_debug", "sysmem",
+     "use the Turnip mode that reached Black Ops II campaign combat"},
+    {0x415608C3, "apu_aaudio_log_stats", true,
+     "measure Black Ops II audio starvation and decoder timing"},
     // Army of Two retail: refresh page validity at frame boundaries to avoid
     // stale uploaded data (corrupt/warped character textures and geometry).
     // Source: xenia-manager/optimized-settings/settings/454107F8.toml.
