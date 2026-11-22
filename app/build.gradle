@@ -147,6 +147,8 @@ android {
                 // prints/app); without it they still render every screen, as smoke tests.
                 def shots = project.findProperty('screenshots')
                 if (shots) systemProperty 'xendroid.screenshots', file(shots).absolutePath
+                // Use the canonical Maven Central endpoint for Robolectric's runtime SDK downloads.
+                systemProperty 'robolectric.dependency.repo.url', 'https://repo.maven.apache.org/maven2'
                 maxHeapSize = '3g'
             }
         }
