@@ -424,7 +424,7 @@ jobs:
         if-no-files-found: error
         retention-days: 90
 
-    - name: Publish verified Research update
+    - name: Publish signed Zephyr release
       if: ${{ (github.ref_name != 'research/edge30-performance-swarm-20261119' && github.ref_name != 'research/edge30-design-army-preview') || (github.event_name == 'push' && (contains(github.event.head_commit.message, '[zephyr-research-feed]') || contains(github.event.head_commit.message, '[zephyr-stable]'))) }}
       uses: actions/github-script@v7
       env:
@@ -553,7 +553,7 @@ jobs:
             }
           }
           await github.rest.repos.updateRelease({...context.repo, release_id: release.id, draft: false, prerelease: !stable, body, make_latest: stable ? 'true' : 'false'});
-          core.summary.addLink('Download Zephyr Research', release.html_url);
+          core.summary.addLink(stable ? 'Download Zephyr-Mobile 1.0' : 'Download Zephyr Research', release.html_url);
           await core.summary.write();
 
     - name: Remove signing material
