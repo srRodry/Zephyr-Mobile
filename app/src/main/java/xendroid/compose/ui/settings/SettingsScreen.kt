@@ -180,6 +180,7 @@ fun SettingsScreen(vm: SettingsViewModel, onBack: () -> Unit, links: SettingsLin
         add(XdSection(SettingsSectionIds.UI, stringResource(R.string.xd_set_interface), XdIcons.monitor, group = groupApp,
             lead = stringResource(R.string.xd_set_interface_lead)) {
             Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                xendroid.compose.ui.design.ZephyrThemeOptions()
                 InputModeOption()
                 SettingLevelOption(panel.level) { panel.level = it }
                 MenuButtonsOption()

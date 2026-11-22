@@ -79,7 +79,10 @@ jobs:
         variant=test
         name="Zephyr-Performance_${RESEARCH_ARM}_$sha"
         package=xendroid.compose.zephyr.research
-        package_args="-PzephyrEdge30Ultra -PxendroidReleaseIdSuffix=.zephyr.research -PxendroidReleaseDebuggable -PxendroidUpdateRepo=srRodry/Zephyr-Mobile"
+        package_args="-PzephyrEdge30Ultra -PxendroidReleaseIdSuffix=.zephyr.research -PxendroidUpdateRepo=srRodry/Zephyr-Mobile"
+        if [[ "$GITHUB_EVENT_NAME" != push ]] || ! jq -e '.head_commit.message | contains("[zephyr-stable]")' "$GITHUB_EVENT_PATH" >/dev/null; then
+          package_args+=" -PxendroidReleaseDebuggable"
+        fi
         {
           echo "sha=$sha"
           echo "variant=$variant"
@@ -422,7 +425,7 @@ jobs:
         retention-days: 90
 
     - name: Publish verified Research update
-      if: ${{ (github.ref_name != 'research/edge30-performance-swarm-20261119' && github.ref_name != 'research/edge30-design-army-preview') || (github.event_name == 'push' && contains(github.event.head_commit.message, '[zephyr-research-feed]')) }}
+      if: ${{ (github.ref_name != 'research/edge30-performance-swarm-20261119' && github.ref_name != 'research/edge30-design-army-preview') || (github.event_name == 'push' && (contains(github.event.head_commit.message, '[zephyr-research-feed]') || contains(github.event.head_commit.message, '[zephyr-stable]'))) }}
       uses: actions/github-script@v7
       env:
         APK: ${{ steps.sign_candidate.outputs.apk }}
@@ -444,7 +447,8 @@ jobs:
           const digest = crypto.createHash('sha256').update(bytes).digest('hex');
           const checksums = process.env.NAME + '.sha256';
           fs.writeFileSync(checksums, digest + '  ' + apk + '\n');
-          const body = [
+          const stable = context.eventName === 'push' && context.payload.head_commit.message.includes('[zephyr-stable]');
+          const body = stable ? ["## Zephyr-Mobile 1.0","- Temas Azul e Verde em Configurações → Interface, com escolha persistente. Biblioteca em grade, cartões alinhados, seleção animada e navegação por toque e controle.","- Limite opcional de 20 FPS para reduzir a carga. Descarte linear de pipelines Vulkan e menos logs e medições no caminho de renderização.","- Áudio: removida espera redundante na consulta de volume. Black Ops II usa perfil Turnip sysmem, três trabalhadores de pipeline, XMA alternativo e margem de 3 dB antes do limitador. Cortes em cenas pesadas ainda podem ocorrer.","","### Army of TWO: The Devil’s Cartel","A campanha chegou ao ponto jogável com correções de formatos inteiros e iluminação HDR, leitura seletiva de resolves, sincronização das exportações de memória e preservação de desenhos durante a compilação de shaders e pipelines.","**Recomendação atual: Snapdragon 8 Gen 2 ou superior**, com Turnip compatível. Fumaça em blocos e piscadas no cenário ainda estão em investigação.","","Obrigado ao Xendroid+ e aos seus contribuidores pela base que deu origem ao Zephyr-Mobile. https://github.com/phforner0/Xendroid-Plus"].join('\n') : [
             '<!-- update-summary:pt-BR',
             ...(designPreview ? [
               '- Army TDC: correções de iluminação, resolves e sincronização da exportação de memória.',
@@ -529,8 +533,8 @@ jobs:
             if (error.status !== 404) throw error;
             release = (await github.rest.repos.createRelease({
               ...context.repo, tag_name: tag, target_commitish: context.sha,
-              name: 'Zephyr-Mobile ' + (designPreview ? 'Preview — Army TDC, Black Ops II e interface' : edge30Swarm ? 'Research — Army TDC Vulkan' : armyTdc ? 'beta 18 — Army TDC native diagnostics' : nativeRecomp ? 'beta 17 — PPC native semantics' : edge30Audit ? 'beta 16 — Edge30 diagnostics' : 'beta 15') + ' — build ' + context.runNumber,
-              body, draft: true, prerelease: true
+              name: stable ? 'Zephyr-Mobile 1.0' : 'Zephyr-Mobile ' + (designPreview ? 'Preview — Army TDC, Black Ops II e interface' : edge30Swarm ? 'Research — Army TDC Vulkan' : armyTdc ? 'beta 18 — Army TDC native diagnostics' : nativeRecomp ? 'beta 17 — PPC native semantics' : edge30Audit ? 'beta 16 — Edge30 diagnostics' : 'beta 15') + ' — build ' + context.runNumber,
+              body, draft: true, prerelease: !stable
             })).data;
           }
           const files = [apk, checksums, process.env.NAME + '.json', process.env.NAME + '.signing.txt'];
@@ -548,7 +552,7 @@ jobs:
               throw new Error('Published APK size/digest mismatch; release kept as draft.');
             }
           }
-          await github.rest.repos.updateRelease({...context.repo, release_id: release.id, draft: false, prerelease: true, body, make_latest: 'false'});
+          await github.rest.repos.updateRelease({...context.repo, release_id: release.id, draft: false, prerelease: !stable, body, make_latest: stable ? 'true' : 'false'});
           core.summary.addLink('Download Zephyr Research', release.html_url);
           await core.summary.write();
 

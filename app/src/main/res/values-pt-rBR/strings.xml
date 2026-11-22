@@ -1343,4 +1343,7 @@
     <string name="ge_group">Grupo</string>
     <string name="host_pause_pending">Aguardando o emulador pausar ou retomar</string>
     <string name="host_pause_failed">Falha ao pausar ou retomar o emulador</string>
+    <string name="zephyr_appearance">Tema</string>
+    <string name="zephyr_appearance_blue">Azul</string>
+    <string name="zephyr_appearance_green">Verde</string>
 </resources>

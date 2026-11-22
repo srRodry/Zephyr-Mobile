@@ -84,6 +84,12 @@ data class XdColors(
             acc = Color(0xFF52E4F3), onAcc = Color(0xFF051924), dyn = Color(0xFF0B1B38), controller = false,
         )
         // Input method never changes the visual identity: both modes share the same tokens.
+        val Green = Touch.copy(
+            bg = Color(0xFF07140F), s1 = Color(0xFF102219), s2 = Color(0xFF183126),
+            s3 = Color(0xFF214435), s4 = Color(0xFF2D5745), sheet = Color(0xFF12261B),
+            line = Color(0xFF2A493B), line2 = Color(0xFF577F6B),
+            acc = Color(0xFF78E5AC), onAcc = Color(0xFF072319), dyn = Color(0xFF103825),
+        )
         val Controller = Touch.copy(controller = true)
 
         fun of(mode: InputMode) = if (mode == InputMode.CONTROLLER) Controller else Touch
@@ -232,7 +238,9 @@ private val typography = Typography(
  */
 @Composable
 fun XdTheme(mode: InputMode, colors: XdColors? = null, content: @Composable () -> Unit) {
-    val c = colors ?: XdColors.of(mode)
+    val c = colors ?: if (rememberGreenTheme()) {
+        remember(mode) { XdColors.Green.copy(controller = mode == InputMode.CONTROLLER) }
+    } else XdColors.of(mode)
     val scheme = remember(c) { scheme(c) }
     CompositionLocalProvider(LocalXd provides c, LocalInputMode provides mode) {
         MaterialTheme(colorScheme = scheme, typography = typography, content = content)

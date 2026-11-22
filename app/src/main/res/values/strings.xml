@@ -1304,4 +1304,7 @@
     <string name="ge_group">Group</string>
     <string name="host_pause_pending">Waiting for the emulator to pause or resume</string>
     <string name="host_pause_failed">Emulator pause or resume failed</string>
+    <string name="zephyr_appearance">Theme</string>
+    <string name="zephyr_appearance_blue">Blue</string>
+    <string name="zephyr_appearance_green">Green</string>
 </resources>
