@@ -448,7 +448,7 @@ jobs:
           const checksums = process.env.NAME + '.sha256';
           fs.writeFileSync(checksums, digest + '  ' + apk + '\n');
           const stable = context.eventName === 'push' && context.payload.head_commit.message.includes('[zephyr-stable]');
-          const body = stable ? ["## Zephyr-Mobile 1.0","- Temas Azul e Verde em Configurações → Interface, com escolha persistente. Biblioteca em grade, cartões alinhados, seleção animada e navegação por toque e controle.","- Limite opcional de 20 FPS para reduzir a carga. Descarte linear de pipelines Vulkan e menos logs e medições no caminho de renderização.","- Áudio: removida espera redundante na consulta de volume. Black Ops II usa perfil Turnip sysmem, três trabalhadores de pipeline, XMA alternativo e margem de 3 dB antes do limitador. Cortes em cenas pesadas ainda podem ocorrer.","","### Army of TWO: The Devil’s Cartel","A campanha chegou ao ponto jogável com correções de formatos inteiros e iluminação HDR, leitura seletiva de resolves, sincronização das exportações de memória e preservação de desenhos durante a compilação de shaders e pipelines.","**Recomendação atual: Snapdragon 8 Gen 2 ou superior**, com Turnip compatível. Fumaça em blocos e piscadas no cenário ainda estão em investigação.","","Obrigado ao Xendroid+ e aos seus contribuidores pela base que deu origem ao Zephyr-Mobile. https://github.com/phforner0/Xendroid-Plus"].join('\n') : [
+          const body = stable ? ["## Zephyr-Mobile 1.0.1","- Hotfix Army TDC: retirado o override experimental de upload de texturas que desativava o caminho Vulkan otimizado. Ganho de FPS e comportamento visual aguardam medição no aparelho.","- Temas Azul e Verde em Configurações → Interface, com escolha persistente. Biblioteca em grade, cartões alinhados, seleção animada e navegação por toque e controle.","- Limite opcional de 20 FPS para reduzir a carga. Descarte linear de pipelines Vulkan e menos logs e medições no caminho de renderização.","- Áudio: removida espera redundante na consulta de volume. Black Ops II usa perfil Turnip sysmem, três trabalhadores de pipeline, XMA alternativo e margem de 3 dB antes do limitador. Cortes em cenas pesadas ainda podem ocorrer.","","### Army of TWO: The Devil’s Cartel","A campanha chegou ao ponto jogável com correções de formatos inteiros e iluminação HDR, leitura seletiva de resolves, sincronização das exportações de memória e preservação de desenhos durante a compilação de shaders e pipelines.","**Recomendação atual: Snapdragon 8 Gen 2 ou superior**, com Turnip compatível. Fumaça em blocos e piscadas no cenário ainda estão em investigação.","","Obrigado ao Xendroid+ e aos seus contribuidores pela base que deu origem ao Zephyr-Mobile. https://github.com/phforner0/Xendroid-Plus"].join('\n') : [
             '<!-- update-summary:pt-BR',
             ...(designPreview ? [
               '- Army TDC: correções de iluminação, resolves e sincronização da exportação de memória.',
@@ -533,7 +533,7 @@ jobs:
             if (error.status !== 404) throw error;
             release = (await github.rest.repos.createRelease({
               ...context.repo, tag_name: tag, target_commitish: context.sha,
-              name: stable ? 'Zephyr-Mobile 1.0' : 'Zephyr-Mobile ' + (designPreview ? 'Preview — Army TDC, Black Ops II e interface' : edge30Swarm ? 'Research — Army TDC Vulkan' : armyTdc ? 'beta 18 — Army TDC native diagnostics' : nativeRecomp ? 'beta 17 — PPC native semantics' : edge30Audit ? 'beta 16 — Edge30 diagnostics' : 'beta 15') + ' — build ' + context.runNumber,
+              name: stable ? 'Zephyr-Mobile 1.0.1' : 'Zephyr-Mobile ' + (designPreview ? 'Preview — Army TDC, Black Ops II e interface' : edge30Swarm ? 'Research — Army TDC Vulkan' : armyTdc ? 'beta 18 — Army TDC native diagnostics' : nativeRecomp ? 'beta 17 — PPC native semantics' : edge30Audit ? 'beta 16 — Edge30 diagnostics' : 'beta 15') + ' — build ' + context.runNumber,
               body, draft: true, prerelease: !stable
             })).data;
           }
@@ -553,7 +553,7 @@ jobs:
             }
           }
           await github.rest.repos.updateRelease({...context.repo, release_id: release.id, draft: false, prerelease: !stable, body, make_latest: stable ? 'true' : 'false'});
-          core.summary.addLink(stable ? 'Download Zephyr-Mobile 1.0' : 'Download Zephyr Research', release.html_url);
+          core.summary.addLink(stable ? 'Download Zephyr-Mobile 1.0.1' : 'Download Zephyr Research', release.html_url);
           await core.summary.write();
 
     - name: Remove signing material
