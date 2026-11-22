@@ -413,7 +413,7 @@ jobs:
         retention-days: 14
         compression-level: 0
 
-    - name: Preserve matching native symbol map
+    - name: Preserve native symbols for the signed APK
       run: python3 tools/collect-native-symbols.py --apk "${{ steps.sign_candidate.outputs.apk }}" --out native-symbols
 
     - name: Upload matching native symbol map

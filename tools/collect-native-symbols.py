@@ -30,7 +30,8 @@ with tempfile.TemporaryDirectory() as d:
     with zipfile.ZipFile(args.apk) as apk:
         packaged.write_bytes(apk.read('lib/arm64-v8a/libe.so'))
     identity = build_id(packaged)
-    matches = [p for p in (root/'emulator-core/build/intermediates/cxx/Release').rglob('libe.so')
+    matches = [p for variant in ('Release', 'RelWithDebInfo')
+               for p in (root/'emulator-core/build/intermediates/cxx'/variant).rglob('libe.so')
                if build_id(p) == identity]
     if not matches:
         raise RuntimeError('No unstripped release libe.so matches the APK Build ID')
