@@ -76,6 +76,9 @@ static const Quirk kQuirks[] = {
      "keep non-finite HDR exports out of host blending"},
     {0x454109AB, "vulkan_army_tdc_neutralize_ssao", true,
      "replace the aliased Army TDC ambient occlusion mask with neutral AO"},
+    // Keep the ordinary texture upload shader for resolved color and depth.
+    {0x454109AB, "vulkan_texture_load_coalesced", false,
+     "use the reference texture upload path while testing particle edges and map flicker"},
     {0x454109AB, "spirv_texture_unorm8_precision", true,
      "match Xenos precision for Army TDC particle mask comparisons"},
     {0x454109AB, "vulkan_drained_submission_window", int64_t(1),
