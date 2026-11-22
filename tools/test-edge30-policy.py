@@ -164,8 +164,9 @@ parser = argparse.ArgumentParser(description=__doc__)
 parser.add_argument('--verify-android-target', action='store_true')
 args = parser.parse_args()
 if args.verify_android_target:
-    databases = list(root.glob('emulator-core/.cxx/Release/*/arm64-v8a/compile_commands.json'))
-    assert len(databases) == 1, 'Expected one dedicated Release compilation database'
+    databases = [database for variant in ('Release', 'RelWithDebInfo')
+                 for database in root.glob(f'emulator-core/.cxx/{variant}/*/arm64-v8a/compile_commands.json')]
+    assert len(databases) == 1, 'Expected one Android ARM64 release compilation database'
     entries = json.loads(databases[0].read_text())
     for name in ('guest_scheduler.cc', 'vulkan_pipeline_cache.cc', 'vulkan_command_processor.cc', 'xendroid_emu.cpp'):
         selected = [entry for entry in entries if Path(entry['file']).name == name]
