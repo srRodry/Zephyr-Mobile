@@ -80,8 +80,8 @@ jobs:
         name="Zephyr-Performance_${RESEARCH_ARM}_$sha"
         package=xendroid.compose.zephyr.research
         package_args="-PzephyrEdge30Ultra -PxendroidReleaseIdSuffix=.zephyr.research -PxendroidUpdateRepo=srRodry/Zephyr-Mobile"
-        if [[ "$GITHUB_EVENT_NAME" != push ]] || ! jq -e '.head_commit.message | contains("[zephyr-stable]")' "$GITHUB_EVENT_PATH" >/dev/null; then
-          package_args+=" -PxendroidReleaseDebuggable"
+        if [ "$GITHUB_EVENT_NAME" != push ] || ! jq -e '.head_commit.message | contains("[zephyr-stable]")' "$GITHUB_EVENT_PATH" >/dev/null; then
+          package_args="$package_args -PxendroidReleaseDebuggable"
         fi
         {
           echo "sha=$sha"
