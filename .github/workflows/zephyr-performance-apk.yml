@@ -1,11 +1,11 @@
 name: Zephyr performance beta APK
 
 # One isolated beta APK, signed with the existing permanent research key.
-# Pushes require [zephyr-apk]; verified Research APKs publish to the in-app feed.
+# Pushes require [zephyr-apk]. The FH4Droid diagnostics branch uploads CI artifacts only.
 
 on:
   push:
-    branches: [perf/edge30-beta1, integration/zephyr-beta2, research/optimization-round3, research/edge30-diagnostics-audit-20261117, research/native-recomp-semantics-20261118, research/army-tdc-native-hotpath-20261118, research/edge30-performance-swarm-20261119, research/edge30-design-army-preview]
+    branches: [perf/edge30-beta1, integration/zephyr-beta2, research/optimization-round3, research/edge30-diagnostics-audit-20261117, research/native-recomp-semantics-20261118, research/army-tdc-native-hotpath-20261118, research/edge30-performance-swarm-20261119, research/edge30-design-army-preview, research/fh4droid-android-port]
     paths-ignore:
       - '**.md'
       - 'docs/**'
@@ -72,7 +72,7 @@ jobs:
     - name: Build settings
       id: cfg
       env:
-        RESEARCH_ARM: ${{ github.ref_name == 'research/edge30-design-army-preview' && 'edge30-design-army' || github.ref_name == 'research/edge30-performance-swarm-20261119' && 'edge30-swarm' || github.ref_name == 'research/army-tdc-native-hotpath-20261118' && 'beta18-army-tdc' || github.ref_name == 'research/native-recomp-semantics-20261118' && 'beta17-ppc-native' || github.ref_name == 'research/edge30-diagnostics-audit-20261117' && 'beta16-edge30' || github.ref_name == 'research/optimization-round3' && 'beta15-chrome' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
+        RESEARCH_ARM: ${{ github.ref_name == 'research/fh4droid-android-port' && 'forza-diagnostics' || github.ref_name == 'research/edge30-design-army-preview' && 'edge30-design-army' || github.ref_name == 'research/edge30-performance-swarm-20261119' && 'edge30-swarm' || github.ref_name == 'research/army-tdc-native-hotpath-20261118' && 'beta18-army-tdc' || github.ref_name == 'research/native-recomp-semantics-20261118' && 'beta17-ppc-native' || github.ref_name == 'research/edge30-diagnostics-audit-20261117' && 'beta16-edge30' || github.ref_name == 'research/optimization-round3' && 'beta15-chrome' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
         sha=$(git rev-parse --short=8 HEAD)
@@ -425,7 +425,7 @@ jobs:
         retention-days: 90
 
     - name: Publish signed Zephyr release
-      if: ${{ (github.ref_name != 'research/edge30-performance-swarm-20261119' && github.ref_name != 'research/edge30-design-army-preview') || (github.event_name == 'push' && (contains(github.event.head_commit.message, '[zephyr-research-feed]') || contains(github.event.head_commit.message, '[zephyr-stable]'))) }}
+      if: ${{ github.ref_name != 'research/fh4droid-android-port' && ((github.ref_name != 'research/edge30-performance-swarm-20261119' && github.ref_name != 'research/edge30-design-army-preview') || (github.event_name == 'push' && (contains(github.event.head_commit.message, '[zephyr-research-feed]') || contains(github.event.head_commit.message, '[zephyr-stable]')))) }}
       uses: actions/github-script@v7
       env:
         APK: ${{ steps.sign_candidate.outputs.apk }}
