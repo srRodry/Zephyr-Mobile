@@ -832,6 +832,7 @@ class VulkanCommandProcessor final : public CommandProcessor {
     uint64_t draws = 0;
     uint64_t render_pass_begins = 0;
     uint64_t primary_buffer_splits = 0;
+    uint64_t shared_upload_pass_splits = 0;
     uint64_t rb_uma_direct = 0;
     uint64_t rb_uma_first_use = 0;
     // Resolves not copied: the CPU had not read their range

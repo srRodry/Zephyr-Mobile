@@ -804,6 +804,8 @@ void CommandProcessor::FrameStatsEndSwap(uint64_t begin_ns) {
   if (s.last_swap_ns) {
     const uint64_t interval = now - s.last_swap_ns;
     s.interval_ns += interval;
+    ++s.interval_count;
+    s.intervals_over_30fps_budget += interval > 1000000000ull / 30;
     s.interval_max_ns = std::max(s.interval_max_ns, interval);
     s.long_intervals[0] += uint64_t(interval > 37000000);
     s.long_intervals[1] += uint64_t(interval > 50000000);
@@ -818,12 +820,13 @@ void CommandProcessor::FrameStatsEndSwap(uint64_t begin_ns) {
         "GpuFrame: {} frames, interval avg={:.1f}ms max={:.1f}ms | per frame: "
         "exec={:.1f}ms draws={:.0f} draw={:.1f}ms swap={:.1f}ms "
         "stall={:.1f}ms | wait_reg_mem unmet={:.1f} waited={:.1f}ms | "
-        "intervals >37ms={} >50ms={} >70ms={}",
-        s.frames, s.interval_ns / f / 1e6, s.interval_max_ns / 1e6,
+        "intervals >37ms={} >50ms={} >70ms={} | sampled={} >33.3ms={}",
+        s.frames, s.interval_count ? s.interval_ns / double(s.interval_count) / 1e6 : 0.0,
+        s.interval_max_ns / 1e6,
         s.exec_ns / f / 1e6, s.draws / f, s.draw_ns / f / 1e6,
         s.swap_ns / f / 1e6, s.stall_ns / f / 1e6, s.wait_reg_mem_unmet / f,
         s.wait_reg_mem_ns / f / 1e6, s.long_intervals[0], s.long_intervals[1],
-        s.long_intervals[2]);
+        s.long_intervals[2], s.interval_count, s.intervals_over_30fps_budget);
     const uint64_t keep_swap = s.last_swap_ns;
     s = FrameTimeStats();
     s.last_swap_ns = keep_swap;

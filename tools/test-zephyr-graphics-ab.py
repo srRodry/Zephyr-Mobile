@@ -14,6 +14,7 @@ spec.loader.exec_module(mod)
 ROOT = Path(__file__).resolve().parents[1]
 CODE = ROOT / "emulator-core/src/main/cpp/xenia/src/xenia/gpu"
 SOURCES = {
+    "apu_aaudio_log_stats": ROOT / "emulator-core/src/main/cpp/xe_aaudio_audio_driver.cpp",
     "vulkan_async_skip_draws": CODE / "vulkan/vulkan_pipeline_cache.cc",
     "vulkan_skip_gpu_written_texture_loads": CODE / "vulkan/vulkan_texture_cache.cc",
     "log_gpu_frame_time_breakdown": CODE / "command_processor.cc",
@@ -53,10 +54,19 @@ class GraphicsABTests(unittest.TestCase):
                 self.assertEqual(timing[category][key], expected, f"{category}.{key}")
         self.assertEqual(timing["GPU"]["log_gpu_frame_time_breakdown_passes"], "false")
 
+    def test_capture_preserves_existing_rendering_settings(self):
+        capture = self.parse("capture")
+        self.assertEqual(set(capture.sections()), {"GPU", "APU"})
+        self.assertEqual(dict(capture["GPU"]), {
+            "log_gpu_frame_time_breakdown": "true",
+            "log_gpu_frame_time_breakdown_passes": "false",
+        })
+        self.assertEqual(dict(capture["APU"]), {"apu_aaudio_log_stats": "true"})
+
     def test_every_cvar_category_matches_production(self):
         # Categories are explicit in DEFINE_bool / DEFINE_int32; a leading
         # "vulkan_" does not imply the [Vulkan] section.
-        for category, options in mod.REFERENCE.items():
+        for category, options in {**mod.REFERENCE, "APU": self.parse("capture")["APU"]}.items():
             for key in options:
                 source = SOURCES.get(key, CODE / "vulkan/vulkan_command_processor.cc")
                 content = source.read_text(encoding="utf-8")

@@ -5,6 +5,12 @@ The reference intentionally disables optional shortcuts rather than changing
 rendering internals. Copy the snippet into the game's config and relaunch.
 Use a fresh run per arm: live properties and caches can confound comparisons.
 
+For a capture without graphics overrides, merge the output of capture into
+the game's config and relaunch. Collect separate diagnostics ZIPs for a cold
+and warmed run of the same route, resolution and driver. Keep the same cache
+state in both. Compare the exported xe.log data with:
+  python3 tools/vulkan_diagnostics.py diagnostics.zip --combined --title 4D5309C9
+
 Cvar categories come from their DEFINE_* registrations, NOT their names.
 A [GPU] entry for a [Vulkan] cvar is silently ignored by ReadGameConfig.
 """
@@ -29,6 +35,13 @@ REFERENCE = {
 
 
 def render(mode):
+    if mode == "capture":
+        return ("# Merge these keys into the existing per-game settings. Relaunch.\n"
+                "[GPU]\n"
+                "log_gpu_frame_time_breakdown = true\n"
+                "log_gpu_frame_time_breakdown_passes = false\n\n"
+                "[APU]\n"
+                "apu_aaudio_log_stats = true\n")
     if mode not in ("reference", "light-timing"):
         raise ValueError(f"Unknown graphics A/B mode: {mode}")
     lines = [
@@ -48,7 +61,7 @@ def render(mode):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("mode", choices=["reference", "light-timing"])
+    parser.add_argument("mode", choices=["reference", "light-timing", "capture"])
     args = parser.parse_args()
     print(render(args.mode), end="")
 

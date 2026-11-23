@@ -3920,7 +3920,7 @@ void VulkanCommandProcessor::IssueSwap(uint32_t frontbuffer_ptr,
           "replay={:.1f}ms | resolve_clears={:.1f} in_guest_pass={:.1f} | "
           "uma readbacks={:.1f} first={:.1f} unread={:.1f} kb={:.0f} "
           "filtered={:.1f} exposure_waits={:.1f} | "
-          "completed gpu submit time={:.1f}ms/fr samples={}",
+          "completed gpu submit time={:.1f}ms/fr samples={} | shared_upload_pass_splits={}",
           s.frames, s.awaits / f, s.await_ns / f / 1e6, s.submissions / f,
           s.resolves / f, s.memexport_awaits / f, s.readback_awaits / f,
           s.sub_completions
@@ -3948,7 +3948,8 @@ void VulkanCommandProcessor::IssueSwap(uint32_t frontbuffer_ptr,
           s.resolve_clears_in_guest_pass / f, s.rb_uma_direct / f,
           s.rb_uma_first_use / f, s.rb_uma_unread / f,
           s.rb_uma_bytes / f / 1024.0, s.rb_uma_filtered / f,
-          s.rb_uma_exposure_waits / f, s.gpu_exec_ns / f / 1e6, s.gpu_samples);
+          s.rb_uma_exposure_waits / f, s.gpu_exec_ns / f / 1e6, s.gpu_samples,
+          s.shared_upload_pass_splits);
       if (s.memexport_range_skips || s.memexport_range_waits ||
           s.memexport_range_fallbacks || s.memexport_early_submissions) {
         XELOGI(

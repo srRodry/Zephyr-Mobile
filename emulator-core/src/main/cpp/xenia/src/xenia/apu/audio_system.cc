@@ -396,7 +396,8 @@ void AudioSystem::WorkerThreadMain() {
     // Measure deadline misses after sleeping, not before. Skip when disabled:
     // this clock read and the statistics are diagnostic-only.
     uint64_t pump_lateness_us = 0;
-    if (cvars::apu_aaudio_log_stats) {
+    // A newly registered or reset client has no deadline yet.
+    if (cvars::apu_aaudio_log_stats && earliest_pump_us != 0) {
       const uint64_t wake_actual_us = static_cast<uint64_t>(
           std::chrono::duration_cast<std::chrono::microseconds>(
               std::chrono::steady_clock::now().time_since_epoch()).count());
