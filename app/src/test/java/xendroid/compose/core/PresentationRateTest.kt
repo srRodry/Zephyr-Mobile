@@ -5,6 +5,15 @@ import org.junit.Assert.assertNull
 import org.junit.Test
 
 class PresentationRateTest {
+    @Test fun matchesCappedCadenceWithTheLowestCompatiblePanelMode() {
+        val rates = listOf(144f, 120f, 90f, 59.94f)
+        assertEquals(59.94f, cadenceRefreshRate(30, rates, batterySaver = false))
+        assertEquals(120f, cadenceRefreshRate(40, rates, batterySaver = false))
+        assertNull(cadenceRefreshRate(40, rates, batterySaver = true))
+        assertNull(cadenceRefreshRate(0, rates, batterySaver = false))
+        assertNull(cadenceRefreshRate(60, listOf(50f, 90f), batterySaver = false))
+    }
+
     @Test fun countsAcceptedPresentSubmissionsOverElapsedTime() {
         assertEquals(30.0, presentSubmissionRate(120, 132, 400_000_000L)!!, 0.0001)
         assertEquals(0.0, presentSubmissionRate(132, 132, 400_000_000L)!!, 0.0001)

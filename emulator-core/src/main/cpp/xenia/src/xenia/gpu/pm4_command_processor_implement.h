@@ -1674,7 +1674,7 @@ bool COMMAND_PROCESSOR::ExecutePacketType3Draw(
         COMMAND_PROCESSOR::PopDebugMarker();
       }
 
-      if (!draw_succeeded) {
+      if (!draw_succeeded && COMMAND_PROCESSOR::ShouldLogDrawFailure()) {
         XELOGE("{}({}, {}, {}): Failed in backend", opcode_name,
                vgt_draw_initiator.num_indices,
                uint32_t(vgt_draw_initiator.prim_type),

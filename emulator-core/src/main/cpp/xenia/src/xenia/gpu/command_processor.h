@@ -731,6 +731,7 @@ class CommandProcessor {
     return false;
   }
   virtual bool IssueCopy() { return false; }
+  bool ShouldLogDrawFailure() const { return true; }
 
   // Debug marker stubs for base class (overridden by D3D12/Vulkan backends).
   bool debug_markers_enabled() const { return false; }
