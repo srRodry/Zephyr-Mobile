@@ -385,6 +385,11 @@ class VulkanTextureCache final : public TextureCache {
   void UpdateTextureBindingsImpl(uint32_t fetch_constant_mask) override;
 
  private:
+  VkResult CreateCacheImage(const VkImageCreateInfo& image_info,
+                            const VmaAllocationCreateInfo& allocation_info,
+                            bool resolve_candidate, VkImage* image,
+                            VmaAllocation* allocation) const;
+
   enum LoadDescriptorSetIndex {
     kLoadDescriptorSetIndexDestination,
     kLoadDescriptorSetIndexSource,

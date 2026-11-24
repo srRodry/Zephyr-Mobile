@@ -3950,6 +3950,16 @@ void VulkanCommandProcessor::IssueSwap(uint32_t frontbuffer_ptr,
           s.rb_uma_bytes / f / 1024.0, s.rb_uma_filtered / f,
           s.rb_uma_exposure_waits / f, s.gpu_exec_ns / f / 1e6, s.gpu_samples,
           s.shared_upload_pass_splits);
+      XELOGI(
+          "VkTextureImages: {} frames | create calls={} failed={} ns={} "
+          "max_ns={} | destroy calls={} ns={} max_ns={} | resolve_candidate "
+          "create calls={} ns={}",
+          s.frames, s.texture_image_create_calls,
+          s.texture_image_create_failures, s.texture_image_create_ns,
+          s.texture_image_create_max_ns, s.texture_image_destroy_calls,
+          s.texture_image_destroy_ns, s.texture_image_destroy_max_ns,
+          s.resolve_candidate_image_create_calls,
+          s.resolve_candidate_image_create_ns);
       if (s.memexport_range_skips || s.memexport_range_waits ||
           s.memexport_range_fallbacks || s.memexport_early_submissions) {
         XELOGI(

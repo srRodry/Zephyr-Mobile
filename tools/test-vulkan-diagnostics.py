@@ -60,11 +60,31 @@ class CombinedReportTests(unittest.TestCase):
         self.assertEqual([event["end_frame"] for event in report["timeline"]], [40, 42, 42, 42])
         self.assertEqual(report["timeline"][-1]["shared_memory_pass_end_origins_per_frame"], 1.2)
 
+    def test_texture_allocations_report_per_frame_cost_and_retries(self):
+        first = ("i> f:0000042 0100000C VkTextureImages: 10 frames | create calls=11 failed=1 "
+                 "ns=30000000 max_ns=5000000 | destroy calls=6 ns=10000000 max_ns=3000000 | "
+                 "resolve_candidate create calls=4 ns=8000000")
+        second = ("i> f:0000062 0100000C VkTextureImages: 20 frames | create calls=3 failed=0 "
+                  "ns=6000000 max_ns=4000000 | destroy calls=1 ns=1000000 max_ns=1000000 | "
+                  "resolve_candidate create calls=1 ns=1000000")
+        report = combined_report([first, second, first.replace("failed=1", "failed=12")])
+        stat = report["vulkan_texture_images"]
+        self.assertEqual(stat["windows"], 2)
+        self.assertEqual(stat["malformed_windows"], 1)
+        self.assertEqual(stat["frames"], 30)
+        self.assertEqual(stat["create_calls"], 14)
+        self.assertEqual(stat["create_failures"], 1)
+        self.assertAlmostEqual(stat["create_ms_per_frame"], 1.2)
+        self.assertAlmostEqual(stat["resolve_candidate_ms_per_frame"], 0.3)
+        self.assertEqual(stat["create_max_call_ms"], 5)
+        self.assertEqual([event["end_frame"] for event in report["timeline"]], [42, 62])
+
     def test_legacy_missing_counters_and_absent_title_are_unavailable(self):
         report = combined_report(self.capture_lines())
         self.assertEqual(report["vulkan_driver_id"], "QualcommProprietary")
         self.assertIsNone(report["guest_pacing"]["over_30fps_budget"])
         self.assertIsNone(report["vulkan"]["shared_upload_pass_splits"])
+        self.assertIsNone(report["vulkan_texture_images"]["create_ms_per_frame"])
         missing = combined_report(self.capture_lines(), "DEADBEEF")
         self.assertEqual(missing["title_ids"], [])
         self.assertEqual(missing["timeline"], [])

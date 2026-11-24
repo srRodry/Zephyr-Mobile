@@ -183,6 +183,31 @@ def session_lines(lines, title_id=None):
     return boundaries, selected
 
 
+TEXTURE_IMAGES = re.compile(
+    r"VkTextureImages: (?P<frames>\d+) frames \| "
+    r"create calls=(?P<create_calls>\d+) failed=(?P<create_failures>\d+) "
+    r"ns=(?P<create_ns>\d+) max_ns=(?P<create_max_ns>\d+) \| "
+    r"destroy calls=(?P<destroy_calls>\d+) ns=(?P<destroy_ns>\d+) "
+    r"max_ns=(?P<destroy_max_ns>\d+) \| resolve_candidate "
+    r"create calls=(?P<resolve_candidate_calls>\d+) ns=(?P<resolve_candidate_ns>\d+)\s*$")
+
+
+def summarize_texture_images(windows, rejected):
+    frames = sum(row["frames"] for row in windows)
+    result = {"windows": len(windows), "malformed_windows": rejected, "frames": frames or None}
+    for operation in ("create", "destroy", "resolve_candidate"):
+        result[f"{operation}_calls"] = sum(row[f"{operation}_calls"] for row in windows) if frames else None
+        result[f"{operation}_ms_per_frame"] = (
+            sum(row[f"{operation}_ns"] for row in windows) / frames / 1e6 if frames else None
+        )
+    result["create_failures"] = sum(row["create_failures"] for row in windows) if frames else None
+    for operation in ("create", "destroy"):
+        result[f"{operation}_max_call_ms"] = (
+            max(row[f"{operation}_max_ns"] for row in windows) / 1e6 if frames else None
+        )
+    return result
+
+
 def combined_report(lines, title_id=None):
     audio = runpy.run_path(str(Path(__file__).with_name("analyze-audio-timing.py")))
     boundaries, selected = session_lines(lines, title_id)
@@ -193,6 +218,8 @@ def combined_report(lines, title_id=None):
     pacing_windows = []
     shared_origins = []
     invalid_gpu_windows = 0
+    invalid_texture_windows = 0
+    texture_windows = []
     last_audio_frame = {}
 
     for line in selected:
@@ -213,6 +240,21 @@ def combined_report(lines, title_id=None):
                 invalid_gpu_windows += 1
                 continue
             kind = "vulkan"
+        elif "VkTextureImages:" in line:
+            match = TEXTURE_IMAGES.search(line)
+            if not match or line.count("VkTextureImages:") != 1:
+                invalid_texture_windows += 1
+                continue
+            data = {key: int(value) for key, value in match.groupdict().items()}
+            if (not data["frames"] or data["create_failures"] > data["create_calls"]
+                    or data["resolve_candidate_calls"] > data["create_calls"]
+                    or data["resolve_candidate_ns"] > data["create_ns"]
+                    or data["create_max_ns"] > data["create_ns"]
+                    or data["destroy_max_ns"] > data["destroy_ns"]):
+                invalid_texture_windows += 1
+                continue
+            texture_windows.append(data)
+            kind = "vulkan_texture_images"
         elif (match := SHARED_BARRIER_ORIGINS.search(line)):
             data = {"shared_memory_pass_end_origins_per_frame": float(match[2])}
             shared_origins.append(data)
@@ -260,6 +302,7 @@ def combined_report(lines, title_id=None):
             "frames_with_split_counter": sum(w["frames"] for w in split_windows) if split_windows else None,
             "shared_upload_pass_splits": sum(w["shared_upload_pass_splits"] for w in split_windows) if split_windows else None,
         },
+        "vulkan_texture_images": summarize_texture_images(texture_windows, invalid_texture_windows),
         "audio": summary,
         "timeline": timeline,
         "limitations": [
@@ -267,7 +310,9 @@ def combined_report(lines, title_id=None):
             "Audio reports cover separate intervals; proximity cannot establish causation.",
             "Frame pacing can include pauses, loading and throttling.",
             "Vulkan driver identity is taken from the native device report, not the saved driver setting.",
-            "Old logs lack the exact upload split and 30 FPS budget counters.",
+            "Old logs may lack upload split, texture allocation and 30 FPS budget counters.",
+            "Texture cache timings are CPU wall time in VMA calls, including failed create attempts, not GPU time.",
+            "Resolve candidates are scaled resolves and attempted resolve-to-texture promotions, not confirmed resolve writes.",
         ],
     }
 

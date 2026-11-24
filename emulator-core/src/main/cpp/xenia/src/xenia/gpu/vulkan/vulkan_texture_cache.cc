@@ -13,6 +13,7 @@
 #include <array>
 #include <atomic>
 #include <cctype>
+#include <chrono>
 #include <cstddef>
 #include <cstdlib>
 #include <cstring>
@@ -1404,6 +1405,34 @@ uint32_t VulkanTextureCache::GetMaxHostTextureDepthOrArraySize(
   }
 }
 
+VkResult VulkanTextureCache::CreateCacheImage(
+    const VkImageCreateInfo& image_info,
+    const VmaAllocationCreateInfo& allocation_info, bool resolve_candidate,
+    VkImage* image, VmaAllocation* allocation) const {
+  using Clock = std::chrono::steady_clock;
+  const bool measure = cvars::log_gpu_frame_time_breakdown;
+  const auto start = measure ? Clock::now() : Clock::time_point{};
+  const VkResult result = vmaCreateImage(vma_allocator_, &image_info,
+                                         &allocation_info, image, allocation,
+                                         nullptr);
+  if (measure) {
+    const uint64_t elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                 Clock::now() - start)
+                                 .count();
+    auto& stats = command_processor_.vk_frame_sync_stats();
+    ++stats.texture_image_create_calls;
+    stats.texture_image_create_failures += result != VK_SUCCESS;
+    stats.texture_image_create_ns += elapsed;
+    stats.texture_image_create_max_ns =
+        std::max(stats.texture_image_create_max_ns, elapsed);
+    if (resolve_candidate) {
+      ++stats.resolve_candidate_image_create_calls;
+      stats.resolve_candidate_image_create_ns += elapsed;
+    }
+  }
+  return result;
+}
+
 std::unique_ptr<TextureCache::Texture> VulkanTextureCache::CreateTexture(
     TextureKey key) {
   VkFormat formats[] = {VK_FORMAT_UNDEFINED, VK_FORMAT_UNDEFINED};
@@ -1620,8 +1649,10 @@ std::unique_ptr<TextureCache::Texture> VulkanTextureCache::CreateTexture(
 
   VkImage image;
   VmaAllocation allocation;
-  if (vmaCreateImage(vma_allocator_, &image_create_info,
-                     &allocation_create_info, &image, &allocation, nullptr)) {
+  if (CreateCacheImage(image_create_info, allocation_create_info,
+                       key.scaled_resolve ||
+                           resolve_dest_uint_format != VK_FORMAT_UNDEFINED,
+                       &image, &allocation) != VK_SUCCESS) {
     if (storage_uint_format != VK_FORMAT_UNDEFINED) {
       // Driver refuses the promoted flags - create unpromoted; a refused
       // promotion must never cost the texture itself.
@@ -1644,9 +1675,10 @@ std::unique_ptr<TextureCache::Texture> VulkanTextureCache::CreateTexture(
         image_create_info.pNext = nullptr;
       }
     }
-    if (vmaCreateImage(vma_allocator_, &image_create_info,
-                       &allocation_create_info, &image, &allocation,
-                       nullptr)) {
+    if (CreateCacheImage(image_create_info, allocation_create_info,
+                         key.scaled_resolve ||
+                             resolve_dest_uint_format != VK_FORMAT_UNDEFINED,
+                         &image, &allocation) != VK_SUCCESS) {
       XELOGE(
           "VulkanTextureCache: vmaCreateImage failed (format {}, {}x{}x{}, "
           "guest format {})",
@@ -3424,7 +3456,20 @@ VulkanTextureCache::VulkanTexture::~VulkanTexture() {
     dfn.vkDestroyImageView(device, image_view_3d_as_2d_signed_, nullptr);
   }
   // texture_3d_as_2d_ is a unique_ptr and will destroy its image/allocation.
+  using Clock = std::chrono::steady_clock;
+  const bool measure = cvars::log_gpu_frame_time_breakdown;
+  const auto start = measure ? Clock::now() : Clock::time_point{};
   vmaDestroyImage(vulkan_texture_cache.vma_allocator_, image_, allocation_);
+  if (measure) {
+    const uint64_t elapsed = std::chrono::duration_cast<std::chrono::nanoseconds>(
+                                 Clock::now() - start)
+                                 .count();
+    auto& stats = vulkan_texture_cache.command_processor_.vk_frame_sync_stats();
+    ++stats.texture_image_destroy_calls;
+    stats.texture_image_destroy_ns += elapsed;
+    stats.texture_image_destroy_max_ns =
+        std::max(stats.texture_image_destroy_max_ns, elapsed);
+  }
 }
 
 VkImageView VulkanTextureCache::VulkanTexture::GetView(bool is_signed,
@@ -3587,9 +3632,9 @@ VkImageView VulkanTextureCache::VulkanTexture::GetOrCreate3DAs2DImageView(
 
     VkImage image_2d;
     VmaAllocation allocation_2d;
-    if (vmaCreateImage(vulkan_texture_cache.vma_allocator_, &image_create_info,
-                       &allocation_create_info, &image_2d, &allocation_2d,
-                       nullptr) != VK_SUCCESS) {
+    if (vulkan_texture_cache.CreateCacheImage(
+            image_create_info, allocation_create_info, key().scaled_resolve,
+            &image_2d, &allocation_2d) != VK_SUCCESS) {
       XELOGE("VulkanTexture: Failed to create 3D-as-2D image");
       return VK_NULL_HANDLE;
     }

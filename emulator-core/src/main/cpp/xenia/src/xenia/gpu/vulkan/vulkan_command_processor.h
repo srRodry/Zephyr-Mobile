@@ -833,6 +833,16 @@ class VulkanCommandProcessor final : public CommandProcessor {
     uint64_t render_pass_begins = 0;
     uint64_t primary_buffer_splits = 0;
     uint64_t shared_upload_pass_splits = 0;
+    // CPU wall time inside VMA image calls from the texture cache only.
+    uint64_t texture_image_create_calls = 0;
+    uint64_t texture_image_create_failures = 0;
+    uint64_t texture_image_create_ns = 0;
+    uint64_t texture_image_create_max_ns = 0;
+    uint64_t resolve_candidate_image_create_calls = 0;
+    uint64_t resolve_candidate_image_create_ns = 0;
+    uint64_t texture_image_destroy_calls = 0;
+    uint64_t texture_image_destroy_ns = 0;
+    uint64_t texture_image_destroy_max_ns = 0;
     uint64_t rb_uma_direct = 0;
     uint64_t rb_uma_first_use = 0;
     // Resolves not copied: the CPU had not read their range
