@@ -431,6 +431,11 @@ class ShaderStorageWriter {
     storage_write_thread_shutdown_ = false;
     storage_write_thread_ =
         xe::threading::Thread::Create({}, [this]() { WriteThread(); });
+    if (!storage_write_thread_) {
+      XELOGW("Shader storage writer unavailable; disabling persistence for this title");
+      ShutdownShaderStorage();
+      return false;
+    }
     storage_write_thread_->set_name("Shader Storage Writer");
 
     return true;
@@ -544,9 +549,6 @@ class ShaderStorageWriter {
       bool write_pipeline = false;
       {
         std::unique_lock<std::mutex> lock(storage_write_request_lock_);
-        if (storage_write_thread_shutdown_) {
-          return;
-        }
         if (!storage_write_shader_queue_.empty()) {
           shader = storage_write_shader_queue_.front();
           storage_write_shader_queue_.pop_front();
@@ -565,6 +567,11 @@ class ShaderStorageWriter {
           flush_pipelines = true;
         }
         if (!shader && !write_pipeline && !flush_shaders && !flush_pipelines) {
+          // The owner joins this thread before closing files or releasing
+          // shaders. Finish accepted writes even on an immediate title switch.
+          if (storage_write_thread_shutdown_) {
+            return;
+          }
           storage_write_request_cond_.wait(lock);
           continue;
         }

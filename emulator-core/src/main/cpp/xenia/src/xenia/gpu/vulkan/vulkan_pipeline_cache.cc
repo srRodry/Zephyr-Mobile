@@ -545,15 +545,18 @@ bool VulkanPipelineCache::Initialize() {
   }
   creation_completion_event_ =
       xe::threading::Event::CreateManualResetEvent(true);
-  assert_not_null(creation_completion_event_);
-  if (cvars::vulkan_pipeline_creation_threads != 0) {
+  if (creation_completion_event_ && cvars::vulkan_pipeline_creation_threads != 0) {
     const size_t creation_thread_count = xe::edge30::PipelineWorkers(
         cvars::vulkan_pipeline_creation_threads, logical_processor_count);
     creation_threads_shutdown_ = false;
     for (size_t i = 0; i < creation_thread_count; ++i) {
       std::unique_ptr<xe::threading::Thread> creation_thread =
           xe::threading::Thread::Create({}, [this]() { CreationThread(); });
-      assert_not_null(creation_thread);
+      if (!creation_thread) {
+        XELOGW("Vulkan pipeline compiler started {} of {} workers",
+               creation_threads_.size(), creation_thread_count);
+        break;
+      }
       creation_thread->set_name("Vulkan Pipelines");
       creation_threads_.push_back(std::move(creation_thread));
     }
