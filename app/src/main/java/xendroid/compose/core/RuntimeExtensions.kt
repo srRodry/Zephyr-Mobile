@@ -22,15 +22,25 @@ fun refreshChoices(display: Display): List<DisplayChoice> {
         .map { DisplayChoice(it.modeId, it.physicalWidth, it.physicalHeight, it.refreshRate) }.distinctBy { it.hz }.sortedBy { it.hz }
 }
 
-fun selectRefresh(activity: Activity, hz: Float?): Float {
+/** Apply an explicit rate or match a capped game's cadence on the activity's display. */
+fun selectRefresh(activity: Activity, hz: Float?, gameFps: Int = 0): Float? {
     @Suppress("DEPRECATION") val display = if (Build.VERSION.SDK_INT >= 30) activity.display else activity.windowManager.defaultDisplay
-    requireNotNull(display)
-    val selected = hz?.let { wanted -> refreshChoices(display).minByOrNull { abs(it.hz - wanted) } }
-    activity.window.attributes = activity.window.attributes.apply {
-        preferredDisplayModeId = selected?.id ?: 0
-        preferredRefreshRate = selected?.hz ?: 0f
+    display ?: return null
+    val choices = if (hz != null || gameFps > 0) refreshChoices(display) else emptyList()
+    val automatic = if (hz == null && gameFps > 0) {
+        val savingPower = activity.getSystemService(PowerManager::class.java)?.isPowerSaveMode == true
+        cadenceRefreshRate(gameFps, choices.map { it.hz }, savingPower)
+    } else null
+    val selected = (hz ?: automatic)?.let { wanted -> choices.minByOrNull { abs(it.hz - wanted) } }
+    val attrs = activity.window.attributes
+    val modeId = selected?.id ?: 0
+    val rate = selected?.hz ?: 0f
+    if (attrs.preferredDisplayModeId != modeId || attrs.preferredRefreshRate != rate) {
+        attrs.preferredDisplayModeId = modeId
+        attrs.preferredRefreshRate = rate
+        activity.window.attributes = attrs
     }
-    return display.refreshRate // measured current mode, not guaranteed requested rate
+    return selected?.hz
 }
 
 fun sustainedPerformance(activity: Activity, enabled: Boolean): Boolean {

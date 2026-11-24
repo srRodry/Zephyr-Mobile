@@ -841,7 +841,12 @@ bool VulkanSharedMemory::UploadRanges(
                 << page_size_log2()));
     // Submit barriers (may end render pass) before pushing debug marker so
     // EndRenderPass is not inside the SharedMem Upload marker.
+    const bool measure_split = cvars::log_gpu_frame_time_breakdown &&
+                               command_processor_.in_render_pass();
     command_processor_.SubmitBarriers(true);
+    if (measure_split && !command_processor_.in_render_pass()) {
+      ++command_processor_.vk_frame_sync_stats().shared_upload_pass_splits;
+    }
 
     uint32_t total_upload_bytes =
         (range_back.first + range_back.second - range_front.first)

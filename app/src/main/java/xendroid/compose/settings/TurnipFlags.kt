@@ -21,13 +21,15 @@ object TurnipFlags {
         Flag("nomultipos", "Turn off the multi-position output optimization. Can fix stretched or flickering polygons."),
         Flag("noconcurrentresolves", "Do not resolve tiles while the next ones draw. Can fix artifacts on Adreno 7xx; slower."),
         Flag("noconcurrentunresolves", "Do not load tiles while others draw. Can fix artifacts on Adreno 7xx; slower."),
+        Flag("nobin", "Disable hardware binning. Test on affected Turnip drivers and compare frame times and rendering."),
         Flag("forcebin", "Always use the binning pass in tiled rendering. For diagnosis."),
         Flag("flushall", "Flush the GPU after every command. Very slow; narrows down which draw crashes the GPU."),
         Flag("syncdraw", "Wait for every draw to finish. Very slow; for diagnosing GPU hangs."),
     )
 
     /** Choosing one of these takes the other off (the two rendering paths). */
-    private val EXCLUSIVE = setOf("sysmem", "gmem")
+    private val conflictingFlag = mapOf("sysmem" to "gmem", "gmem" to "sysmem",
+        "nobin" to "forcebin", "forcebin" to "nobin")
 
     fun parse(raw: String): List<String> =
         raw.split(',').map { it.trim().lowercase() }.filter { it.isNotEmpty() && it.matches(Regex("[a-z0-9_]{1,40}")) }.distinct()
@@ -38,7 +40,7 @@ object TurnipFlags {
     fun toggle(raw: String, flag: String): String {
         val now = parse(raw)
         return if (flag in now) join(now - flag)
-        else join(now.filterNot { flag in EXCLUSIVE && it in EXCLUSIVE } + flag)
+        else join(now.filterNot { it == conflictingFlag[flag] } + flag)
     }
 
     /** Flags in [raw] this build does not describe: kept, and shown as they are. */

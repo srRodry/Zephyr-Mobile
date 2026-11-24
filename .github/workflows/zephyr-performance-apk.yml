@@ -1,11 +1,11 @@
 name: Zephyr performance beta APK
 
 # One isolated beta APK, signed with the existing permanent research key.
-# Pushes require [zephyr-apk]; verified Research APKs publish to the in-app feed.
+# Pushes require [zephyr-apk]. The FH4Droid diagnostics branch uploads CI artifacts only.
 
 on:
   push:
-    branches: [perf/edge30-beta1, integration/zephyr-beta2, research/optimization-round3, research/edge30-diagnostics-audit-20261117, research/native-recomp-semantics-20261118, research/army-tdc-native-hotpath-20261118, research/edge30-performance-swarm-20261119, research/edge30-design-army-preview]
+    branches: [perf/edge30-beta1, integration/zephyr-beta2, research/optimization-round3, research/edge30-diagnostics-audit-20261117, research/native-recomp-semantics-20261118, research/army-tdc-native-hotpath-20261118, research/edge30-performance-swarm-20261119, research/edge30-design-army-preview, research/fh4droid-android-port]
     paths-ignore:
       - '**.md'
       - 'docs/**'
@@ -28,7 +28,7 @@ concurrency:
 jobs:
   preview-ui:
     name: Validate Preview interface
-    if: ${{ github.ref_name == 'research/edge30-design-army-preview' && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[zephyr-apk]')) }}
+    if: ${{ (github.ref_name == 'research/edge30-design-army-preview' || github.ref_name == 'research/fh4droid-android-port') && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[zephyr-apk]')) }}
     uses: ./.github/workflows/zephyr-ui-check.yml
     permissions:
       contents: read
@@ -36,7 +36,7 @@ jobs:
   apk:
     name: APK (arm64-v8a)
     needs: preview-ui
-    if: ${{ !cancelled() && (github.ref_name != 'research/edge30-design-army-preview' || needs.preview-ui.result == 'success') && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[zephyr-apk]')) }}
+    if: ${{ !cancelled() && ((github.ref_name != 'research/edge30-design-army-preview' && github.ref_name != 'research/fh4droid-android-port') || needs.preview-ui.result == 'success') && (github.event_name == 'workflow_dispatch' || contains(github.event.head_commit.message, '[zephyr-apk]')) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 300
 
@@ -72,7 +72,7 @@ jobs:
     - name: Build settings
       id: cfg
       env:
-        RESEARCH_ARM: ${{ github.ref_name == 'research/edge30-design-army-preview' && 'edge30-design-army' || github.ref_name == 'research/edge30-performance-swarm-20261119' && 'edge30-swarm' || github.ref_name == 'research/army-tdc-native-hotpath-20261118' && 'beta18-army-tdc' || github.ref_name == 'research/native-recomp-semantics-20261118' && 'beta17-ppc-native' || github.ref_name == 'research/edge30-diagnostics-audit-20261117' && 'beta16-edge30' || github.ref_name == 'research/optimization-round3' && 'beta15-chrome' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
+        RESEARCH_ARM: ${{ github.ref_name == 'research/fh4droid-android-port' && 'forza-diagnostics' || github.ref_name == 'research/edge30-design-army-preview' && 'edge30-design-army' || github.ref_name == 'research/edge30-performance-swarm-20261119' && 'edge30-swarm' || github.ref_name == 'research/army-tdc-native-hotpath-20261118' && 'beta18-army-tdc' || github.ref_name == 'research/native-recomp-semantics-20261118' && 'beta17-ppc-native' || github.ref_name == 'research/edge30-diagnostics-audit-20261117' && 'beta16-edge30' || github.ref_name == 'research/optimization-round3' && 'beta15-chrome' || github.ref_name == 'integration/zephyr-beta2' && 'beta2' || 'beta1' }}
       run: |
         git config --global --add safe.directory "$GITHUB_WORKSPACE"
         sha=$(git rev-parse --short=8 HEAD)
@@ -80,8 +80,8 @@ jobs:
         name="Zephyr-Performance_${RESEARCH_ARM}_$sha"
         package=xendroid.compose.zephyr.research
         package_args="-PzephyrEdge30Ultra -PxendroidReleaseIdSuffix=.zephyr.research -PxendroidUpdateRepo=srRodry/Zephyr-Mobile"
-        if [[ "$GITHUB_EVENT_NAME" != push ]] || ! jq -e '.head_commit.message | contains("[zephyr-stable]")' "$GITHUB_EVENT_PATH" >/dev/null; then
-          package_args+=" -PxendroidReleaseDebuggable"
+        if [ "$GITHUB_EVENT_NAME" != push ] || ! jq -e '.head_commit.message | contains("[zephyr-stable]")' "$GITHUB_EVENT_PATH" >/dev/null; then
+          package_args="$package_args -PxendroidReleaseDebuggable"
         fi
         {
           echo "sha=$sha"
@@ -200,7 +200,7 @@ jobs:
         "$cache_test_dir/test" "$cache_test_dir/data"
 
     - name: Validate shared navigation before packaging
-      if: ${{ github.ref_name != 'research/edge30-design-army-preview' }}
+      if: ${{ github.ref_name != 'research/edge30-design-army-preview' && github.ref_name != 'research/fh4droid-android-port' }}
       run: |
         bash ./gradlew :app:testUitestUnitTest --no-daemon --stacktrace \
           --tests 'xendroid.compose.core.PresenterPerformanceHintsTest' \
@@ -259,7 +259,7 @@ jobs:
         set -eu
         bt="$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS_VERSION"
         unsigned=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
-        "$bt/zipalign" -f -p 4 "$unsigned" "$RUNNER_TEMP/aligned.apk"
+        "$bt/zipalign" -f -P 16 4 "$unsigned" "$RUNNER_TEMP/aligned.apk"
         keystore="$RUNNER_TEMP/signing.keystore"
         trap 'rm -f "$keystore"' EXIT
         # A partially configured signing key must fail visibly. Otherwise CI
@@ -308,6 +308,7 @@ jobs:
         "$bt/apksigner" sign --ks "$keystore" --ks-key-alias "$alias" \
           --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEY_PASSWORD \
           --out "$NAME.apk" "$RUNNER_TEMP/aligned.apk"
+        "$bt/zipalign" -c -P 16 4 "$NAME.apk"
         "$bt/apksigner" verify --verbose --print-certs "$NAME.apk" > "$NAME.signing.txt"
         grep -E 'Signer #1 certificate (DN|SHA-256)' "$NAME.signing.txt"
         fingerprint=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$NAME.signing.txt" | tr '[:upper:]' '[:lower:]')
@@ -425,7 +426,7 @@ jobs:
         retention-days: 90
 
     - name: Publish signed Zephyr release
-      if: ${{ (github.ref_name != 'research/edge30-performance-swarm-20261119' && github.ref_name != 'research/edge30-design-army-preview') || (github.event_name == 'push' && (contains(github.event.head_commit.message, '[zephyr-research-feed]') || contains(github.event.head_commit.message, '[zephyr-stable]'))) }}
+      if: ${{ github.ref_name != 'research/fh4droid-android-port' && ((github.ref_name != 'research/edge30-performance-swarm-20261119' && github.ref_name != 'research/edge30-design-army-preview') || (github.event_name == 'push' && (contains(github.event.head_commit.message, '[zephyr-research-feed]') || contains(github.event.head_commit.message, '[zephyr-stable]')))) }}
       uses: actions/github-script@v7
       env:
         APK: ${{ steps.sign_candidate.outputs.apk }}

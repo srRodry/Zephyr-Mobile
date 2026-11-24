@@ -15,6 +15,7 @@
 
 #include <assert.h>
 #include <dirent.h>
+#include <errno.h>
 #include <fcntl.h>
 #include <ftw.h>
 #include <pwd.h>
@@ -157,7 +158,10 @@ class PosixFileHandle : public FileHandle {
   }
   bool Read(size_t file_offset, void* buffer, size_t buffer_length,
             size_t* out_bytes_read) override {
-    ssize_t out = pread(handle_, buffer, buffer_length, file_offset);
+    ssize_t out;
+    do {
+      out = pread(handle_, buffer, buffer_length, file_offset);
+    } while (out < 0 && errno == EINTR);
     if (out >= 0) {
       *out_bytes_read = out;
       return true;
@@ -168,7 +172,10 @@ class PosixFileHandle : public FileHandle {
   }
   bool Write(size_t file_offset, const void* buffer, size_t buffer_length,
              size_t* out_bytes_written) override {
-    ssize_t out = pwrite(handle_, buffer, buffer_length, file_offset);
+    ssize_t out;
+    do {
+      out = pwrite(handle_, buffer, buffer_length, file_offset);
+    } while (out < 0 && errno == EINTR);
     if (out >= 0) {
       *out_bytes_written = out;
       return true;
@@ -208,7 +215,10 @@ std::unique_ptr<FileHandle> FileHandle::OpenExisting(
   if (desired_access & FileAccess::kFileAppendData) {
     open_access |= O_APPEND;
   }
-  int handle = open(path.c_str(), open_access);
+  int handle;
+  do {
+    handle = open(path.c_str(), open_access);
+  } while (handle < 0 && errno == EINTR);
   if (handle == -1) {
     // TODO(benvanik): pick correct response.
     return nullptr;

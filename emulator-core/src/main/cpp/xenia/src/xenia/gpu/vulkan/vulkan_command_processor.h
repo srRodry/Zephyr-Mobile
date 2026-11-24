@@ -479,6 +479,8 @@ class VulkanCommandProcessor final : public CommandProcessor {
   // its pipeline (it was already numbered and dumped the first time).
   bool issue_draw_memexport_retry_ = false;
   bool IssueCopy() override;
+  // The submit/completion path already reports the original loss.
+  bool ShouldLogDrawFailure() const { return !device_lost_; }
   void NeutralizeArmyTdcSsao(uint32_t address, uint32_t length);
   // vulkan_depth_4x_as_1x: the guest's 4x MSAA surface info rewritten for the
   // current draw (IssueDraw restores it) to the 1x surface of the samples, for
@@ -830,6 +832,17 @@ class VulkanCommandProcessor final : public CommandProcessor {
     uint64_t draws = 0;
     uint64_t render_pass_begins = 0;
     uint64_t primary_buffer_splits = 0;
+    uint64_t shared_upload_pass_splits = 0;
+    // CPU wall time inside VMA image calls from the texture cache only.
+    uint64_t texture_image_create_calls = 0;
+    uint64_t texture_image_create_failures = 0;
+    uint64_t texture_image_create_ns = 0;
+    uint64_t texture_image_create_max_ns = 0;
+    uint64_t resolve_candidate_image_create_calls = 0;
+    uint64_t resolve_candidate_image_create_ns = 0;
+    uint64_t texture_image_destroy_calls = 0;
+    uint64_t texture_image_destroy_ns = 0;
+    uint64_t texture_image_destroy_max_ns = 0;
     uint64_t rb_uma_direct = 0;
     uint64_t rb_uma_first_use = 0;
     // Resolves not copied: the CPU had not read their range

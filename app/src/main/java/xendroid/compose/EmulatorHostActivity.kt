@@ -473,6 +473,9 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
     private val sustainedMode = mutableStateOf(false)
     private val sustainedAvailable = mutableStateOf(true)
     private val requestedRefresh = mutableStateOf<Float?>(null)
+    private val appliedRefresh = mutableStateOf<Float?>(null)
+    private var generationRefresh: Float? = null
+    private var lastDisplayRequest: Pair<Int, Float?>? = null
     /** Right-stick directions currently held on the touch overlay. */
     private val touchStickHeld = BooleanArray(24)
     /** When the gyroscope aims: always, or while P1 holds LT or LB (touch_options "gyro_aim"). */
@@ -1841,13 +1844,15 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
 
                                     // FG can stop by itself (failure, cadence over Hz) while the
                                     // menu is closed: hand the temporary cap back then too.
-                                    if (generationCap.active && !menuState.value.open) {
-                                        val state = session.presentationState()
-                                        if (!state.requested) { presentationState.value = state; restoreGenerationCap() }
-                                    }
-                                    if (menuState.value.open) {
+                                    if (menuState.value.open || generationCap.active || generationRefresh != null) {
                                         presentationState.value = session.presentationState()
-                                        if (!presentationState.value.requested) restoreGenerationCap()
+                                        if (!presentationState.value.requested) {
+                                            restoreGenerationCap()
+                                            generationRefresh = null
+                                        }
+                                    }
+                                    if (foregroundState.value) updateDisplayRefresh()
+                                    if (menuState.value.open) {
                                         audioVolume.intValue = session.audioVolume()
                                         gpuLabel.value = session.activeGpuLabel()
                                         menuPaused.value = session.isPauseComplete()
@@ -3317,7 +3322,7 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
                 }),
             InGameAction.REFRESH_RATE to MenuValue(text = requestedRefresh.value?.let { "${it.roundToInt()} Hz" } ?: stringResource(R.string.menu_auto),
                 own = InGameChanges.REFRESH_HZ in own,
-                note = stringResource(R.string.menu_refresh_rate_value, requestedRefresh.value?.let { "${it.roundToInt()} Hz" } ?: stringResource(R.string.menu_auto),
+                note = stringResource(R.string.menu_refresh_rate_value, appliedRefresh.value?.let { "${it.roundToInt()} Hz" } ?: stringResource(R.string.menu_auto),
                     ((if (Build.VERSION.SDK_INT >= 30) display?.refreshRate else @Suppress("DEPRECATION") windowManager.defaultDisplay.refreshRate)
                         ?.roundToInt()?.let { "$it Hz" }) ?: "—")),
             InGameAction.SMOOTH_SHADERS to MenuValue(on = gpuValue(xendroid.compose.core.GpuLiveOption.ASYNC_SKIP_DRAWS) != 0,
@@ -3710,7 +3715,7 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
                     val choices = listOf<Float?>(null) + refreshChoices(activeDisplay).map { it.hz }
                     rememberLive(InGameChanges.REFRESH_HZ, requestedRefresh.value)
                     requestedRefresh.value = around(choices, requestedRefresh.value)
-                    selectRefresh(this, requestedRefresh.value)
+                    updateDisplayRefresh()
                     keepChange(InGameChanges.REFRESH_HZ, requestedRefresh.value?.toString())
                 }
             }
@@ -3816,15 +3821,30 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
      * too fast for the display and switched itself off.
      */
     private fun frameGenerationRefresh(outputFps: Double): Float {
-        requestedRefresh.value?.let { return it }
         val rates = displayRates()
-        val hz = rates.firstOrNull { it * 1.025f >= outputFps } ?: rates.maxOrNull() ?: return currentOutputHz()
-        selectRefresh(this, hz)
-        return hz
+        generationRefresh = rates.firstOrNull { it * 1.025f >= outputFps } ?: rates.maxOrNull()
+        updateDisplayRefresh()
+        return requestedRefresh.value ?: generationRefresh ?: currentOutputHz()
     }
 
     private fun releaseFrameGenerationRefresh() {
-        selectRefresh(this, requestedRefresh.value)
+        generationRefresh = null
+        updateDisplayRefresh()
+    }
+
+    private fun updateDisplayRefresh() {
+        val fps = if (activeTitleState.value != null) session.fpsLimit() else 0
+        // The external presentation owns its display independently of this window.
+        val autoFps = if (externalDisplay?.activeDisplay == null) fps else 0
+        val selected = selectRefresh(this, requestedRefresh.value ?: generationRefresh, autoFps)
+        appliedRefresh.value = selected
+        val request = fps to selected
+        if (request != lastDisplayRequest) {
+            lastDisplayRequest = request
+            recordEvent("display cadence",
+                "game limit=$fps FPS (0=unlimited), requested=${selected?.let { "$it Hz" } ?: "system"}, " +
+                    "observed at request=${currentOutputHz()} Hz")
+        }
     }
 
     private fun setDisplayMode(mode: Int) {
@@ -3840,6 +3860,7 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
         generationCap.forget()
         fpsLimitState.intValue = fps
         session.setFpsLimit(fps)
+        updateDisplayRefresh()
         keepChange(FPS_KEY, fps.toString())
     }
 
@@ -3920,13 +3941,13 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
         sessionChanges.intValue = 0
         gameOwnKeys.value = emptySet()
         inGameChanges = title?.let { InGameChanges(InGameChangesStore(ConfigStore(applicationContext), inGamePrefs, it)) }
+        generationRefresh = null
+        requestedRefresh.value = title?.let { inGamePrefs.value(InGameChanges.REFRESH_HZ, it) }
+            ?.toFloatOrNull()?.takeIf { it.isFinite() && it > 0 }
+        updateDisplayRefresh()
         if (title == null) return
         inGamePrefs.value(InGameChanges.DISPLAY_MODE, title)?.toIntOrNull()?.takeIf { it in 0..3 }?.let { session.setPresentationMode(it) }
         inGamePrefs.value(InGameChanges.COLOR_FILTER, title)?.toIntOrNull()?.takeIf { it in 0..4 }?.let { session.setColorFilter(it) }
-        inGamePrefs.value(InGameChanges.REFRESH_HZ, title)?.toFloatOrNull()?.let { hz ->
-            requestedRefresh.value = hz
-            selectRefresh(this, hz)
-        }
         presentationState.value = session.presentationState()
         // The menu has no button over the game any more: how to open it, once per install.
         if (inGamePrefs.firstOpenTip()) Toast.makeText(this, getString(R.string.menu_open_tip), Toast.LENGTH_LONG).show()
@@ -4012,7 +4033,7 @@ class EmulatorHostActivity : ComponentActivity(), SurfaceHolder.Callback {
             VOLUME_KEY -> (value as? Int)?.let { session.setAudioVolume(it); audioVolume.intValue = session.audioVolume() }
             InGameChanges.DISPLAY_MODE -> (value as? Int)?.let { session.setPresentationMode(it); presentationState.value = session.presentationState() }
             InGameChanges.COLOR_FILTER -> (value as? Int)?.let { session.setColorFilter(it); presentationState.value = session.presentationState() }
-            InGameChanges.REFRESH_HZ -> { requestedRefresh.value = value as? Float; selectRefresh(this, requestedRefresh.value) }
+            InGameChanges.REFRESH_HZ -> { requestedRefresh.value = value as? Float; updateDisplayRefresh() }
             else -> xendroid.compose.core.GpuLiveOption.entries.firstOrNull { it.key == key }?.let { option ->
                 (value as? Int)?.let { gpuLive.value = gpuLive.value + (option to it); session.setLiveOption(option, it) }
             }

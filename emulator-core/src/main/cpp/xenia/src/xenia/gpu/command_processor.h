@@ -371,6 +371,8 @@ class CommandProcessor {
     uint64_t wait_reg_mem_ns = 0;
     uint64_t interval_ns = 0;  // sum of swap-to-swap intervals
     uint64_t interval_max_ns = 0;
+    uint64_t interval_count = 0;
+    uint64_t intervals_over_30fps_budget = 0;
     // Intervals over 37, 50 and 70 ms (1.1x, 1.5x and 2.1x the 33.3 ms of a
     // 30 fps frame): the stutter an average hides.
     uint64_t long_intervals[3] = {};
@@ -731,6 +733,7 @@ class CommandProcessor {
     return false;
   }
   virtual bool IssueCopy() { return false; }
+  bool ShouldLogDrawFailure() const { return true; }
 
   // Debug marker stubs for base class (overridden by D3D12/Vulkan backends).
   bool debug_markers_enabled() const { return false; }

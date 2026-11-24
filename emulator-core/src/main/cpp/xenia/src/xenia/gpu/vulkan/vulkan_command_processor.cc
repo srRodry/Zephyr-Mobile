@@ -3920,7 +3920,7 @@ void VulkanCommandProcessor::IssueSwap(uint32_t frontbuffer_ptr,
           "replay={:.1f}ms | resolve_clears={:.1f} in_guest_pass={:.1f} | "
           "uma readbacks={:.1f} first={:.1f} unread={:.1f} kb={:.0f} "
           "filtered={:.1f} exposure_waits={:.1f} | "
-          "completed gpu submit time={:.1f}ms/fr samples={}",
+          "completed gpu submit time={:.1f}ms/fr samples={} | shared_upload_pass_splits={}",
           s.frames, s.awaits / f, s.await_ns / f / 1e6, s.submissions / f,
           s.resolves / f, s.memexport_awaits / f, s.readback_awaits / f,
           s.sub_completions
@@ -3948,7 +3948,18 @@ void VulkanCommandProcessor::IssueSwap(uint32_t frontbuffer_ptr,
           s.resolve_clears_in_guest_pass / f, s.rb_uma_direct / f,
           s.rb_uma_first_use / f, s.rb_uma_unread / f,
           s.rb_uma_bytes / f / 1024.0, s.rb_uma_filtered / f,
-          s.rb_uma_exposure_waits / f, s.gpu_exec_ns / f / 1e6, s.gpu_samples);
+          s.rb_uma_exposure_waits / f, s.gpu_exec_ns / f / 1e6, s.gpu_samples,
+          s.shared_upload_pass_splits);
+      XELOGI(
+          "VkTextureImages: {} frames | create calls={} failed={} ns={} "
+          "max_ns={} | destroy calls={} ns={} max_ns={} | resolve_candidate "
+          "create calls={} ns={}",
+          s.frames, s.texture_image_create_calls,
+          s.texture_image_create_failures, s.texture_image_create_ns,
+          s.texture_image_create_max_ns, s.texture_image_destroy_calls,
+          s.texture_image_destroy_ns, s.texture_image_destroy_max_ns,
+          s.resolve_candidate_image_create_calls,
+          s.resolve_candidate_image_create_ns);
       if (s.memexport_range_skips || s.memexport_range_waits ||
           s.memexport_range_fallbacks || s.memexport_early_submissions) {
         XELOGI(
@@ -5973,6 +5984,9 @@ bool VulkanCommandProcessor::IssueDraw(xenos::PrimitiveType prim_type,
                                        uint32_t index_count,
                                        IndexBufferInfo* index_buffer_info,
                                        bool major_mode_explicit) {
+  if (device_lost_) {
+    return false;
+  }
 #if XE_GPU_FINE_GRAINED_DRAW_SCOPES
   SCOPE_profile_cpu_f("gpu");
 #endif  // XE_GPU_FINE_GRAINED_DRAW_SCOPES

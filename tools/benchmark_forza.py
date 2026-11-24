@@ -77,8 +77,10 @@ def main():
         all_stamps.update(fresh)
         polls.append({"elapsed_s": time.monotonic() - start, "timestamps_ns": sorted(fresh)})
         time.sleep(min(1.0, max(0.0, args.duration - (time.monotonic() - start))))
-    all_stamps.update(stamp for stamp in timestamps() if stamp > cutoff)
+    final_stamps = {stamp for stamp in timestamps() if stamp > cutoff}
+    all_stamps.update(final_stamps)
     elapsed = time.monotonic() - start
+    polls.append({"elapsed_s": elapsed, "timestamps_ns": sorted(final_stamps)})
     # Save the complete native log before taking the end snapshot, then restrict
     # native statistics to frame numbers greater than the initial log position.
     native_log = adb("exec-out", "cat", log_path)
@@ -92,8 +94,10 @@ def main():
     if len(intervals) < 2:
         raise RuntimeError("No advancing frame timestamps; inspect the saved screenshots/log")
 
-    def percentile(values, p):
-        return sorted(values)[max(0, math.ceil(len(values) * p) - 1)]
+    sorted_intervals = sorted(intervals)
+
+    def percentile(p):
+        return sorted_intervals[max(0, math.ceil(len(sorted_intervals) * p) - 1)]
 
     native = []
     for line in native_log.splitlines():
@@ -105,13 +109,29 @@ def main():
         "label": args.label, "package": args.package, "surface": layer,
         "measurement_elapsed_s": elapsed, "presented_frames": len(ordered),
         "presented_fps": 1000.0 * len(intervals) / sum(intervals),
-        "presented_frame_ms_median": percentile(intervals, .5),
-        "presented_frame_ms_p95": percentile(intervals, .95),
-        "presented_frame_ms_p99": percentile(intervals, .99),
+        "presented_frame_ms_median": percentile(.5),
+        "presented_frame_ms_p95": percentile(.95),
+        "presented_frame_ms_p99": percentile(.99),
         "presented_frame_ms_max": max(intervals),
         "native_samples": len(native),
         "caveat": "Compare the same scene and thermal conditions; native logging adds overhead.",
     }
+    # Count each timestamp once at first observation. Denominators include time
+    # with no presents, including a freeze at the end of a run. Window boundaries
+    # have the precision of an ADB poll; keep the raw polls for inspection.
+    result["presented_fps_over_elapsed"] = len(ordered) / elapsed
+    if elapsed >= 180:
+        seen = set()
+        early = late = 0
+        for poll in polls:
+            fresh = set(poll["timestamps_ns"]) - seen
+            seen.update(fresh)
+            if poll["elapsed_s"] <= 60:
+                early += len(fresh)
+            elif poll["elapsed_s"] > elapsed - 60:
+                late += len(fresh)
+        result["presented_fps_first_minute"] = early / 60
+        result["presented_fps_last_minute"] = late / 60
     if native:
         native_time = sum(x["count"] * x["avg_ms"] for x in native)
         result["guest_fps_from_logged_intervals"] = (

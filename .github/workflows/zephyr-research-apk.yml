@@ -225,7 +225,7 @@ jobs:
         set -eu
         bt="$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS_VERSION"
         unsigned=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
-        "$bt/zipalign" -f -p 4 "$unsigned" "$RUNNER_TEMP/aligned.apk"
+        "$bt/zipalign" -f -P 16 4 "$unsigned" "$RUNNER_TEMP/aligned.apk"
         keystore="$RUNNER_TEMP/signing.keystore"
         trap 'rm -f "$keystore"' EXIT
         # A partially configured signing key must fail visibly. Otherwise CI
@@ -274,6 +274,7 @@ jobs:
         "$bt/apksigner" sign --ks "$keystore" --ks-key-alias "$alias" \
           --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEY_PASSWORD \
           --out "$NAME.apk" "$RUNNER_TEMP/aligned.apk"
+        "$bt/zipalign" -c -P 16 4 "$NAME.apk"
         "$bt/apksigner" verify --verbose --print-certs "$NAME.apk" > "$NAME.signing.txt"
         grep -E 'Signer #1 certificate (DN|SHA-256)' "$NAME.signing.txt"
         fingerprint=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$NAME.signing.txt" | tr '[:upper:]' '[:lower:]')
@@ -401,7 +402,7 @@ jobs:
         set -eu
         bt="$ANDROID_SDK_ROOT/build-tools/$BUILD_TOOLS_VERSION"
         unsigned=$(ls app/build/outputs/apk/release/*.apk | head -n 1)
-        "$bt/zipalign" -f -p 4 "$unsigned" "$RUNNER_TEMP/aligned.apk"
+        "$bt/zipalign" -f -P 16 4 "$unsigned" "$RUNNER_TEMP/aligned.apk"
         keystore="$RUNNER_TEMP/signing.keystore"
         trap 'rm -f "$keystore"' EXIT
         # A partially configured signing key must fail visibly. Otherwise CI
@@ -450,6 +451,7 @@ jobs:
         "$bt/apksigner" sign --ks "$keystore" --ks-key-alias "$alias" \
           --ks-pass env:KEYSTORE_PASSWORD --key-pass env:KEY_PASSWORD \
           --out "$NAME.apk" "$RUNNER_TEMP/aligned.apk"
+        "$bt/zipalign" -c -P 16 4 "$NAME.apk"
         "$bt/apksigner" verify --verbose --print-certs "$NAME.apk" > "$NAME.signing.txt"
         grep -E 'Signer #1 certificate (DN|SHA-256)' "$NAME.signing.txt"
         fingerprint=$(sed -n 's/^Signer #1 certificate SHA-256 digest: //p' "$NAME.signing.txt" | tr '[:upper:]' '[:lower:]')

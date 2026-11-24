@@ -14,6 +14,9 @@ class AudioPumpDiagnosticsTests(unittest.TestCase):
         self.assertIn("pump_exec_end - exec_begin", SOURCE)
         self.assertIn('XELOGI("AudioPump: {} samples, {} late', SOURCE)
 
+    def test_fresh_client_is_not_counted_as_overdue(self):
+        self.assertIn("if (cvars::apu_aaudio_log_stats && earliest_pump_us != 0)", SOURCE)
+
     def test_diagnostics_are_worker_local(self):
         start = SOURCE.index("void AudioSystem::WorkerThreadMain()")
         end = SOURCE.index("int AudioSystem::FindFreeClient()", start)

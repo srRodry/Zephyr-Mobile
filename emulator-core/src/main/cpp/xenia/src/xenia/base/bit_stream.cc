@@ -30,130 +30,80 @@ void BitStream::SetOffset(size_t offset_bits) {
 size_t BitStream::BitsRemaining() { return size_bits_ - offset_bits_; }
 
 bool BitStream::IsOffsetValid(size_t num_bits) {
-  size_t offset_bytes = offset_bits_ >> 3;
-  size_t rel_offset_bits = offset_bits_ - (offset_bytes << 3);
-
-  if (rel_offset_bits && int32_t(num_bits - 8 - rel_offset_bits) < 0) {
-    return false;
-  }
-  return true;
+  return num_bits <= BitsRemaining();
 }
 
 uint64_t BitStream::Peek(size_t num_bits) {
-  // FYI: The reason we can't copy more than 57 bits is:
-  // 57 = 7 * 8 + 1 - that can only span a maximum of 8 bytes.
-  // We can't read in 9 bytes (easily), so we limit it.
-  assert_false(num_bits > 57);
-  assert_false(offset_bits_ + num_bits > size_bits_);
-
-  size_t offset_bytes = std::min(offset_bits_ >> 3, (size_bits_ - 64) >> 3);
-  size_t rel_offset_bits = offset_bits_ - (offset_bytes << 3);
-
-  // offset -->
-  // ..[junk]..| target bits |....[junk].............
-  uint64_t bits = *(uint64_t*)(buffer_ + offset_bytes);
-
-  // We need the data in little endian.
-  // TODO: Have a flag specifying endianness of data?
-  bits = xe::byte_swap(bits);
-
-  // Shift right
-  // .....[junk]........| target bits |
-  bits >>= 64 - (rel_offset_bits + num_bits);
-
-  // AND with mask
-  // ...................| target bits |
-  bits &= (1ULL << num_bits) - 1;
-
-  return bits;
+  if (!num_bits || num_bits > 57 || !IsOffsetValid(num_bits)) {
+    return 0;
+  }
+  const size_t first = offset_bits_ / 8;
+  const size_t skip = offset_bits_ % 8;
+  uint64_t word = 0;
+  // Interior reads keep the single word load. At the tail, copy only
+  // bytes belonging to this stream, including its final partial byte.
+  const size_t bytes_left = (size_bits_ / 8 - first) + (size_bits_ % 8 != 0);
+  if (bytes_left >= sizeof(word)) {
+    std::memcpy(&word, buffer_ + first, sizeof(word));
+  } else {
+    std::memcpy(&word, buffer_ + first, bytes_left);
+  }
+  return (xe::byte_swap(word) >> (64 - skip - num_bits)) &
+         ((uint64_t(1) << num_bits) - 1);
 }
 
 uint64_t BitStream::Read(size_t num_bits) {
-  uint64_t val = Peek(num_bits);
+  if (num_bits > 57) return 0;
+  const uint64_t value = Peek(num_bits);
   Advance(num_bits);
-
-  return val;
+  return value;
 }
 
-// TODO: This is totally not tested!
 bool BitStream::Write(uint64_t val, size_t num_bits) {
-  assert_false(num_bits > 57);
-  assert_false(offset_bits_ + num_bits >= size_bits_);
-
-  size_t offset_bytes = offset_bits_ >> 3;
-  size_t rel_offset_bits = offset_bits_ - (offset_bytes << 3);
-
-  // Construct a mask
-  uint64_t mask = (1ULL << num_bits) - 1;
-  mask <<= 64 - (rel_offset_bits + num_bits);
-  mask = ~mask;
-
-  // Shift the value left into position.
-  val <<= 64 - (rel_offset_bits + num_bits);
-
-  // offset ----->
-  // ....[junk]...| target bits w/ junk |....[junk]......
-  uint64_t bits = *(uint64_t*)(buffer_ + offset_bytes);
-
-  // AND with mask
-  // ....[junk]...| target bits (0) |........[junk]......
-  bits &= mask;
-
-  // OR with val
-  // ....[junk]...| target bits (val) |......[junk]......
-  bits |= val;
-
-  // Store into the bitstream.
-  *(uint64_t*)(buffer_ + offset_bytes) = bits;
-
-  // Advance the bitstream forward.
-  Advance(num_bits);
-
+  if (num_bits > 57 || !IsOffsetValid(num_bits)) return false;
+  while (num_bits) {
+    const size_t skip = offset_bits_ % 8;
+    const size_t take = std::min(num_bits, 8 - skip);
+    const size_t shift = 8 - skip - take;
+    const uint8_t mask = uint8_t(((1u << take) - 1) << shift);
+    uint8_t& byte = buffer_[offset_bits_ / 8];
+    num_bits -= take;
+    byte = (byte & ~mask) | (uint8_t((val >> num_bits) << shift) & mask);
+    offset_bits_ += take;
+  }
   return true;
 }
 
 size_t BitStream::Copy(uint8_t* dest_buffer, size_t num_bits) {
-  size_t offset_bytes = offset_bits_ >> 3;
-  size_t rel_offset_bits = offset_bits_ - (offset_bytes << 3);
-  size_t bits_left = num_bits;
-  size_t out_offset_bytes = 0;
-
-  // First: Copy the first few bits up to a byte boundary.
-  if (rel_offset_bits) {
-    uint64_t bits = Peek(8 - rel_offset_bits);
-    uint8_t clear_mask = ~((uint8_t(1) << rel_offset_bits) - 1);
-    dest_buffer[out_offset_bytes] &= clear_mask;
-    dest_buffer[out_offset_bytes] |= (uint8_t)bits;
-
-    bits_left -= 8 - rel_offset_bits;
-    Advance(8 - rel_offset_bits);
-    out_offset_bytes++;
+  const size_t skip = offset_bits_ % 8;
+  size_t left = std::min(num_bits, BitsRemaining());
+  // XMA expects the copied frame to keep the input's initial bit offset.
+  if (skip && left) {
+    const size_t take = std::min(left, 8 - skip);
+    const size_t shift = 8 - skip - take;
+    const uint8_t mask = uint8_t(((1u << take) - 1) << shift);
+    *dest_buffer = (*dest_buffer & ~mask) | (buffer_[offset_bits_ / 8] & mask);
+    ++dest_buffer;
+    offset_bits_ += take;
+    left -= take;
   }
-
-  // Second: Use memcpy for the bytes left.
-  if (bits_left >= 8) {
-    std::memcpy(dest_buffer + out_offset_bytes,
-                buffer_ + offset_bytes + out_offset_bytes, bits_left / 8);
-    out_offset_bytes += (bits_left / 8);
-    Advance((bits_left / 8) * 8);
-    bits_left -= (bits_left / 8) * 8;
+  const size_t bytes = left / 8;
+  if (bytes) {
+    std::memcpy(dest_buffer, buffer_ + offset_bits_ / 8, bytes);
+    dest_buffer += bytes;
+    offset_bits_ += bytes * 8;
   }
-
-  // Third: Copy the last few bits.
-  if (bits_left) {
-    uint64_t bits = Peek(bits_left);
-    bits <<= 8 - bits_left;
-
-    uint8_t clear_mask = ((uint8_t(1) << bits_left) - 1);
-    dest_buffer[out_offset_bytes] &= clear_mask;
-    dest_buffer[out_offset_bytes] |= (uint8_t)bits;
-    Advance(bits_left);
+  const size_t tail = left % 8;
+  if (tail) {
+    const uint8_t mask = uint8_t(0xffu << (8 - tail));
+    *dest_buffer = (*dest_buffer & ~mask) | (buffer_[offset_bits_ / 8] & mask);
+    offset_bits_ += tail;
   }
-
-  // Return the bit offset to the copied bits.
-  return rel_offset_bits;
+  return skip;
 }
 
-void BitStream::Advance(size_t num_bits) { SetOffset(offset_bits_ + num_bits); }
+void BitStream::Advance(size_t num_bits) {
+  offset_bits_ += std::min(num_bits, BitsRemaining());
+}
 
 }  // namespace xe

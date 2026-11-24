@@ -1,5 +1,18 @@
 package xendroid.compose.core
 
+import kotlin.math.abs
+import kotlin.math.roundToInt
+
+/** Lowest mode with an even cadence. Allow fractional panel rates such as 59.94 Hz. */
+internal fun cadenceRefreshRate(fps: Int, rates: List<Float>, batterySaver: Boolean): Float? {
+    if (fps <= 0) return null
+    return rates.filter { hz ->
+        if (!hz.isFinite() || hz <= 0 || (batterySaver && hz > 60.1f)) return@filter false
+        val slots = (hz / fps).roundToInt()
+        slots >= 1 && abs(hz - slots.toFloat() * fps) <= 0.15f
+    }.minOrNull()
+}
+
 /** Rate of accepted host present submissions, never a measurement of display scanout. */
 fun presentSubmissionRate(previous: Long, current: Long, elapsedNs: Long): Double? {
     if (previous < 0 || current < previous || elapsedNs <= 0) return null

@@ -41,7 +41,7 @@ struct VulkanDevice {
   int mode=0;
   VkResult vkGetPipelineCacheData(int, int, size_t* size, void* data) const {
    ++calls;
-   if (!data) { *size=mode==2 ? 0 : 8; return VK_SUCCESS; }
+   if (!data) { *size=mode==2 ? 0 : mode==3 ? 9 : 8; return VK_SUCCESS; }
    std::memset(data, 0xAB, 4); *size=4;
    return mode==1 ? VK_INCOMPLETE : VK_SUCCESS;
   }
@@ -60,6 +60,7 @@ struct VulkanShader {
 };
 struct Store {
  int saves=0; size_t saved_size=0;
+ bool CanStorePayload(size_t size) const { return size <= 8; }
  bool Save(const uint8_t* data, size_t size, std::string&) {
   ++saves; saved_size=size;
   assert(size==4); for(size_t i=0;i<size;++i) assert(data[i]==0xAB);
@@ -102,6 +103,11 @@ int main() {
  assert(cache.vk_pipeline_cache_store_->saves==1);
  cache.command_processor_.device.fn.mode=2;
  assert(!cache.SaveVkPipelineCache());
+ assert(cache.vk_pipeline_cache_store_->saves==1);
+ cache.command_processor_.device.fn.mode=3;
+ const int before_budget=cache.command_processor_.device.fn.calls;
+ assert(!cache.SaveVkPipelineCache());
+ assert(cache.command_processor_.device.fn.calls==before_budget+1); // Size query only.
  assert(cache.vk_pipeline_cache_store_->saves==1);
  cache.vk_pipeline_cache_=VK_NULL_HANDLE;
  const int calls=cache.command_processor_.device.fn.calls;

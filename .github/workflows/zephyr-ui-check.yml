@@ -192,6 +192,12 @@ jobs:
           python3 tools/test-army-quirk.py
       - name: Test GPU completion timeline and exact fence collection policy
         run: python3 tools/test-gpu-completion-timeline.py
+      - name: Test XMA bit fields and partial packets
+        run: |
+          src=emulator-core/src/main/cpp/xenia
+          clang++ -std=c++20 -O1 -fsanitize=address,undefined -fno-sanitize-recover=all -I "$src/src" -I "$src" \
+            emulator-core/src/test/cpp/bit_stream_test.cc "$src/src/xenia/base/bit_stream.cc" -o "$RUNNER_TEMP/bit-stream-test"
+          "$RUNNER_TEMP/bit-stream-test"
       - name: Test Vulkan cache redundant-work removal
         run: python3 tools/test-vulkan-cache-work.py
       - name: Test extracted XEX executable overrides
@@ -228,6 +234,8 @@ jobs:
             --tests 'xendroid.compose.core.LaunchExecutablesTest' \
             --tests 'xendroid.compose.core.LaunchOptionsTest' \
             --tests 'xendroid.compose.ui.settings.SettingsHubRoutingTest' \
+            --tests 'xendroid.compose.driver.DriverPackageInstallerTest' \
+            --tests 'xendroid.compose.settings.TurnipFlagsTest' \
             --tests 'xendroid.compose.settings.SettingsSchemaTest' \
             --tests 'xendroid.compose.screens.SettingsHubTest' \
             --tests 'xendroid.compose.screens.ProfilesWorkspaceTest' \
