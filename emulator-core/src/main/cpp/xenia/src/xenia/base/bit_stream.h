@@ -30,10 +30,10 @@ class BitStream {
   size_t BitsRemaining();
   bool IsOffsetValid(size_t num_bits);
 
-  // Note: num_bits MUST be in the range 0-57 (inclusive)
+  // MSB first, up to 57 bits. Peek returns zero for an incomplete field.
   uint64_t Peek(size_t num_bits);
   uint64_t Read(size_t num_bits);
-  bool Write(uint64_t val, size_t num_bits);  // TODO(DrChat): Not tested!
+  bool Write(uint64_t val, size_t num_bits);
 
   size_t Copy(uint8_t* dest_buffer, size_t num_bits);
 

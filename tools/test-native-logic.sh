@@ -27,6 +27,8 @@ flags=(-std=c++20 -O1 -Wall -I "$cpp" -I "$cpp/xenia" -I "$cpp/xenia/src" -I "$t
 for name in presentation_runtime_test pipeline_cache_file_test vblank_pacer_test changed_settings_test frame_stats_test audio_buffer_tuner_test audio_block_renderer_test structured_jumps_test; do
     "${cxx[@]}" "${flags[@]}" "$test/$name.cc" -o "$build/$name"
 done
+"${cxx[@]}" "${flags[@]}" "$test/bit_stream_test.cc" "$cpp/xenia/src/xenia/base/bit_stream.cc" -o "$build/bit_stream_test"
+"$build/bit_stream_test"
 # C01: the crash record is a source file of its own (signal-handler code).
 "${cxx[@]}" "${flags[@]}" "$test/crash_record_test.cc" "$cpp/xe_crash_record.cpp" -o "$build/crash_record_test" "${dl[@]}"
 "$build/presentation_runtime_test"
