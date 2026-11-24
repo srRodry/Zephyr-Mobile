@@ -10,6 +10,8 @@ class TurnipFlagsTest {
         assertEquals("sysmem", TurnipFlags.toggle("sysmem,nolrz", "nolrz"))
         assertEquals("", TurnipFlags.toggle("sysmem", "sysmem"))
         assertEquals("nolrz", TurnipFlags.toggle("", "nolrz"))
+        assertEquals("sysmem,nobin", TurnipFlags.toggle("sysmem,forcebin", "nobin"))
+        assertEquals("gmem,forcebin", TurnipFlags.toggle("gmem,nobin", "forcebin"))
         // sysmem and gmem are the two rendering paths: choosing one takes the other off.
         assertEquals("nolrz,gmem", TurnipFlags.toggle("sysmem,nolrz", "gmem"))
         assertEquals("sysmem", TurnipFlags.toggle("gmem", "sysmem"))

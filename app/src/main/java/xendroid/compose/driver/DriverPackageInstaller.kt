@@ -1,5 +1,8 @@
 package xendroid.compose.driver
 
+import java.io.RandomAccessFile
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 import java.io.File
 import java.nio.file.Files
 import java.nio.file.StandardCopyOption
@@ -7,6 +10,7 @@ import java.util.UUID
 import kotlinx.serialization.Serializable
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.json.JsonObject
 import kotlinx.serialization.json.jsonObject
 import kotlinx.serialization.json.jsonPrimitive
 import kotlinx.serialization.json.contentOrNull
@@ -23,7 +27,8 @@ data class InstalledDriver(val library: File, val sha256: String, val verifiedDo
 
 /** Immutable, content-addressed packages. A failed import cannot change selection or
  * an installed package; the UI selects a driver only AFTER this operation succeeds. */
-class DriverPackageInstaller(private val root: File) {
+class DriverPackageInstaller(private val root: File, private val androidApi: Int,
+                             private val pageSize: Long) {
     private val limits = ArchiveLimits(64L * 1024 * 1024, 256L * 1024 * 1024, 128L * 1024 * 1024, 256)
     private val json = Json { ignoreUnknownKeys = true }
     private val marker = "xendroid-installation.json"
@@ -46,8 +51,8 @@ class DriverPackageInstaller(private val root: File) {
                 require(extracted.none { it.name == marker }) { "Reserved driver metadata" }
                 val meta = File(stage, "meta.json")
                 val library = if (meta.isFile) {
-                    require(meta.length() <= 64 * 1024) { "Driver metadata too large" }
-                    json.parseToJsonElement(meta.readText()).jsonObject["libraryName"]?.jsonPrimitive?.contentOrNull
+                    val metadata = readMetadata(meta)
+                    metadata["libraryName"]?.jsonPrimitive?.contentOrNull
                         ?: error("Missing libraryName in meta.json")
                 } else {
                     extracted.filter { it.extension == "so" }.singleOrNull()?.relativeTo(stage)?.invariantSeparatorsPath
@@ -55,7 +60,7 @@ class DriverPackageInstaller(private val root: File) {
                 }
                 val selected = ArchiveFiles.resolve(stage, library)
                 require(selected.isFile && selected.extension == "so") { "Driver library missing" }
-                extracted.filter { it.extension == "so" }.forEach(::validateArm64Library)
+                extracted.filter { it.extension == "so" }.forEach { validateForDevice(it) }
                 val manifest = DriverInstallation(archiveSha256 = hash, library = library,
                     files = extracted.map { DriverInstalledFile(it.relativeTo(stage).invariantSeparatorsPath, ArchiveFiles.sha256(it), it.length()) })
                 ArchiveFiles.atomicText(File(stage, marker), json.encodeToString(manifest))
@@ -69,6 +74,17 @@ class DriverPackageInstaller(private val root: File) {
         }
     }
 
+    private fun readMetadata(file: File): JsonObject {
+        require(file.length() <= 64 * 1024) { "Driver metadata too large" }
+        val metadata = json.parseToJsonElement(file.readText()).jsonObject
+        metadata["minApi"]?.let { value ->
+            val minimum = value.jsonPrimitive.contentOrNull?.toIntOrNull()
+            require(minimum != null && minimum > 0) { "Invalid driver minApi" }
+            require(minimum <= androidApi) { "Driver requires Android API $minimum (device API $androidApi)" }
+        }
+        return metadata
+    }
+
     private fun verifiedInstallation(dir: File, hash: String): File {
         val metadata = ArchiveFiles.resolve(dir, marker)
         require(metadata.length() in 1..1024 * 1024)
@@ -78,7 +94,37 @@ class DriverPackageInstaller(private val root: File) {
             val f = ArchiveFiles.resolve(dir, it.name)
             require(f.isFile && f.length() == it.size && ArchiveFiles.sha256(f) == it.sha256)
         }
+        File(dir, "meta.json").takeIf { it.isFile }?.let(::readMetadata)
+        m.files.filter { it.name.endsWith(".so") }.forEach { validateForDevice(ArchiveFiles.resolve(dir, it.name)) }
         return ArchiveFiles.resolve(dir, m.library).also(::validateArm64Library)
+    }
+
+    private fun validateForDevice(file: File) {
+        validateArm64Library(file)
+        if (pageSize <= 4096L) return
+        RandomAccessFile(file, "r").use { input ->
+            val bytes = ByteArray(64)
+            val fields = ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN)
+            input.readFully(bytes)
+            val offset = fields.getLong(32)
+            val stride = fields.getShort(54).toInt() and 0xffff
+            val count = fields.getShort(56).toInt() and 0xffff
+            require(offset >= 64 && stride >= 56 && count > 0 &&
+                offset <= input.length() - count.toLong() * stride) { "Invalid ELF program headers" }
+            var hasLoadSegment = false
+            for (index in 0 until count) {
+                input.seek(offset + index.toLong() * stride)
+                input.readFully(bytes, 0, 56)
+                if (fields.getInt(0) != 1) continue // PT_LOAD
+                hasLoadSegment = true
+                val alignment = fields.getLong(48)
+                require(alignment >= pageSize && (alignment and (alignment - 1)) == 0L &&
+                    (fields.getLong(8) and (pageSize - 1)) == (fields.getLong(16) and (pageSize - 1))) {
+                    "Driver segment is incompatible with the device page size ($pageSize bytes)"
+                }
+            }
+            require(hasLoadSegment) { "Driver has no loadable ELF segment" }
+        }
     }
 
     companion object {

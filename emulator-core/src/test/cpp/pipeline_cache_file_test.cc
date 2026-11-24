@@ -132,6 +132,17 @@ int main(int argc, char** argv) {
     CHECK(pcf::Load(main, a, 1024).status == pcf::LoadStatus::kTooLarge);
   }
 
+  // The save limit includes the envelope and preserves the previous cache.
+  {
+    pcf::Store exact(main, a, blob_a.size() + pcf::kEnvelopeSize);
+    CHECK(exact.Save(blob_a.data(), blob_a.size(), log));
+    CHECK(exact.LoadForCreate(log) == blob_a);
+    pcf::Store tight(main, b, blob_b.size() + pcf::kEnvelopeSize - 1);
+    CHECK(!tight.Save(blob_b.data(), blob_b.size(), log));
+    CHECK(pcf::Load(main, a).payload == blob_a);
+    CHECK(!pcf::Store(main, a, 1).CanStorePayload(1));
+  }
+
   // Switching drivers keeps each driver's cache: B archives A's file, A gets it back.
   {
     pcf::Store(main, a).Save(blob_a.data(), blob_a.size(), log);

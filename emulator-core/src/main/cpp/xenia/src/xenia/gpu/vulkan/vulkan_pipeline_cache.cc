@@ -9,6 +9,8 @@
 
 #include "xenia/gpu/vulkan/vulkan_pipeline_cache.h"
 
+#include <new>
+
 #include <cctype>
 #include <chrono>
 #include <cstdint>
@@ -1522,7 +1524,7 @@ void VulkanPipelineCache::TranslateShadersForStorage(
         msaa_2x_no_attachments, edram_fsi_used, draw_res_x, draw_res_y);
 
     while (true) {
-      size_t index = translation_index.fetch_add(1);
+      size_t index = translation_index.fetch_add(1, std::memory_order_relaxed);
       if (index >= translations_to_do.size()) {
         break;
       }
@@ -1533,7 +1535,7 @@ void VulkanPipelineCache::TranslateShadersForStorage(
               shader->GetTranslation(modification));
       if (translation && !translation->is_translated()) {
         if (TranslateAnalyzedShader(translator, *translation)) {
-          translations_completed.fetch_add(1);
+          translations_completed.fetch_add(1, std::memory_order_relaxed);
         }
       }
     }
@@ -1545,7 +1547,8 @@ void VulkanPipelineCache::TranslateShadersForStorage(
         std::max(uint32_t(1), xe::threading::logical_processor_count());
     thread_count = xe::edge30::PipelineWorkers(
         cvars::vulkan_pipeline_creation_threads, logical_processor_count);
-    thread_count = std::min(thread_count, translations_to_do.size());
+    // The caller also translates. One job needs no worker thread.
+    thread_count = std::min(thread_count, translations_to_do.size() - 1);
   }
 
   std::vector<std::unique_ptr<xe::threading::Thread>> translation_threads;
@@ -3307,6 +3310,12 @@ void VulkanPipelineCache::InitializeShaderStorage(
   shader_storage_file_flush_needed_ = false;
   pipeline_storage_file_flush_needed_ = false;
 
+  if (!cvars::pipeline_storage_precreate) {
+    XELOGI("Pipeline cache: skipping pre-creation of {} stored pipelines",
+           pipeline_stored_descriptions.size());
+    std::vector<PipelineStoredDescription>().swap(pipeline_stored_descriptions);
+  }
+
   // Load VkPipelineCache from disk if available.
   auto shader_storage_local_root = GetShaderStorageLocalRoot(cache_root);
   if (!std::filesystem::exists(shader_storage_local_root)) {
@@ -3370,18 +3379,16 @@ void VulkanPipelineCache::InitializeShaderStorage(
         "VulkanPipelineCache: Failed to create pipeline cache with "
         "initial data, creating empty cache");
     vk_pipeline_cache_ = VK_NULL_HANDLE;
+    std::vector<uint8_t>().swap(pipeline_cache_data);
     pipeline_cache_create_info.initialDataSize = 0;
     pipeline_cache_create_info.pInitialData = nullptr;
     dfn.vkCreatePipelineCache(device, &pipeline_cache_create_info, nullptr,
                               &vk_pipeline_cache_);
   }
 
+  std::vector<uint8_t>().swap(pipeline_cache_data);
+
   // Create pipelines from stored descriptions.
-  if (!cvars::pipeline_storage_precreate) {
-    XELOGI("Pipeline cache: skipping pre-creation of {} stored pipelines",
-           pipeline_stored_descriptions.size());
-    pipeline_stored_descriptions.clear();
-  }
   if (!pipeline_stored_descriptions.empty()) {
     uint64_t pipeline_creation_start = xe::Clock::QueryHostTickCount();
 
@@ -3657,7 +3664,15 @@ bool VulkanPipelineCache::SaveVkPipelineCache() {
       cache_size > 0) {
     // Vulkan writes the returned byte range. Avoid zero-filling the entire
     // cache before the driver overwrites it (periodic saves and shutdown).
-    auto cache_data = std::make_unique_for_overwrite<uint8_t[]>(cache_size);
+    if (!vk_pipeline_cache_store_->CanStorePayload(cache_size)) {
+      XELOGW("Skipping VkPipelineCache snapshot outside storage budget ({} bytes)", cache_size);
+      return false;
+    }
+    std::unique_ptr<uint8_t[]> cache_data(new (std::nothrow) uint8_t[cache_size]);
+    if (!cache_data) {
+      XELOGW("Insufficient memory for VkPipelineCache snapshot ({} bytes)", cache_size);
+      return false;
+    }
     // If creation threads grew the cache between the two calls the driver
     // returns VK_INCOMPLETE with partial data: skip this save, a later one runs.
     if (dfn.vkGetPipelineCacheData(device, vk_pipeline_cache_, &cache_size,

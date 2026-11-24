@@ -311,16 +311,26 @@ class Store {
     return {};
   }
 
+  bool CanStorePayload(size_t size) const {
+    return size >= kVulkanHeaderSize && max_bytes_ >= kEnvelopeSize &&
+           size <= max_bytes_ - kEnvelopeSize;
+  }
+
   // Persists the driver's current blob as the main file. The first save after
   // loading another driver's main file moves that file to its own archive.
   bool Save(const uint8_t* data, size_t size, std::string& description) {
     std::error_code ec;
     description.clear();
+    if (!CanStorePayload(size)) {
+      description = "cache size outside storage budget";
+      return false;
+    }
     if (main_foreign_) {
       const std::filesystem::path archive = ArchivePath(main_path_, main_identity_);
       std::filesystem::rename(main_path_, archive, ec);
       if (ec) {
-        description = "could not keep the other driver's cache aside (" + ec.message() + "); ";
+        description = "could not keep the other driver's cache aside (" + ec.message() + ")";
+        return false;
       } else {
         description = "kept the other driver's cache as " + archive.filename().string() + "; ";
         PruneArchives(main_path_);

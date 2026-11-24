@@ -2,6 +2,9 @@ package xendroid.compose.driver
 
 import android.content.Context
 import android.net.Uri
+import android.os.Build
+import android.system.Os
+import android.system.OsConstants
 import java.io.File
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.currentCoroutineContext
@@ -10,6 +13,9 @@ import kotlinx.coroutines.withContext
 import xendroid.compose.Application
 
 object DriverPackageIO {
+    private fun installer() = DriverPackageInstaller(Application.get_custom_driver_dir(),
+        Build.VERSION.SDK_INT, Os.sysconf(OsConstants._SC_PAGESIZE))
+
     suspend fun import(context: Context, uri: Uri): InstalledDriver = withContext(Dispatchers.IO) {
         val coroutine = currentCoroutineContext()
         val temporary = File.createTempFile("driver-import-", ".zip", context.cacheDir)
@@ -27,12 +33,12 @@ object DriverPackageIO {
                     output.write(buffer, 0, n)
                 }
             } }
-            DriverPackageInstaller(Application.get_custom_driver_dir()).install(temporary) { coroutine.ensureActive() }
+            installer().install(temporary) { coroutine.ensureActive() }
         } finally { temporary.delete() }
     }
 
     suspend fun install(file: File, expectedSha256: String?): InstalledDriver = withContext(Dispatchers.IO) {
         val coroutine = currentCoroutineContext()
-        DriverPackageInstaller(Application.get_custom_driver_dir()).install(file, expectedSha256) { coroutine.ensureActive() }
+        installer().install(file, expectedSha256) { coroutine.ensureActive() }
     }
 }

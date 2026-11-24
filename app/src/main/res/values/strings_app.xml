@@ -109,6 +109,7 @@
     <string name="xd_tu_nomultipos">Turns off the multi-position output optimization. Can fix stretched or flickering polygons.</string>
     <string name="xd_tu_noconcurrentresolves">Does not resolve tiles while the next ones draw. Can fix artifacts on Adreno 7xx; slower.</string>
     <string name="xd_tu_noconcurrentunresolves">Does not load tiles while others draw. Can fix artifacts on Adreno 7xx; slower.</string>
+    <string name="xd_tu_nobin">Disables hardware binning. Compare frame times and image quality on the affected Turnip driver.</string>
     <string name="xd_tu_forcebin">Always uses the binning pass in tiled rendering. For diagnosis.</string>
     <string name="xd_tu_flushall">Flushes the GPU after every command. Very slow; narrows down which draw hangs the GPU.</string>
     <string name="xd_tu_syncdraw">Waits for every draw to finish. Very slow; for diagnosing GPU hangs.</string>

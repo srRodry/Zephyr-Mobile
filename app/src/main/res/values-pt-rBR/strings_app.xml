@@ -109,6 +109,7 @@
     <string name="xd_tu_nomultipos">Desliga a otimização de saída multiposição. Pode corrigir polígonos esticados ou piscando.</string>
     <string name="xd_tu_noconcurrentresolves">Não resolve tiles enquanto os próximos desenham. Pode corrigir artefatos na Adreno 7xx; mais lento.</string>
     <string name="xd_tu_noconcurrentunresolves">Não carrega tiles enquanto outros desenham. Pode corrigir artefatos na Adreno 7xx; mais lento.</string>
+    <string name="xd_tu_nobin">Desativa o binning por hardware. Compare os tempos de quadro e a imagem com o driver Turnip em teste.</string>
     <string name="xd_tu_forcebin">Sempre usa a passada de binning no modo por tiles. Para diagnóstico.</string>
     <string name="xd_tu_flushall">Esvazia a GPU depois de cada comando. Muito lento; ajuda a achar qual desenho trava a GPU.</string>
     <string name="xd_tu_syncdraw">Espera cada desenho terminar. Muito lento; para diagnosticar travamentos da GPU.</string>

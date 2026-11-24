@@ -523,6 +523,7 @@ private fun turnipHelp(flag: String): String? = when (flag) {
     "nomultipos" -> stringResource(R.string.xd_tu_nomultipos)
     "noconcurrentresolves" -> stringResource(R.string.xd_tu_noconcurrentresolves)
     "noconcurrentunresolves" -> stringResource(R.string.xd_tu_noconcurrentunresolves)
+    "nobin" -> stringResource(R.string.xd_tu_nobin)
     "forcebin" -> stringResource(R.string.xd_tu_forcebin)
     "flushall" -> stringResource(R.string.xd_tu_flushall)
     "syncdraw" -> stringResource(R.string.xd_tu_syncdraw)
